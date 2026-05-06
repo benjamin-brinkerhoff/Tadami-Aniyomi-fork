@@ -6,6 +6,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,6 +34,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -499,75 +503,113 @@ data object AnimeLibraryTab : Tab {
             titleRes = AYMR.strings.label_anime,
             searchEnabled = true,
             content = { contentPadding, _ ->
-                val currentCategoryItems = state.getAnimelibItemsByPage(animeCategoryIndex)
-                AnimeLibraryAuroraContent(
-                    items = currentCategoryItems,
-                    selection = state.selection,
-                    searchQuery = state.searchQuery,
-                    hasActiveFilters = state.hasActiveFilters,
-                    displayMode = animeDisplayMode,
-                    columns = animeColumns,
-                    onAnimeClicked = { navigator.push(AnimeScreen(it)) },
-                    onToggleSelection = screenModel::toggleSelection,
-                    onToggleRangeSelection = {
-                        screenModel.toggleRangeSelection(it)
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    onTogglePinned = { screenModel.togglePinned(it.libraryAnime) },
-                    onContinueWatchingClicked = { item: LibraryAnime ->
-                        scope.launchIO {
-                            val episode = screenModel.getNextUnseenEpisode(item.anime)
-                            if (episode != null) openEpisode(episode)
-                        }
-                        Unit
-                    }.takeIf { showContinueViewingButton },
-                    onGlobalSearchClicked = {
-                        navigator.push(GlobalAnimeSearchScreen(state.searchQuery ?: ""))
-                    },
-                    contentPadding = contentPadding,
+                val pagerState = rememberPagerState(
+                    initialPage = animeCategoryIndex,
+                    pageCount = { state.categories.size },
                 )
+                LaunchedEffect(pagerState.currentPage) {
+                    screenModel.activeCategoryIndex = pagerState.currentPage
+                }
+                LaunchedEffect(animeCategoryIndex) {
+                    if (!pagerState.isScrollInProgress && animeCategoryIndex != pagerState.currentPage) {
+                        pagerState.animateScrollToPage(animeCategoryIndex)
+                    }
+                }
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.Top,
+                    userScrollEnabled = swipeSwitchesCategories && state.categories.size > 1,
+                ) { page ->
+                    val items = state.getAnimelibItemsByPage(page)
+                    AnimeLibraryAuroraContent(
+                        items = items,
+                        selection = state.selection,
+                        searchQuery = state.searchQuery,
+                        hasActiveFilters = state.hasActiveFilters,
+                        displayMode = animeDisplayMode,
+                        columns = animeColumns,
+                        onAnimeClicked = { navigator.push(AnimeScreen(it)) },
+                        onToggleSelection = screenModel::toggleSelection,
+                        onToggleRangeSelection = {
+                            screenModel.toggleRangeSelection(it)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onTogglePinned = { screenModel.togglePinned(it.libraryAnime) },
+                        onContinueWatchingClicked = { item: LibraryAnime ->
+                            scope.launchIO {
+                                val episode = screenModel.getNextUnseenEpisode(item.anime)
+                                if (episode != null) openEpisode(episode)
+                            }
+                            Unit
+                        }.takeIf { showContinueViewingButton },
+                        onGlobalSearchClicked = {
+                            navigator.push(GlobalAnimeSearchScreen(state.searchQuery ?: ""))
+                        },
+                        contentPadding = contentPadding,
+                    )
+                }
             },
         )
         val mangaTab = TabContent(
             titleRes = AYMR.strings.label_manga,
             searchEnabled = true,
             content = { contentPadding, _ ->
-                val currentCategoryItems = mangaState.getLibraryItemsByPage(mangaCategoryIndex)
-                MangaLibraryAuroraContent(
-                    items = currentCategoryItems,
-                    selection = mangaState.selection,
-                    searchQuery = mangaState.searchQuery,
-                    hasActiveFilters = mangaState.hasActiveFilters,
-                    displayMode = mangaDisplayMode,
-                    columns = mangaColumns,
-                    onMangaClicked = { navigator.push(MangaScreen(it)) },
-                    onSeriesClicked = { navigator.push(MangaSeriesScreen(it)) },
-                    onToggleSelection = mangaScreenModel::toggleSelection,
-                    onToggleRangeSelection = {
-                        mangaScreenModel.toggleRangeSelection(it)
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    onTogglePinned = mangaScreenModel::togglePinned,
-                    onContinueReadingClicked = { item: LibraryManga ->
-                        scope.launchIO {
-                            val chapter = mangaScreenModel.getNextUnreadChapter(item.manga)
-                            if (chapter != null) {
-                                context.startActivity(
-                                    ReaderActivity.newIntent(context, chapter.mangaId, chapter.id),
-                                )
-                            } else {
-                                snackbarHostState.showSnackbar(
-                                    context.stringResource(MR.strings.no_next_chapter),
-                                )
-                            }
-                        }
-                        Unit
-                    }.takeIf { showContinueViewingButton },
-                    onGlobalSearchClicked = {
-                        navigator.push(GlobalMangaSearchScreen(mangaState.searchQuery ?: ""))
-                    },
-                    contentPadding = contentPadding,
+                val pagerState = rememberPagerState(
+                    initialPage = mangaCategoryIndex,
+                    pageCount = { mangaState.categories.size },
                 )
+                LaunchedEffect(pagerState.currentPage) {
+                    mangaScreenModel.activeCategoryIndex = pagerState.currentPage
+                }
+                LaunchedEffect(mangaCategoryIndex) {
+                    if (!pagerState.isScrollInProgress && mangaCategoryIndex != pagerState.currentPage) {
+                        pagerState.animateScrollToPage(mangaCategoryIndex)
+                    }
+                }
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.Top,
+                    userScrollEnabled = swipeSwitchesCategories && mangaState.categories.size > 1,
+                ) { page ->
+                    val items = mangaState.getLibraryItemsByPage(page)
+                    MangaLibraryAuroraContent(
+                        items = items,
+                        selection = mangaState.selection,
+                        searchQuery = mangaState.searchQuery,
+                        hasActiveFilters = mangaState.hasActiveFilters,
+                        displayMode = mangaDisplayMode,
+                        columns = mangaColumns,
+                        onMangaClicked = { navigator.push(MangaScreen(it)) },
+                        onSeriesClicked = { navigator.push(MangaSeriesScreen(it)) },
+                        onToggleSelection = mangaScreenModel::toggleSelection,
+                        onToggleRangeSelection = {
+                            mangaScreenModel.toggleRangeSelection(it)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onTogglePinned = mangaScreenModel::togglePinned,
+                        onContinueReadingClicked = { item: LibraryManga ->
+                            scope.launchIO {
+                                val chapter = mangaScreenModel.getNextUnreadChapter(item.manga)
+                                if (chapter != null) {
+                                    context.startActivity(
+                                        ReaderActivity.newIntent(context, chapter.mangaId, chapter.id),
+                                    )
+                                } else {
+                                    snackbarHostState.showSnackbar(
+                                        context.stringResource(MR.strings.no_next_chapter),
+                                    )
+                                }
+                            }
+                            Unit
+                        }.takeIf { showContinueViewingButton },
+                        onGlobalSearchClicked = {
+                            navigator.push(GlobalMangaSearchScreen(mangaState.searchQuery ?: ""))
+                        },
+                        contentPadding = contentPadding,
+                    )
+                }
             },
         )
         val novelTab = TabContent(
@@ -599,63 +641,90 @@ data object AnimeLibraryTab : Tab {
                     },
                 )
 
-                NovelLibraryAuroraContent(
-                    items = currentNovelCategoryItems,
-                    selection = novelState.selection,
-                    searchQuery = novelState.searchQuery,
-                    onSearchQueryChange = activeNovelScreenModel::search,
-                    onNovelClicked = { id ->
-                        if (id < 0) {
-                            navigator.push(NovelSeriesScreen(-id))
-                        } else {
-                            navigator.push(NovelScreen(id))
-                        }
-                    },
-                    onToggleSelection = activeNovelScreenModel::toggleSelection,
-                    onToggleRangeSelection = { novelItem ->
-                        activeNovelScreenModel.toggleRangeSelection(novelItem)
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    onTogglePinned = activeNovelScreenModel::togglePinned,
-                    contentPadding = contentPadding,
-                    hasActiveFilters = novelState.hasActiveFilters,
-                    onFilterClicked = activeNovelScreenModel::showSettingsDialog,
-                    onRefresh = { onClickRefreshNovel() },
-                    onGlobalUpdate = { onClickRefreshNovel() },
-                    onOpenRandomEntry = {
-                        scope.launch {
-                            val randomItem = novelState.items.randomOrNull()
-                            if (randomItem != null) {
-                                if (randomItem is eu.kanade.presentation.library.novel.NovelLibraryItem.Series) {
-                                    navigator.push(NovelSeriesScreen(randomItem.librarySeries.id))
-                                } else {
-                                    navigator.push(NovelScreen(randomItem.id))
-                                }
-                            } else {
-                                snackbarHostState.showSnackbar(
-                                    context.stringResource(MR.strings.information_no_entries_found),
-                                )
-                            }
-                        }
-                    },
-                    onContinueReadingClicked = { item: eu.kanade.presentation.library.novel.NovelLibraryItem ->
-                        scope.launch {
-                            val chapter = withContext(Dispatchers.IO) {
-                                activeNovelScreenModel.getNextUnreadChapter(item)
-                            }
-                            if (chapter != null) {
-                                navigator.push(NovelReaderScreen(chapter.id))
-                            } else {
-                                snackbarHostState.showSnackbar(
-                                    context.stringResource(MR.strings.no_next_chapter),
-                                )
-                            }
-                        }
-                        Unit
-                    }.takeIf { showContinueViewingButton },
-                    onImportEpub = { epubImportLauncher.launch(arrayOf("application/epub+zip")) },
-                    showInlineHeader = false,
+                val pagerState = rememberPagerState(
+                    initialPage = novelCategoryIndex,
+                    pageCount = { novelCategories.size },
                 )
+                LaunchedEffect(pagerState.currentPage) {
+                    novelScreenModel?.activeCategoryIndex = pagerState.currentPage
+                }
+                LaunchedEffect(novelCategoryIndex) {
+                    if (!pagerState.isScrollInProgress && novelCategoryIndex != pagerState.currentPage) {
+                        pagerState.animateScrollToPage(novelCategoryIndex)
+                    }
+                }
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.Top,
+                    userScrollEnabled = swipeSwitchesCategories && novelCategories.size > 1,
+                ) { page ->
+                    val items = remember(novelState.items, novelCategories, page) {
+                        val categoryId = novelCategories.getOrNull(page)?.id
+                        if (categoryId == null) {
+                            novelState.items
+                        } else {
+                            novelState.items.filter { it.category == categoryId }
+                        }
+                    }
+                    NovelLibraryAuroraContent(
+                        items = items,
+                        selection = novelState.selection,
+                        searchQuery = novelState.searchQuery,
+                        onSearchQueryChange = activeNovelScreenModel::search,
+                        onNovelClicked = { id ->
+                            if (id < 0) {
+                                navigator.push(NovelSeriesScreen(-id))
+                            } else {
+                                navigator.push(NovelScreen(id))
+                            }
+                        },
+                        onToggleSelection = activeNovelScreenModel::toggleSelection,
+                        onToggleRangeSelection = { novelItem ->
+                            activeNovelScreenModel.toggleRangeSelection(novelItem)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        },
+                        onTogglePinned = activeNovelScreenModel::togglePinned,
+                        contentPadding = contentPadding,
+                        hasActiveFilters = novelState.hasActiveFilters,
+                        onFilterClicked = activeNovelScreenModel::showSettingsDialog,
+                        onRefresh = { onClickRefreshNovel() },
+                        onGlobalUpdate = { onClickRefreshNovel() },
+                        onOpenRandomEntry = {
+                            scope.launch {
+                                val randomItem = novelState.items.randomOrNull()
+                                if (randomItem != null) {
+                                    if (randomItem is eu.kanade.presentation.library.novel.NovelLibraryItem.Series) {
+                                        navigator.push(NovelSeriesScreen(randomItem.librarySeries.id))
+                                    } else {
+                                        navigator.push(NovelScreen(randomItem.id))
+                                    }
+                                } else {
+                                    snackbarHostState.showSnackbar(
+                                        context.stringResource(MR.strings.information_no_entries_found),
+                                    )
+                                }
+                            }
+                        },
+                        onContinueReadingClicked = { item: eu.kanade.presentation.library.novel.NovelLibraryItem ->
+                            scope.launch {
+                                val chapter = withContext(Dispatchers.IO) {
+                                    activeNovelScreenModel.getNextUnreadChapter(item)
+                                }
+                                if (chapter != null) {
+                                    navigator.push(NovelReaderScreen(chapter.id))
+                                } else {
+                                    snackbarHostState.showSnackbar(
+                                        context.stringResource(MR.strings.no_next_chapter),
+                                    )
+                                }
+                            }
+                            Unit
+                        }.takeIf { showContinueViewingButton },
+                        onImportEpub = { epubImportLauncher.launch(arrayOf("application/epub+zip")) },
+                        showInlineHeader = false,
+                    )
+                }
             },
         )
 
@@ -803,24 +872,6 @@ data object AnimeLibraryTab : Tab {
                 Section.Novel -> novelScreenModel?.showSettingsDialog()
                 null -> Unit
             }
-        }
-        val onAuroraCategorySwipe: ((Boolean) -> Boolean)? = if (
-            swipeSwitchesCategories &&
-            auroraCurrentSection != null &&
-            auroraCategories.size > 1
-        ) {
-            { forward ->
-                val current = auroraCategoryIndex
-                val target = if (forward) current + 1 else current - 1
-                if (target in auroraCategories.indices && target != current) {
-                    onAuroraCategorySelected(target)
-                    true
-                } else {
-                    false
-                }
-            }
-        } else {
-            null
         }
         val onAuroraRefreshCurrent: () -> Unit = {
             when (auroraCurrentSection) {
@@ -1105,7 +1156,7 @@ data object AnimeLibraryTab : Tab {
                                     },
                                 )
                             },
-                            onPagerSwipeOverride = onAuroraCategorySwipe,
+                            disablePagerScroll = swipeSwitchesCategories,
                         )
                     } else {
                         AnimeLibraryContent(
@@ -1845,6 +1896,11 @@ private fun AuroraLibraryCategoryTabs(
                     textOnAccent = colors.textOnAccent,
                     background = colors.background,
                 )
+                val animatedBorderColor by animateColorAsState(
+                    targetValue = if (isSelected) selectedTabBorderColor else Color.Transparent,
+                    animationSpec = tween(250),
+                    label = "tabBorder",
+                )
 
                 Row(
                     modifier = Modifier
@@ -1860,8 +1916,8 @@ private fun AuroraLibraryCategoryTabs(
                             shape = tabShape,
                         )
                         .then(
-                            if (isSelected) {
-                                Modifier.border(1.dp, selectedTabBorderColor, tabShape)
+                            if (isSelected || animatedBorderColor.alpha > 0f) {
+                                Modifier.border(1.dp, animatedBorderColor, tabShape)
                             } else {
                                 Modifier
                             },
