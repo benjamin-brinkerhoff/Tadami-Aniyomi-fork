@@ -478,7 +478,10 @@ object NovelDownloadQueueManager {
     private inline fun updateState(
         transform: (NovelDownloadQueueState) -> NovelDownloadQueueState,
     ) {
-        _state.update(transform)
+        _state.update { state ->
+            val transformed = transform(state)
+            transformed.copy(tasks = pruneFailedTasks(transformed.tasks))
+        }
         notifyQueueState(_state.value)
     }
 
@@ -528,4 +531,30 @@ internal fun shouldWaitForNovelQueueWhilePaused(
     state: NovelDownloadQueueState,
 ): Boolean {
     return !state.isRunning && state.tasks.any { it.status == NovelQueuedDownloadStatus.DOWNLOADING }
+}
+
+/**
+ * Removes the oldest FAILED tasks when the count exceeds [maxFailed].
+ *
+ * This prevents unbounded memory growth in the download queue when downloads
+ * fail repeatedly. Without pruning, every failed task stays in
+ * [NovelDownloadQueueState.tasks] forever, consuming memory until OOM.
+ *
+ * Only FAILED tasks are removed; QUEUED and DOWNLOADING tasks are preserved.
+ * Among FAILED tasks, the oldest (first in list) are removed first.
+ *
+ * @param tasks the current task list
+ * @param maxFailed maximum number of FAILED tasks to keep (default: 100)
+ * @return a new list with excess FAILED tasks removed, preserving original order
+ */
+internal fun pruneFailedTasks(
+    tasks: List<NovelQueuedDownload>,
+    maxFailed: Int = 100,
+): List<NovelQueuedDownload> {
+    val failedIndices = tasks.indices.filter { tasks[it].status == NovelQueuedDownloadStatus.FAILED }
+    val failedToRemove = (failedIndices.size - maxFailed).coerceAtLeast(0)
+    if (failedToRemove == 0) return tasks
+
+    val removeIndices = failedIndices.take(failedToRemove).toSet()
+    return tasks.filterIndexed { index, _ -> index !in removeIndices }
 }
