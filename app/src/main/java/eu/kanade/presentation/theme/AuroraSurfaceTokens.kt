@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import eu.kanade.domain.ui.model.EInkProfile
@@ -152,6 +153,14 @@ fun resolveAuroraIconSurfaceColor(colors: AuroraColors): Color {
         } else {
             colors.textPrimary.copy(alpha = 0.06f)
         }
+    }
+}
+
+fun resolveAuroraTopBarIconSurfaceColor(colors: AuroraColors): Color {
+    return if (colors.background.luminance() < 0.5f) {
+        Color.White.copy(alpha = 0.05f)
+    } else {
+        Color.Black.copy(alpha = 0.03f)
     }
 }
 
