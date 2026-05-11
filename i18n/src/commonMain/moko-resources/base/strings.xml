@@ -603,6 +603,9 @@
     <string name="restore_completed">Restore completed</string>
     <string name="restore_duration">%1$02d min, %2$02d sec</string>
     <string name="backup_in_progress">Backup is already in progress</string>
+    <string name="pref_cloud_backup_folder">Cloud backup folder</string>
+    <string name="cloud_backup_folder_not_set">No cloud backup folder set</string>
+    <string name="cloud_backup_info">Save automatic backups to a cloud storage folder. Uses Android\'s Storage Access Framework — compatible with Google Drive, Dropbox, OneDrive, and other SAF-enabled apps.</string>
     <string name="backup_choice">What do you want to backup?</string>
     <string name="app_settings">App settings</string>
     <string name="source_settings">Source settings</string>

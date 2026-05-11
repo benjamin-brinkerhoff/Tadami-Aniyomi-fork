@@ -28,6 +28,7 @@ import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.UserProfilePreferences
 import eu.kanade.domain.ui.model.AnimeMetadataSource
 import eu.kanade.domain.ui.model.AuroraTitleHeroCtaMode
+import eu.kanade.domain.ui.model.BottomNavAppearance
 import eu.kanade.domain.ui.model.EInkProfile
 import eu.kanade.domain.ui.model.HomeHeroCtaMode
 import eu.kanade.domain.ui.model.HomeHubRecentCardMode
@@ -377,6 +378,16 @@ object SettingsAppearanceScreen : SearchableSettings {
                 )
                 add(
                     Preference.PreferenceItem.ListPreference(
+                        preference = uiPreferences.bottomNavAppearance(),
+                        entries = BottomNavAppearance.entries
+                            .associateWith { stringResource(it.titleRes) }
+                            .toImmutableMap(),
+                        title = stringResource(AYMR.strings.pref_bottom_nav_appearance),
+                        onValueChanged = { true },
+                    ),
+                )
+                add(
+                    Preference.PreferenceItem.ListPreference(
                         preference = uiPreferences.navStyle(),
                         entries = NavStyle.entries
                             .associateWith { stringResource(it.titleRes) }
@@ -436,18 +447,20 @@ object SettingsAppearanceScreen : SearchableSettings {
                         subtitle = stringResource(AYMR.strings.pref_aurora_entry_translation_summary),
                     ),
                 )
-                add(
-                    Preference.PreferenceItem.MultiSelectListPreference(
-                        preference = auroraEntryTranslationLanguagesPref,
-                        entries = googleTranslationSourceLanguageFamilyOptions()
-                            .associate { it.code to it.label }
-                            .toImmutableMap(),
-                        title = stringResource(AYMR.strings.pref_aurora_entry_translation_source_languages),
-                        subtitle = stringResource(
-                            AYMR.strings.pref_aurora_entry_translation_source_languages_summary,
+                if (auroraEntryTranslationEnabled) {
+                    add(
+                        Preference.PreferenceItem.MultiSelectListPreference(
+                            preference = auroraEntryTranslationLanguagesPref,
+                            entries = googleTranslationSourceLanguageFamilyOptions()
+                                .associate { it.code to it.label }
+                                .toImmutableMap(),
+                            title = stringResource(AYMR.strings.pref_aurora_entry_translation_source_languages),
+                            subtitle = stringResource(
+                                AYMR.strings.pref_aurora_entry_translation_source_languages_summary,
+                            ),
                         ),
-                    ),
-                )
+                    )
+                }
                 add(
                     Preference.PreferenceItem.SwitchPreference(
                         preference = uiPreferences.showAchievementNotifications(),

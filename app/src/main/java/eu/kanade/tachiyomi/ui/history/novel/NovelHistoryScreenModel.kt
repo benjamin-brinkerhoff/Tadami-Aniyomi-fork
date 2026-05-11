@@ -10,7 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -38,9 +38,10 @@ class NovelHistoryScreenModel(
                     logcat(LogPriority.ERROR, error)
                     _events.send(Event.InternalError)
                 }
+                .distinctUntilChanged()
                 .map { it.toHistoryUiModels() }
                 .flowOn(Dispatchers.IO)
-                .collectLatest { newList ->
+                .collect { newList ->
                     mutableState.update { it.copy(list = newList) }
                 }
         }

@@ -24,41 +24,40 @@ class ItemCoverTest {
     }
 
     @Test
-    fun `novel cover model with blank url resolves to null`() {
-        val model = resolveCoverModel(
-            NovelCover(
-                novelId = 1L,
-                sourceId = 2L,
-                isNovelFavorite = false,
-                url = "   ",
-                lastModified = 0L,
-            ),
+    fun `novel cover model with blank url passes through to fetcher`() {
+        val cover = NovelCover(
+            novelId = 1L,
+            sourceId = 2L,
+            isNovelFavorite = false,
+            url = "   ",
+            lastModified = 0L,
         )
+        val model = resolveCoverModel(cover)
 
-        model shouldBe null
+        // Cover data classes are now passed through even with blank URLs —
+        // the fetcher (NovelCoverFetcher) decides whether to handle them.
+        model shouldBe cover
     }
 
     @Test
-    fun `anime and manga cover models with blank urls resolve to null`() {
-        resolveCoverModel(
-            AnimeCover(
-                animeId = 1L,
-                sourceId = 2L,
-                isAnimeFavorite = false,
-                url = " ",
-                lastModified = 0L,
-            ),
-        ) shouldBe null
+    fun `anime and manga cover models with blank urls pass through to fetcher`() {
+        val animeCover = AnimeCover(
+            animeId = 1L,
+            sourceId = 2L,
+            isAnimeFavorite = false,
+            url = " ",
+            lastModified = 0L,
+        )
+        resolveCoverModel(animeCover) shouldBe animeCover
 
-        resolveCoverModel(
-            MangaCover(
-                mangaId = 1L,
-                sourceId = 2L,
-                isMangaFavorite = false,
-                url = "",
-                lastModified = 0L,
-            ),
-        ) shouldBe null
+        val mangaCover = MangaCover(
+            mangaId = 1L,
+            sourceId = 2L,
+            isMangaFavorite = false,
+            url = "",
+            lastModified = 0L,
+        )
+        resolveCoverModel(mangaCover) shouldBe mangaCover
     }
 
     @Test
@@ -67,17 +66,17 @@ class ItemCoverTest {
     }
 
     @Test
-    fun `resolved blank model is not loadable`() {
-        val model = resolveCoverModel(
-            NovelCover(
-                novelId = 1L,
-                sourceId = 2L,
-                isNovelFavorite = false,
-                url = null,
-                lastModified = 0L,
-            ),
+    fun `cover model with null url is loadable so fetcher can handle it`() {
+        val cover = NovelCover(
+            novelId = 1L,
+            sourceId = 2L,
+            isNovelFavorite = false,
+            url = null,
+            lastModified = 0L,
         )
+        val model = resolveCoverModel(cover)
 
-        isLoadableCoverData(model) shouldBe false
+        // Cover data classes are always loadable — the fetcher decides.
+        isLoadableCoverData(model) shouldBe true
     }
 }

@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.annotation.DelicateCoilApi
+import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.allowRgb565
@@ -61,6 +62,8 @@ import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.data.updater.AppUpdateFileManager
 import eu.kanade.tachiyomi.di.AppModule
 import eu.kanade.tachiyomi.di.PreferenceModule
+import eu.kanade.tachiyomi.extension.novel.NovelPluginSourceFactory
+import eu.kanade.tachiyomi.extension.novel.runtime.NovelRuntimeCacheTrimCallbacks
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.NetworkPreferences
 import eu.kanade.tachiyomi.ui.base.delegate.SecureActivityDelegate
@@ -83,6 +86,7 @@ import logcat.LogcatLogger
 import logcat.logcat
 import mihon.core.migration.Migrator
 import mihon.core.migration.migrations.migrations
+import okio.Path.Companion.toOkioPath
 import org.conscrypt.Conscrypt
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.Preference
@@ -140,6 +144,13 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         Injekt.importModule(SYDomainModule())
         // SY <--
         SingletonImageLoader.setUnsafe { context -> newImageLoader(context) }
+
+        // Register memory-pressure callback that trims novel plugin runtime caches
+        registerComponentCallbacks(
+            NovelRuntimeCacheTrimCallbacks(
+                sourceFactory = Injekt.get<NovelPluginSourceFactory>(),
+            ),
+        )
 
         appUpdateFileManager.cleanupIfInstalledVersionReached(
             isPreview = isPreviewBuildType,
@@ -326,6 +337,12 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             memoryCache {
                 MemoryCache.Builder()
                     .maxSizePercent(this@App, 0.25)
+                    .build()
+            }
+            diskCache {
+                DiskCache.Builder()
+                    .directory(this@App.cacheDir.resolve("coil_cache").toOkioPath())
+                    .maxSizeBytes(128 * 1024 * 1024)
                     .build()
             }
             if (networkPreferences.verboseLogging().get()) logger(DebugLogger())

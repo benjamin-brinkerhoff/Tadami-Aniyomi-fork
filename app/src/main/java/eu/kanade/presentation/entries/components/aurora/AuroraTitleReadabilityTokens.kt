@@ -211,8 +211,8 @@ internal fun resolveAuroraDetailCardBackgroundColors(colors: AuroraColors): List
         )
     } else {
         listOf(
-            Color(0xC3FFFFFF),
-            Color(0xEEF2F7FD),
+            Color.White.copy(alpha = 0.76f),
+            Color.White.copy(alpha = 0.93f),
         )
     }
 }

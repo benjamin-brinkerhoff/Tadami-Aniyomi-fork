@@ -6,11 +6,16 @@ import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import java.io.Closeable
 import java.io.InputStream
+import java.net.URLDecoder
 
 /**
  * Wrapper over ArchiveReader to load files in epub format.
  */
 class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
+
+    private fun String.urlDecoded(): String {
+        return runCatching { URLDecoder.decode(this, "UTF-8") }.getOrDefault(this)
+    }
 
     /**
      * Path separator used by this epub.
@@ -42,17 +47,16 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
         }
 
         // Fallback: Check for cover.xhtml / titlepage.xhtml / cover.html in manifest
-        val coverPageItem = doc.select(
-            "manifest > item[href~=(?i)cover\\.(x)html|(?i)titlepage\\.(x)html]",
-        ).first()
+        // Some EPUBs wrap the cover image in an XHTML page
+        val coverPageItem = doc.select("manifest > item[href~=(?i)cover\\.(x)html|(?i)titlepage\\.(x)html]").first()
         if (coverPageItem != null) {
             val pagePath = resolveZipPath(basePath, coverPageItem.attr("href"))
             try {
                 getInputStream(pagePath)?.use { stream ->
                     val pageDoc = Jsoup.parse(stream, null, "")
+                    // Find first image in the cover page
                     val img = pageDoc.select("img, image").first()
-                    val src = img?.attr("src")?.takeIf { it.isNotEmpty() }
-                        ?: img?.attr("xlink:href")
+                    val src = img?.attr("src")?.takeIf { it.isNotEmpty() } ?: img?.attr("xlink:href")
                     if (!src.isNullOrEmpty()) {
                         val pageBasePath = getParentDirectory(pagePath)
                         return resolveZipPath(pageBasePath, src)
@@ -126,7 +130,7 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
             .associateBy { it.attr("id") }
 
         val spine = document.select("spine > itemref").map { it.attr("idref") }
-        return spine.mapNotNull { pages[it] }.map { it.attr("href") }
+        return spine.mapNotNull { pages[it] }.map { it.attr("href").urlDecoded() }
     }
 
     /**
@@ -227,6 +231,7 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
             getInputStream(entryPath)?.use { inputStream ->
                 val document = Jsoup.parse(inputStream, null, "")
 
+                // Link images to standard schema to support NovelWebViewViewer
                 val imageBasePath = getParentDirectory(entryPath)
                 document.select("img[src], image[xlink:href]").forEach { img ->
                     val src = if (img.hasAttr("src")) img.attr("src") else img.attr("xlink:href")
@@ -245,7 +250,8 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
                     }
                 }
 
-                document.body()?.let { body ->
+                // Get body content, preserving HTML structure for proper rendering
+                document.body().let { body ->
                     content.append(body.html())
                     content.append("\n\n")
                 }
@@ -276,14 +282,14 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
         // Try EPUB 3 NAV first
         val navHref = doc.select("manifest > item[properties*=nav]").attr("href")
         if (navHref.isNotEmpty()) {
-            val navChapters = parseEpub3Nav(resolveZipPath(opfBasePath, navHref), opfBasePath)
+            val navChapters = parseEpub3Nav(resolveZipPath(opfBasePath, navHref))
             if (navChapters.isNotEmpty()) return navChapters
         }
 
         // Fall back to EPUB 2 NCX
         val ncxHref = doc.select("manifest > item[media-type='application/x-dtbncx+xml']").attr("href")
         if (ncxHref.isNotEmpty()) {
-            val ncxChapters = parseEpub2Ncx(resolveZipPath(opfBasePath, ncxHref), opfBasePath)
+            val ncxChapters = parseEpub2Ncx(resolveZipPath(opfBasePath, ncxHref))
             if (ncxChapters.isNotEmpty()) return ncxChapters
         }
 
@@ -292,27 +298,87 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
         return pages.mapIndexed { index, page ->
             EpubChapter(
                 title = "Chapter ${index + 1}",
-                href = page,
+                href = resolveZipPath(opfBasePath, page),
                 order = index,
             )
         }
     }
 
     /**
+     * Returns XHTML resources listed in OPF spine, resolved to archive paths.
+     */
+    fun getSpinePageHrefs(): List<String> {
+        val ref = getPackageHref()
+        val doc = getPackageDocument(ref)
+        val opfBasePath = getParentDirectory(ref)
+        return getPagesFromDocument(doc).map { resolveZipPath(opfBasePath, it) }
+    }
+
+    /**
+     * Returns the TOC with subsection labels normalized.
+     *
+     * Example: if the TOC has "Chapter 1" followed by "Part 2", it becomes
+     * "Chapter 1 - Part 2". This keeps preview labels and chapter list labels consistent.
+     */
+    fun getNormalizedTableOfContents(): List<EpubChapter> {
+        val toc = getTableOfContents()
+        if (toc.isEmpty()) return emptyList()
+
+        var latestPrimaryTitle: String? = null
+
+        return toc.mapIndexed { index, chapter ->
+            val rawTitle = chapter.title.trim()
+            val isSubsection = subsectionTitleRegex.matches(rawTitle)
+
+            val normalizedTitle = when {
+                rawTitle.isBlank() -> "Chapter ${index + 1}"
+                isSubsection && !latestPrimaryTitle.isNullOrBlank() -> "$latestPrimaryTitle - $rawTitle"
+                else -> rawTitle
+            }
+
+            if (!isSubsection && rawTitle.isNotBlank()) {
+                latestPrimaryTitle = rawTitle
+            }
+
+            chapter.copy(title = normalizedTitle)
+        }
+    }
+
+    private val subsectionTitleRegex =
+        Regex("(?i)^(part|section|episode|ep\\.?|act|book|volume|vol\\.?|chapter|ch\\.?)\\s*[0-9ivxlcdm]+\\b")
+
+    /**
      * Parse EPUB 3 NAV document for TOC.
      * NAV hrefs are relative to the NAV file location.
+     * Keep hash fragments because many EPUBs map sub-sections using anchors in the same XHTML file.
      */
-    private fun parseEpub3Nav(navPath: String, opfBasePath: String): List<EpubChapter> {
+    private fun parseEpub3Nav(navPath: String): List<EpubChapter> {
         val chapters = mutableListOf<EpubChapter>()
         val navBasePath = getParentDirectory(navPath)
+        var previousResolvedPath: String? = null
         getInputStream(navPath)?.use { inputStream ->
             val doc = Jsoup.parse(inputStream, null, "", Parser.xmlParser())
+
+            // EPUB 3 NAV uses <nav epub:type="toc"> or <nav id="toc">
             val navElement = doc.selectFirst("nav[*|type=toc], nav#toc, nav[epub\\:type=toc]")
             navElement?.select("li a")?.forEachIndexed { index, element ->
                 val title = element.text().trim()
-                val href = element.attr("href").substringBefore("#")
+                val href = element.attr("href").trim().urlDecoded()
                 if (title.isNotEmpty() && href.isNotEmpty()) {
-                    val resolvedHref = resolveZipPath(navBasePath, href)
+                    // Resolve path and then restore fragment (if present).
+                    val pathPart = href.substringBefore("#")
+                    val fragment = href.substringAfter("#", "")
+                    val resolvedPath = if (pathPart.isNotBlank()) {
+                        resolveZipPath(navBasePath, pathPart).also { previousResolvedPath = it }
+                    } else {
+                        // Some EPUBs use href="#fragment" to continue pointing into the prior chapter file.
+                        previousResolvedPath ?: navPath
+                    }
+                    val resolvedHref = if (fragment.isNotEmpty()) {
+                        "$resolvedPath#$fragment"
+                    } else {
+                        resolvedPath
+                    }
                     chapters.add(EpubChapter(title, resolvedHref, index))
                 }
             }
@@ -322,17 +388,32 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
 
     /**
      * Parse EPUB 2 NCX document for TOC.
-     * NCX src paths are relative to the OPF file location.
+     * NCX src paths are resolved relative to the NCX file location.
+     * Keep hash fragments because many EPUBs map sub-sections using anchors in the same XHTML file.
      */
-    private fun parseEpub2Ncx(ncxPath: String, opfBasePath: String): List<EpubChapter> {
+    private fun parseEpub2Ncx(ncxPath: String): List<EpubChapter> {
         val chapters = mutableListOf<EpubChapter>()
+        val ncxBasePath = getParentDirectory(ncxPath)
+        var previousResolvedPath: String? = null
         getInputStream(ncxPath)?.use { inputStream ->
             val doc = Jsoup.parse(inputStream, null, "", Parser.xmlParser())
             doc.select("navPoint").forEachIndexed { index, navPoint ->
                 val title = navPoint.selectFirst("navLabel > text")?.text()?.trim() ?: ""
-                val href = navPoint.selectFirst("content")?.attr("src")?.substringBefore("#") ?: ""
+                val href = navPoint.selectFirst("content")?.attr("src")?.trim()?.urlDecoded() ?: ""
                 if (title.isNotEmpty() && href.isNotEmpty()) {
-                    val resolvedHref = resolveZipPath(opfBasePath, href)
+                    // Resolve path and then restore fragment (if present).
+                    val pathPart = href.substringBefore("#")
+                    val fragment = href.substringAfter("#", "")
+                    val resolvedPath = if (pathPart.isNotBlank()) {
+                        resolveZipPath(ncxBasePath, pathPart).also { previousResolvedPath = it }
+                    } else {
+                        previousResolvedPath ?: ncxPath
+                    }
+                    val resolvedHref = if (fragment.isNotEmpty()) {
+                        "$resolvedPath#$fragment"
+                    } else {
+                        resolvedPath
+                    }
                     chapters.add(EpubChapter(title, resolvedHref, index))
                 }
             }
@@ -345,20 +426,46 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
      * @param chapterHref The relative path to the chapter within the EPUB
      */
     fun getChapterContent(chapterHref: String): String {
-        val sanitizedHref = chapterHref.substringBefore("#")
+        return getChapterContentInternal(
+            chapterHref = chapterHref,
+            useReaderImageScheme = true,
+            bodyOnly = false,
+        )
+    }
 
-        val ref = getPackageHref()
-        val basePath = getParentDirectory(ref)
-        val resolvedFromPackage = resolveZipPath(basePath, sanitizedHref)
+    /**
+     * Returns chapter content for export.
+     * Internal image assets are converted to data URIs, so written EPUB chapters stay self-contained.
+     */
+    fun getChapterContentForExport(chapterHref: String): String {
+        return getChapterContentInternal(
+            chapterHref = chapterHref,
+            useReaderImageScheme = false,
+            bodyOnly = true,
+        )
+    }
+
+    private fun getChapterContentInternal(
+        chapterHref: String,
+        useReaderImageScheme: Boolean,
+        bodyOnly: Boolean,
+    ): String {
+        val pathPart = chapterHref.substringBefore("#").trim().urlDecoded()
+        val fragment = chapterHref.substringAfter("#", "").takeIf { it.isNotBlank() }
+
+        val packagePath = getPackageHref()
+        val packageBasePath = getParentDirectory(packagePath)
 
         val entryPath = when {
-            getInputStream(sanitizedHref) != null -> sanitizedHref
-            else -> resolvedFromPackage
+            pathPart.isBlank() -> packagePath
+            getInputStream(pathPart) != null -> pathPart
+            else -> resolveZipPath(packageBasePath, pathPart)
         }
 
         return getInputStream(entryPath)?.use { inputStream ->
             val document = Jsoup.parse(inputStream, null, "", Parser.xmlParser())
 
+            // Inline EPUB-internal media.
             val imageBasePath = getParentDirectory(entryPath)
             document.select("img, image").forEach { img ->
                 val rawSrc = when {
@@ -368,30 +475,30 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
                     else -> return@forEach
                 }
 
-                val src = rawSrc.substringBefore("#").trim()
-                if (src.isBlank() ||
-                    src.startsWith("http") ||
-                    src.startsWith("//") ||
-                    src.startsWith("data:") ||
-                    src.startsWith("tsundoku-novel-image://")
-                ) {
+                val src = rawSrc.substringBefore("#").trim().urlDecoded()
+                if (src.isBlank() || src.startsWith("http") || src.startsWith("//") || src.startsWith("data:")) {
                     return@forEach
                 }
 
                 val imagePath = resolveZipPath(imageBasePath, src)
-                val novelUrl =
+                val replacement = if (useReaderImageScheme) {
                     "tsundoku-novel-image://${java.net.URLEncoder.encode(imagePath, "UTF-8")}"
+                } else {
+                    inlineAssetAsDataUri(imagePath) ?: return@forEach
+                }
+
                 when {
-                    img.hasAttr("src") -> img.attr("src", novelUrl)
-                    img.hasAttr("xlink:href") -> img.attr("xlink:href", novelUrl)
-                    else -> img.attr("href", novelUrl)
+                    img.hasAttr("src") -> img.attr("src", replacement)
+                    img.hasAttr("xlink:href") -> img.attr("xlink:href", replacement)
+                    else -> img.attr("href", replacement)
                 }
             }
 
+            // TextView-based rendering doesn't reliably support SVG nodes.
             // Convert simple SVG image containers to regular <img> tags.
             document.select("svg").forEach { svg ->
-                val svgImage = svg.select("image")
-                    .firstOrNull { it.hasAttr("xlink:href") || it.hasAttr("href") } ?: return@forEach
+                val svgImage =
+                    svg.select("image").firstOrNull { it.hasAttr("xlink:href") || it.hasAttr("href") } ?: return@forEach
                 val imageSrc = when {
                     svgImage.hasAttr("xlink:href") -> svgImage.attr("xlink:href")
                     svgImage.hasAttr("href") -> svgImage.attr("href")
@@ -409,11 +516,12 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
             document.select("link[rel=stylesheet]").forEach { link ->
                 val href = link.attr("href")
                 if (href.isNotBlank()) {
-                    val cssPath = resolveZipPath(imageBasePath, href)
+                    val cssPath = resolveZipPath(imageBasePath, href.urlDecoded())
                     try {
                         getInputStream(cssPath)?.use { stream ->
                             var cssText = stream.reader().readText()
 
+                            // Resolve uris in url(...) inside CSS too.
                             val urlRegex = Regex("""url\(['"]?(.*?)['"]?\)""")
                             cssText = urlRegex.replace(cssText) { match ->
                                 val assetUrl = match.groupValues[1]
@@ -422,33 +530,12 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
                                 }
 
                                 val cssDir = getParentDirectory(cssPath)
-                                val assetPath = resolveZipPath(
-                                    cssDir,
-                                    assetUrl.substringBefore("?").substringBefore("#"),
-                                )
-                                try {
-                                    getInputStream(assetPath)?.use { assetStream ->
-                                        val bytes = assetStream.readBytes()
-                                        val base64 = java.util.Base64.getEncoder()
-                                            .encodeToString(bytes)
-                                        val mimeType = when (
-                                            assetPath.substringAfterLast('.', "").lowercase()
-                                        ) {
-                                            "png" -> "image/png"
-                                            "jpg", "jpeg" -> "image/jpeg"
-                                            "gif" -> "image/gif"
-                                            "svg" -> "image/svg+xml"
-                                            "ttf" -> "font/ttf"
-                                            "otf" -> "font/otf"
-                                            "woff" -> "font/woff"
-                                            "woff2" -> "font/woff2"
-                                            else -> "application/octet-stream"
-                                        }
-                                        "url('data:$mimeType;base64,$base64')"
-                                    } ?: match.value
-                                } catch (_: Exception) {
-                                    match.value
-                                }
+                                val assetPath =
+                                    resolveZipPath(
+                                        cssDir,
+                                        assetUrl.substringBefore("?").substringBefore("#").urlDecoded(),
+                                    )
+                                inlineAssetAsDataUri(assetPath)?.let { "url('$it')" } ?: match.value
                             }
 
                             val style = Element("style")
@@ -457,9 +544,7 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
                             style.text(cssText)
                             link.replaceWith(style)
                         }
-                    } catch (_: Exception) {
-                        // Ignore CSS inlining failures
-                    }
+                    } catch (_: Exception) { }
                 }
             }
 
@@ -467,26 +552,134 @@ class EpubReader(private val reader: ArchiveReader) : Closeable by reader {
             document.select("script[src]").forEach { script ->
                 val src = script.attr("src")
                 if (src.isNotBlank() && !src.startsWith("http") && !src.startsWith("//")) {
-                    val jsPath = resolveZipPath(imageBasePath, src)
+                    val jsPath = resolveZipPath(imageBasePath, src.urlDecoded())
                     try {
                         getInputStream(jsPath)?.use { stream ->
                             val jsText = stream.reader().readText()
                             val inlineScript = Element("script")
                             inlineScript.attr("data-epub-js", "true")
                             inlineScript.attr("data-file", src.substringAfterLast('/'))
+                            // Using dataNode for plain text in script to avoid weird HTML escaping.
                             inlineScript.appendChild(org.jsoup.nodes.DataNode(jsText))
                             script.replaceWith(inlineScript)
                         }
-                    } catch (_: Exception) {
-                        // Ignore JS inlining failures
-                    }
+                    } catch (_: Exception) { }
                 }
             }
 
-            // Remove title to prevent bleeding into text viewers
+            // Remove title to prevent bleeding into text viewers.
             document.getElementsByTag("title").remove()
 
-            document.outerHtml()
+            val fragmentHtml = fragment?.let { extractFragmentHtml(document, it) }
+            when {
+                !fragmentHtml.isNullOrBlank() -> fragmentHtml
+                bodyOnly -> document.body().html().ifBlank { document.outerHtml() }
+                else -> document.outerHtml()
+            }
         } ?: ""
+    }
+
+    private fun inlineAssetAsDataUri(assetPath: String): String? {
+        return try {
+            getInputStream(assetPath)?.use { assetStream ->
+                val bytes = assetStream.readBytes()
+                val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
+                val mimeType = when (assetPath.substringAfterLast('.', "").lowercase()) {
+                    "png" -> "image/png"
+                    "jpg", "jpeg" -> "image/jpeg"
+                    "gif" -> "image/gif"
+                    "svg" -> "image/svg+xml"
+                    "ttf" -> "font/ttf"
+                    "otf" -> "font/otf"
+                    "woff" -> "font/woff"
+                    "woff2" -> "font/woff2"
+                    "js" -> "application/javascript"
+                    "css" -> "text/css"
+                    else -> "application/octet-stream"
+                }
+                "data:$mimeType;base64,$base64"
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun extractFragmentHtml(document: Document, fragment: String): String? {
+        val candidates = buildList {
+            val primary = fragment.substringAfterLast("#").trim().removePrefix("#")
+            if (primary.isNotBlank()) {
+                add(primary)
+                val decoded = runCatching { java.net.URLDecoder.decode(primary, "UTF-8") }.getOrNull()
+                if (!decoded.isNullOrBlank() && decoded != primary) {
+                    add(decoded)
+                }
+            }
+        }.distinct()
+
+        for (candidate in candidates) {
+            document.getElementById(candidate)?.let { element ->
+                materializeFragmentElement(element)?.let { return it }
+            }
+
+            val escaped = candidate
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+            document
+                .selectFirst("*[id=\"$escaped\"], *[name=\"$escaped\"]")
+                ?.let { element ->
+                    materializeFragmentElement(element)?.let { return it }
+                }
+        }
+
+        return null
+    }
+
+    private fun materializeFragmentElement(element: Element): String? {
+        findHeadingElement(element)?.let { heading ->
+            return extractHeadingSectionHtml(heading)
+        }
+
+        if (isMeaningfulFragmentElement(element)) {
+            return element.outerHtml()
+        }
+
+        return null
+    }
+
+    private fun findHeadingElement(element: Element): Element? {
+        return if (isHeadingTag(element.tagName())) {
+            element
+        } else {
+            element.parents().firstOrNull { isHeadingTag(it.tagName()) }
+        }
+    }
+
+    private fun extractHeadingSectionHtml(heading: Element): String? {
+        val headingLevel = heading.tagName().removePrefix("h").toIntOrNull() ?: return heading.outerHtml()
+        val section = Element("div")
+
+        var node: org.jsoup.nodes.Node? = heading
+        while (node != null) {
+            if (node !== heading && node is Element && isHeadingTag(node.tagName())) {
+                val siblingHeadingLevel = node.tagName().removePrefix("h").toIntOrNull() ?: Int.MAX_VALUE
+                if (siblingHeadingLevel <= headingLevel) break
+            }
+
+            section.appendChild(node.clone())
+            node = node.nextSibling()
+        }
+
+        return section.html().ifBlank { heading.outerHtml() }
+    }
+
+    private fun isMeaningfulFragmentElement(element: Element): Boolean {
+        val text = element.text().trim()
+        if (text.length >= 80) return true
+
+        return element.select("p, div, section, article, table, ul, ol, blockquote, pre, figure, img, svg").isNotEmpty()
+    }
+
+    private fun isHeadingTag(tagName: String): Boolean {
+        return tagName.length == 2 && tagName[0] == 'h' && tagName[1] in '1'..'6'
     }
 }

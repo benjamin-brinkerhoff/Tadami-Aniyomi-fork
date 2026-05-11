@@ -54,6 +54,7 @@ import eu.kanade.presentation.more.resolveAuroraMoreCardBorderColor
 import eu.kanade.presentation.more.resolveAuroraMoreCardContainerColor
 import eu.kanade.presentation.more.settings.AURORA_SETTINGS_CARD_HORIZONTAL_INSET
 import eu.kanade.presentation.more.settings.AURORA_SETTINGS_CARD_SHAPE
+import eu.kanade.presentation.theme.AuroraSurfaceLevel
 import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.LocalIsDefaultAppUiFont
 import eu.kanade.presentation.theme.aurora.adaptive.AuroraDeviceClass
@@ -61,6 +62,7 @@ import eu.kanade.presentation.theme.aurora.adaptive.auroraCenteredMaxWidth
 import eu.kanade.presentation.theme.aurora.adaptive.resolveAuroraAdaptiveSpec
 import eu.kanade.presentation.theme.resolveAuroraBorderColor
 import eu.kanade.presentation.theme.resolveAuroraControlContainerColor
+import eu.kanade.presentation.theme.resolveAuroraElevation
 import eu.kanade.presentation.theme.resolveAuroraIconSurfaceColor
 import eu.kanade.presentation.theme.resolveAuroraSelectionContainerColor
 import eu.kanade.presentation.util.isTabletUi
@@ -296,7 +298,14 @@ private fun QuickActionCard(
         colors = CardDefaults.cardColors(
             containerColor = resolveAuroraMoreCardContainerColor(colors),
         ),
-        border = BorderStroke(1.dp, resolveAuroraMoreCardBorderColor(colors)),
+        border = if (colors.isDark || colors.isEInk) {
+            BorderStroke(1.dp, resolveAuroraMoreCardBorderColor(colors))
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = resolveAuroraElevation(colors, AuroraSurfaceLevel.Glass),
+        ),
     ) {
         Row(
             modifier = Modifier
@@ -404,7 +413,14 @@ private fun PinnedSourceCard(
         colors = CardDefaults.cardColors(
             containerColor = resolveAuroraSelectionContainerColor(colors),
         ),
-        border = BorderStroke(1.dp, resolveAuroraBorderColor(colors, emphasized = false)),
+        border = if (colors.isDark || colors.isEInk) {
+            BorderStroke(1.dp, resolveAuroraBorderColor(colors, emphasized = false))
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = resolveAuroraElevation(colors, AuroraSurfaceLevel.Subtle),
+        ),
     ) {
         Column(
             modifier = Modifier
@@ -460,7 +476,14 @@ private fun SourceGridItem(
         colors = CardDefaults.cardColors(
             containerColor = tabContainerColor,
         ),
-        border = BorderStroke(1.dp, resolveAuroraBorderColor(colors, emphasized = false)),
+        border = if (colors.isDark || colors.isEInk) {
+            BorderStroke(1.dp, resolveAuroraBorderColor(colors, emphasized = false))
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = resolveAuroraElevation(colors, AuroraSurfaceLevel.Subtle),
+        ),
     ) {
         Column(
             modifier = Modifier

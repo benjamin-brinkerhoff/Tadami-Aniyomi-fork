@@ -69,14 +69,16 @@ actual class LocalNovelSource(
             0L
         }
 
-        var novelDirs = fileSystem.getFilesInBaseDirectory()
-            .filter { it.isDirectory && !it.name.orEmpty().startsWith('.') }
-            .distinctBy { it.name }
+        var novelEntries = fileSystem.getFilesInBaseDirectory()
+            .filterNot { it.name.orEmpty().startsWith('.') }
+            .filter { it.isDirectory || isChapterSupported(it) }
+            .distinctBy { it.name.orEmpty() }
             .filter {
+                val displayTitle = if (it.isDirectory) it.name.orEmpty() else it.nameWithoutExtension.orEmpty()
                 if (lastModifiedLimit == 0L && query.isBlank()) {
                     true
                 } else if (lastModifiedLimit == 0L) {
-                    it.name.orEmpty().contains(query, ignoreCase = true)
+                    displayTitle.contains(query, ignoreCase = true)
                 } else {
                     it.lastModified() >= lastModifiedLimit
                 }
@@ -85,31 +87,44 @@ actual class LocalNovelSource(
         filters.forEach { filter ->
             when (filter) {
                 is NovelOrderBy.Popular -> {
-                    novelDirs = if (filter.state!!.ascending) {
-                        novelDirs.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name.orEmpty() })
+                    novelEntries = if (filter.state!!.ascending) {
+                        novelEntries.sortedWith(
+                            compareBy(String.CASE_INSENSITIVE_ORDER) {
+                                if (it.isDirectory) it.name.orEmpty() else it.nameWithoutExtension.orEmpty()
+                            },
+                        )
                     } else {
-                        novelDirs.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name.orEmpty() })
+                        novelEntries.sortedWith(
+                            compareByDescending(String.CASE_INSENSITIVE_ORDER) {
+                                if (it.isDirectory) it.name.orEmpty() else it.nameWithoutExtension.orEmpty()
+                            },
+                        )
                     }
                 }
                 is NovelOrderBy.Latest -> {
-                    novelDirs = if (filter.state!!.ascending) {
-                        novelDirs.sortedBy(UniFile::lastModified)
+                    novelEntries = if (filter.state!!.ascending) {
+                        novelEntries.sortedBy(UniFile::lastModified)
                     } else {
-                        novelDirs.sortedByDescending(UniFile::lastModified)
+                        novelEntries.sortedByDescending(UniFile::lastModified)
                     }
                 }
                 else -> { /* Do nothing */ }
             }
         }
 
-        val novels = novelDirs
-            .map { novelDir ->
+        val novels = novelEntries
+            .map { novelEntry ->
                 async {
                     SNovel.create().apply {
-                        title = novelDir.name.orEmpty()
-                        url = novelDir.name.orEmpty()
+                        title = if (novelEntry.isDirectory) {
+                            novelEntry.name.orEmpty()
+                        } else {
+                            novelEntry.nameWithoutExtension.orEmpty()
+                        }
+                        // Keep URL as the exact entry name so both directories and files can resolve
+                        url = novelEntry.name.orEmpty()
 
-                        coverManager.find(novelDir.name.orEmpty())?.let {
+                        coverManager.find(url)?.let {
                             thumbnail_url = it.uri.toString()
                         }
                     }
@@ -127,28 +142,19 @@ actual class LocalNovelSource(
         }
 
         try {
-            val novelDirFiles = fileSystem.getFilesInNovelDirectory(novel.url)
-            val firstEpub = novelDirFiles.firstOrNull {
-                it.extension.equals("epub", true)
-            }
+            val novelEntry = resolveNovelEntry(novel.url) ?: error("${novel.url} is not a valid local novel entry")
 
-            if (firstEpub != null) {
-                firstEpub.epubReader(context).use { epub ->
-                    val ref = epub.getPackageHref()
-                    val doc = epub.getPackageDocument(ref)
-
-                    doc.getElementsByTag("dc:creator").first()?.text()?.let {
-                        novel.author = it
-                    }
-                    doc.getElementsByTag("dc:description").first()?.text()?.let {
-                        novel.description = it
-                    }
-                    doc.getElementsByTag("dc:title").first()?.text()?.let {
-                        if (novel.title.isBlank()) {
-                            novel.title = it
-                        }
-                    }
+            if (novelEntry.isDirectory) {
+                val novelDirFiles = novelEntry.listFiles().orEmpty()
+                val firstEpub = novelDirFiles.firstOrNull {
+                    it.extension?.equals("epub", ignoreCase = true) == true
                 }
+
+                if (firstEpub != null) {
+                    fillNovelMetadataFromEpub(firstEpub, novel)
+                }
+            } else if (novelEntry.extension?.equals("epub", ignoreCase = true) == true) {
+                fillNovelMetadataFromEpub(novelEntry, novel)
             }
         } catch (e: Throwable) {
             logcat(LogPriority.ERROR, e) {
@@ -159,22 +165,81 @@ actual class LocalNovelSource(
         return@withIOContext novel
     }
 
+    private fun fillNovelMetadataFromEpub(epubFile: UniFile, novel: SNovel) {
+        epubFile.epubReader(context).use { epub ->
+            val ref = epub.getPackageHref()
+            val doc = epub.getPackageDocument(ref)
+
+            // Multiple title fallbacks
+            var title = doc.getElementsByTag("dc:title").firstOrNull()?.text()
+            if (title.isNullOrBlank()) {
+                title = doc.select("docTitle").firstOrNull()?.text()
+            }
+            if (title.isNullOrBlank()) {
+                title = doc.select("meta[name=title]").firstOrNull()?.attr("content")
+            }
+
+            val creator = doc.getElementsByTag("dc:creator").firstOrNull()
+
+            // Description with fallback
+            var description = doc.getElementsByTag("dc:description").firstOrNull()?.text()
+            if (description.isNullOrBlank()) {
+                description = doc.select("dc\\:description").firstOrNull()?.text()
+            }
+
+            // Genres from dc:subject
+            val subjects = doc.getElementsByTag("dc:subject").map { it.text() }
+            val mappedSubjects = if (subjects.isEmpty()) {
+                doc.select("dc\\:subject").map { it.text() }
+            } else {
+                subjects
+            }
+
+            // Collection name
+            val collection = doc.select("meta[property=belongs-to-collection]").firstOrNull()?.text()
+
+            // Set title: prefer collection if novel title is blank
+            val currentTitle = runCatching { novel.title }.getOrNull()
+            if (currentTitle.isNullOrBlank() && !collection.isNullOrBlank()) {
+                novel.title = collection
+            } else if (currentTitle.isNullOrBlank() && !title.isNullOrBlank()) {
+                novel.title = title
+            }
+
+            creator?.text()?.let { novel.author = it }
+            description?.let { novel.description = it }
+
+            // Merge genres
+            if (mappedSubjects.isNotEmpty()) {
+                val currentGenres =
+                    novel.genre?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+                val allGenres = (currentGenres + mappedSubjects).distinct()
+                novel.genre = allGenres.joinToString(", ")
+            }
+        }
+    }
+
     // Chapters — TOC-based splitting for multi-chapter epubs
     override suspend fun getChapterList(novel: SNovel): List<SNovelChapter> = withIOContext {
         val allChapters = mutableListOf<SNovelChapter>()
 
-        val chapterFiles = fileSystem.getFilesInNovelDirectory(novel.url)
-            .filterNot { it.name.orEmpty().startsWith('.') }
-            .filter { isChapterSupported(it) }
-            .sortedWith { f1, f2 ->
-                f1.name.orEmpty().compareToCaseInsensitiveNaturalOrder(f2.name.orEmpty())
-            }
+        val novelEntry = resolveNovelEntry(novel.url) ?: return@withIOContext emptyList()
 
-        val hasMultipleEpubFiles = chapterFiles.count { it.extension.equals("epub", true) } > 1
-        var orderedTocChapterNumber = 0
+        val chapterFiles = if (novelEntry.isDirectory) {
+            fileSystem.getFilesInNovelDirectory(novel.url)
+                .filterNot { it.name.orEmpty().startsWith('.') }
+                .filter { isChapterSupported(it) }
+                .sortedWith { f1, f2 ->
+                    f1.name.orEmpty().compareToCaseInsensitiveNaturalOrder(f2.name.orEmpty())
+                }
+        } else {
+            listOf(novelEntry)
+        }
+
+        val hasMultipleEpubFiles = chapterFiles.count { it.extension?.equals("epub", ignoreCase = true) == true } > 1
 
         chapterFiles.forEach { chapterFile ->
-            if (chapterFile.extension.equals("epub", true)) {
+            if (chapterFile.extension?.equals("epub", ignoreCase = true) == true) {
                 try {
                     chapterFile.epubReader(context).use { epub ->
                         // Extract cover from first epub if not set
@@ -191,26 +256,21 @@ actual class LocalNovelSource(
                             }
                         }
 
-                        val tocChapters = epub.getTableOfContents()
+                        val tocChapters = epub.getNormalizedTableOfContents()
+                        val spinePages = epub.getSpinePageHrefs()
 
-                        if (tocChapters.size > 1) {
-                            tocChapters.forEach { tocEntry ->
-                                orderedTocChapterNumber += 1
-                                val displayName = if (hasMultipleEpubFiles) {
-                                    "${chapterFile.nameWithoutExtension.orEmpty()} - ${tocEntry.title}"
-                                } else {
-                                    tocEntry.title
-                                }
-
-                                allChapters.add(
-                                    SNovelChapter.create().apply {
-                                        url = "${novel.url}/${chapterFile.name}#${tocEntry.href}"
-                                        name = displayName
-                                        date_upload = chapterFile.lastModified()
-                                        chapter_number = orderedTocChapterNumber.toFloat()
-                                    },
-                                )
-                            }
+                        if (tocChapters.isNotEmpty() || spinePages.isNotEmpty()) {
+                            allChapters.addAll(
+                                buildEpubChaptersFromToc(
+                                    mangaUrl = novel.url,
+                                    chapterFileName = chapterFile.name,
+                                    chapterFileNameWithoutExtension = chapterFile.nameWithoutExtension.orEmpty(),
+                                    chapterLastModified = chapterFile.lastModified(),
+                                    tocChapters = tocChapters,
+                                    spinePageHrefs = spinePages,
+                                    hasMultipleEpubFiles = hasMultipleEpubFiles,
+                                ),
+                            )
                         } else {
                             allChapters.add(createSimpleChapter(novel, chapterFile))
                         }
@@ -342,6 +402,14 @@ actual class LocalNovelSource(
         return ext in TEXT_EXTENSIONS
     }
 
+    private fun resolveNovelEntry(url: String): UniFile? {
+        val base = fileSystem.getBaseDirectory() ?: return null
+        return base.findFile(url)
+            ?: base.listFiles().orEmpty().firstOrNull {
+                !it.isDirectory && it.nameWithoutExtension.orEmpty().equals(url, ignoreCase = true)
+            }
+    }
+
     companion object {
         const val ID = 0L
         const val HELP_URL = "https://aniyomi.org/help/guides/local-novel/"
@@ -351,6 +419,7 @@ actual class LocalNovelSource(
 
         private val SUPPORTED_EXTENSIONS = setOf(
             "txt", "text",
+            "md", "markdown",
             "html", "htm", "xhtml",
             "epub",
             "zip", "cbz",
@@ -360,6 +429,8 @@ actual class LocalNovelSource(
         private val TEXT_EXTENSIONS = setOf(
             "txt",
             "text",
+            "md",
+            "markdown",
             "html",
             "htm",
             "xhtml",

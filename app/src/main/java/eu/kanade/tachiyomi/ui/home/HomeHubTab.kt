@@ -644,6 +644,9 @@ internal data class HomeHubRecommendation(
     val title: String,
     val coverData: Any?,
     val subtitle: String? = null,
+    val section: HomeHubSection = HomeHubSection.Anime,
+    val progressNumerator: Long = 0,
+    val progressDenominator: Long = 1,
 )
 
 object HomeHubTab : Tab {
@@ -1052,7 +1055,9 @@ internal fun HomeHubScreenModel.State.toUiState(): HomeHubUiState {
                 entryId = it.animeId,
                 title = it.title,
                 coverData = it.coverData,
-                subtitle = "${it.seenCount}/${it.totalCount} \u044d\u043f.",
+                section = HomeHubSection.Anime,
+                progressNumerator = it.seenCount,
+                progressDenominator = it.totalCount,
             )
         },
         userName = userName,
@@ -1090,7 +1095,9 @@ internal fun MangaHomeHubScreenModel.State.toUiState(): HomeHubUiState {
                 entryId = it.mangaId,
                 title = it.title,
                 coverData = it.coverData,
-                subtitle = "$readCount/${it.totalCount} \u0433\u043b.",
+                section = HomeHubSection.Manga,
+                progressNumerator = readCount,
+                progressDenominator = it.totalCount,
             )
         },
         userName = userName,
@@ -1127,7 +1134,9 @@ internal fun NovelHomeHubScreenModel.State.toUiState(): HomeHubUiState {
                 entryId = it.novelId,
                 title = it.title,
                 coverData = mapNovelHomeHubCoverData(it.coverData),
-                subtitle = "${it.readCount}/${it.totalCount} \u0433\u043b.",
+                section = HomeHubSection.Novel,
+                progressNumerator = it.readCount,
+                progressDenominator = it.totalCount,
             )
         },
         userName = userName,

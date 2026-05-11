@@ -53,6 +53,7 @@ import eu.kanade.presentation.more.settings.rememberResolvedSettingsUiStyle
 import eu.kanade.presentation.more.settings.settingsAccentColor
 import eu.kanade.presentation.more.settings.settingsCardContainerColor
 import eu.kanade.presentation.more.settings.settingsTitleColor
+import eu.kanade.presentation.more.settings.widget.AuroraSettingsCard
 import eu.kanade.presentation.more.settings.widget.ListPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.LocalBackPress
@@ -322,40 +323,72 @@ object AboutScreen : Screen() {
 
                     item {
                         val footerSections = remember { buildAboutFooterSections() }
-                        val containerColor = settingsCardContainerColor()
                         val dividerColor = settingsAccentColor().copy(alpha = 0.3f)
-                        Card(
-                            modifier = Modifier
-                                .then(itemModifier)
-                                .fillMaxWidth(),
-                            shape = AURORA_SETTINGS_CARD_SHAPE,
-                            colors = CardDefaults.cardColors(
-                                containerColor = containerColor,
-                            ),
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                        if (uiStyle == SettingsUiStyle.Aurora) {
+                            AuroraSettingsCard(
+                                modifier = itemModifier,
                             ) {
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    AboutFooterLinkSectionContent(section = footerSections.first())
-                                }
-                                Box(
+                                Row(
                                     modifier = Modifier
-                                        .width(1.dp)
-                                        .height(40.dp)
-                                        .background(dividerColor),
-                                )
-                                Box(
-                                    modifier = Modifier.weight(1f),
-                                    contentAlignment = Alignment.Center,
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    AboutFooterLinkSectionContent(section = footerSections.last())
+                                    Box(
+                                        modifier = Modifier.weight(1f),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        AboutFooterLinkSectionContent(section = footerSections.first())
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .width(1.dp)
+                                            .height(40.dp)
+                                            .background(dividerColor),
+                                    )
+                                    Box(
+                                        modifier = Modifier.weight(1f),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        AboutFooterLinkSectionContent(section = footerSections.last())
+                                    }
+                                }
+                            }
+                        } else {
+                            val containerColor = settingsCardContainerColor()
+                            Card(
+                                modifier = Modifier
+                                    .then(itemModifier)
+                                    .fillMaxWidth(),
+                                shape = AURORA_SETTINGS_CARD_SHAPE,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = containerColor,
+                                ),
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Box(
+                                        modifier = Modifier.weight(1f),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        AboutFooterLinkSectionContent(section = footerSections.first())
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .width(1.dp)
+                                            .height(40.dp)
+                                            .background(dividerColor),
+                                    )
+                                    Box(
+                                        modifier = Modifier.weight(1f),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        AboutFooterLinkSectionContent(section = footerSections.last())
+                                    }
                                 }
                             }
                         }

@@ -10,13 +10,13 @@ class AuroraLightSurfaceTokensTest {
 
     @Test
     fun `light aurora theme exposes bright layered surfaces`() {
-        resolveAuroraSurfaceColor(AuroraColors.Light, AuroraSurfaceLevel.Glass) shouldBe Color(0xE6FFFFFF)
-        resolveAuroraSurfaceColor(AuroraColors.Light, AuroraSurfaceLevel.Strong) shouldBe Color(0xFFF0F4F8)
+        resolveAuroraSurfaceColor(AuroraColors.Light, AuroraSurfaceLevel.Glass) shouldBe Color(0xFFFDFDFD)
+        resolveAuroraSurfaceColor(AuroraColors.Light, AuroraSurfaceLevel.Strong) shouldBe Color.White
     }
 
     @Test
     fun `light aurora theme exposes readable borders and selection fills`() {
-        resolveAuroraBorderColor(AuroraColors.Light, emphasized = false) shouldBe Color(0xFFB8CCE0)
+        resolveAuroraBorderColor(AuroraColors.Light, emphasized = false) shouldBe Color.Transparent
         resolveAuroraSelectionContainerColor(AuroraColors.Light) shouldBe AuroraColors.Light.accent.copy(alpha = 0.14f)
         resolveAuroraSelectionBorderColor(AuroraColors.Light) shouldBe AuroraColors.Light.accent.copy(alpha = 0.28f)
     }
@@ -24,7 +24,7 @@ class AuroraLightSurfaceTokensTest {
     @Test
     fun `light aurora top bar and icon surfaces stay airy`() {
         resolveAuroraTopBarScrimColor(AuroraColors.Light) shouldBe Color(0x14FFFFFF)
-        resolveAuroraIconSurfaceColor(AuroraColors.Light) shouldBe Color(0xFFEAF1F8)
+        resolveAuroraIconSurfaceColor(AuroraColors.Light) shouldBe AuroraColors.Light.textPrimary.copy(alpha = 0.06f)
     }
 
     @Test

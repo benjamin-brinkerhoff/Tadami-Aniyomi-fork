@@ -31,8 +31,8 @@ class AuroraTitleReadabilityTokensTest {
             colors = AuroraColors.Light,
             isActive = false,
         ) shouldBe AuroraHeroSecondaryButtonPalette(
-            containerColor = Color(0xE6FFFFFF),
-            borderColor = Color(0xFFB8CCE0),
+            containerColor = Color(0xFFFDFDFD),
+            borderColor = Color.Transparent,
             contentColor = AuroraColors.Light.textSecondary,
         )
     }
@@ -40,12 +40,12 @@ class AuroraTitleReadabilityTokensTest {
     @Test
     fun `light detail card colors use bright layered surfaces`() {
         resolveAuroraDetailCardBackgroundColors(AuroraColors.Light) shouldBe listOf(
-            Color(0xC3FFFFFF),
-            Color(0xEEF2F7FD),
+            Color.White.copy(alpha = 0.76f),
+            Color.White.copy(alpha = 0.93f),
         )
         resolveAuroraDetailCardBorderColors(AuroraColors.Light) shouldBe listOf(
-            Color(0xFF9DB4CC),
-            Color(0xFFB8CCE0),
+            Color.Transparent,
+            Color.Transparent,
         )
     }
 

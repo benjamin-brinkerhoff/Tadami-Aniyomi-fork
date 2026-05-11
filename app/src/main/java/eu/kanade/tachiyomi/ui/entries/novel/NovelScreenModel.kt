@@ -17,6 +17,7 @@ import eu.kanade.domain.entries.novel.interactor.SetNovelExcludedScanlators
 import eu.kanade.domain.entries.novel.interactor.UpdateNovel
 import eu.kanade.domain.entries.novel.model.chaptersFiltered
 import eu.kanade.domain.entries.novel.model.effectiveDownloadedFilter
+import eu.kanade.domain.entries.novel.model.normalizeNovelDescription
 import eu.kanade.domain.entries.novel.model.toSNovel
 import eu.kanade.domain.items.novelchapter.interactor.GetAvailableNovelScanlators
 import eu.kanade.domain.items.novelchapter.interactor.GetNovelScanlatorChapterCounts
@@ -52,6 +53,7 @@ import eu.kanade.tachiyomi.ui.entries.novel.NovelChapterActionStateResolver
 import eu.kanade.tachiyomi.ui.entries.novel.NovelChapterActionUiState
 import eu.kanade.tachiyomi.ui.novel.resolveNovelResumeChapter
 import eu.kanade.tachiyomi.ui.reader.novel.setting.NovelReaderPreferences
+import eu.kanade.tachiyomi.ui.reader.novel.setting.NovelReaderSettings
 import eu.kanade.tachiyomi.ui.reader.novel.translation.NovelReaderTranslationDiskCacheStore
 import eu.kanade.tachiyomi.ui.reader.novel.translation.toTranslationCacheRequirements
 import eu.kanade.tachiyomi.util.system.toast
@@ -224,6 +226,8 @@ class NovelScreenModel(
     private val successState: State.Success?
         get() = state.value as? State.Success
 
+    private var readerSettingsCache: NovelReaderSettings? = null
+
     val novel: Novel?
         get() = successState?.novel
 
@@ -306,7 +310,7 @@ class NovelScreenModel(
                         )
                     }
                     if (chapterIdsChanged) {
-                        syncDownloadedState()
+                        syncDownloadedState(deferFilesystemFallback = false)
                         refreshChapterActionStatesAsync(delayMs = 100L)
                     }
                 }
@@ -417,6 +421,7 @@ class NovelScreenModel(
             val chapters = getNovelWithChapters.awaitChapters(novelId, applyScanlatorFilter = true)
             val source = sourceManager.getOrStub(novel.source)
             val readerSettings = novelReaderPreferences.resolveSettings(novel.source)
+            readerSettingsCache = readerSettings
             val translatedDownloadFormat = novelReaderPreferences.translatedDownloadFormat(novel.id)
             val isJaomixPagedSource = source.isJaomixPagedSource()
             val shouldAutoRefreshNovel = !novel.initialized
@@ -558,8 +563,8 @@ class NovelScreenModel(
                 manualFetch = false,
             )
             if (isLikelyWebViewLoginRequired(source, novel, chapters.size)) {
-                logcat(LogPriority.WARN) {
-                    "Novel ${novel.id} (${source.name}) likely requires WebView login: " +
+                logcat(LogPriority.DEBUG) {
+                    "Novel ${novel.id} (${source.name}) may need WebView login (pre-refresh): " +
                         "chapters=0, descriptionBlank=true"
                 }
             }
@@ -579,7 +584,7 @@ class NovelScreenModel(
                         }
                     }
             }
-            syncDownloadedState()
+            syncDownloadedState(deferFilesystemFallback = true)
 
             if ((shouldAutoRefreshNovel || shouldAutoRefreshChapters) && screenModelScope.isActive) {
                 refreshChapters(
@@ -706,14 +711,20 @@ class NovelScreenModel(
         }
     }
 
-    private fun syncDownloadedState() {
+    private fun resolveReaderSettings(sourceId: Long): NovelReaderSettings {
+        return readerSettingsCache ?: novelReaderPreferences.resolveSettings(sourceId).also { readerSettingsCache = it }
+    }
+
+    private fun syncDownloadedState(deferFilesystemFallback: Boolean = true) {
         val state = successState ?: return
         val requestVersion = downloadedStateVersion.incrementAndGet()
 
         downloadedStateJob?.cancel()
 
         downloadedStateJob = screenModelScope.launchIO {
-            delay(500)
+            if (deferFilesystemFallback) {
+                delay(500)
+            }
 
             var downloadedIds = emptySet<Long>()
 
@@ -725,6 +736,12 @@ class NovelScreenModel(
                     "Novel downloaded-state sync: novel=${state.novel.id}, from_cache=true, count=${downloadedIds.size}"
                 }
             } else {
+                if (deferFilesystemFallback) {
+                    logcat(LogPriority.DEBUG) {
+                        "Novel downloaded-state sync: novel=${state.novel.id}, cache_miss=true, deferred_filesystem=true"
+                    }
+                    return@launchIO
+                }
                 val elapsed = measureTimeMillis {
                     downloadedIds = resolveDownloadedChapterIds(state.novel, state.chapters)
                 }
@@ -754,7 +771,7 @@ class NovelScreenModel(
                 updateDownloadedStateFromCacheEvent(event)
             }
             NovelDownloadCacheEvent.InvalidateAll -> {
-                syncDownloadedState()
+                syncDownloadedState(deferFilesystemFallback = false)
             }
             is NovelDownloadCacheEvent.NovelRemoved -> {
                 updateDownloadedStateForRemovedNovel(event.novelId)
@@ -801,6 +818,7 @@ class NovelScreenModel(
         queueState: NovelDownloadQueueState = NovelDownloadQueueManager.state.value,
     ): State.Success {
         val readerSettings = novelReaderPreferences.resolveSettings(novel.source)
+        readerSettingsCache = readerSettings
         val translationCacheRequirements = readerSettings.toTranslationCacheRequirements()
         val translatedDownloadFormat = novelReaderPreferences.translatedDownloadFormat(novel.id)
         val translatedQueueChapterIds = resolveTranslatedQueueChapterIds(
@@ -1104,6 +1122,42 @@ class NovelScreenModel(
             remoteNovel = networkNovel,
             manualFetch = manualFetch,
         )
+        // Sync in-memory state so the UI immediately reflects fetched details
+        // (Fix: previously only the DB was updated, leaving the UI stale)
+        val remoteTitle = try {
+            networkNovel.title
+        } catch (_: UninitializedPropertyAccessException) {
+            ""
+        }
+        val resolvedTitle = if (remoteTitle.isEmpty() || state.novel.favorite) null else remoteTitle
+        val shouldUpdateCover = manualFetch ||
+            state.novel.thumbnailUrl.isNullOrEmpty() ||
+            !state.novel.initialized
+        updateSuccessState { current ->
+            if (current.novel.id != state.novel.id) return@updateSuccessState current
+            current.copy(
+                novel = current.novel.copy(
+                    title = resolvedTitle ?: current.novel.title,
+                    author = networkNovel.author,
+                    description = normalizeNovelDescription(networkNovel.description),
+                    genre = networkNovel.getGenres(),
+                    status = networkNovel.status.toLong(),
+                    thumbnailUrl = if (shouldUpdateCover) {
+                        networkNovel.thumbnail_url?.takeIf { it.isNotEmpty() }
+                    } else {
+                        current.novel.thumbnailUrl
+                    },
+                    initialized = true,
+                    updateStrategy = networkNovel.update_strategy,
+                    coverLastModified = if (shouldUpdateCover && !networkNovel.thumbnail_url.isNullOrEmpty()) {
+                        Instant.now().toEpochMilli()
+                    } else {
+                        current.novel.coverLastModified
+                    },
+                ),
+                rating = current.rating,
+            )
+        }
         refreshNovelRating(
             state = state,
             forceRefresh = manualFetch,
@@ -1613,7 +1667,7 @@ class NovelScreenModel(
         screenModelScope.launchIO {
             val added = enqueueOriginal(state.novel, listOf(chapter))
             notifyQueueStarted(added)
-            syncDownloadedState()
+            syncDownloadedState(deferFilesystemFallback = false)
         }
     }
 
@@ -1628,7 +1682,7 @@ class NovelScreenModel(
             val added = enqueueOriginal(state.novel, selectedChapters)
             notifyQueueStarted(added)
             toggleAllSelection(false)
-            syncDownloadedState()
+            syncDownloadedState(deferFilesystemFallback = false)
         }
     }
 
@@ -1649,7 +1703,7 @@ class NovelScreenModel(
         screenModelScope.launchIO {
             val added = enqueueOriginal(state.novel, chaptersToDownload)
             notifyQueueStarted(added)
-            syncDownloadedState()
+            syncDownloadedState(deferFilesystemFallback = false)
         }
     }
 
@@ -1676,7 +1730,7 @@ class NovelScreenModel(
 
         val added = NovelDownloadQueueManager.enqueueOriginal(state.novel, chapters)
         notifyQueueStarted(added)
-        syncDownloadedState()
+        syncDownloadedState(deferFilesystemFallback = false)
         return added
     }
 
@@ -1841,8 +1895,7 @@ class NovelScreenModel(
         if (chapterIds.isEmpty()) return
 
         updateSuccessState { current ->
-            val translationCacheRequirements = novelReaderPreferences
-                .resolveSettings(current.novel.source)
+            val translationCacheRequirements = resolveReaderSettings(current.novel.source)
                 .toTranslationCacheRequirements()
             val updatedChapterActionStates = current.chapterActionStates.toMutableMap()
             var changed = false
@@ -1914,7 +1967,7 @@ class NovelScreenModel(
         onProgress: (NovelEpubExportProgress) -> Unit = {},
     ): File? {
         val state = successState ?: return null
-        val readerSettings = novelReaderPreferences.resolveSettings(state.novel.source)
+        val readerSettings = resolveReaderSettings(state.novel.source)
         val stylesheet = NovelEpubStyleBuilder.buildStylesheet(
             settings = readerSettings,
             sourceId = state.novel.source,

@@ -1,13 +1,16 @@
 ﻿package eu.kanade.presentation.entries.anime.components.aurora
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Immutable
 import eu.kanade.domain.metadata.model.MetadataLoadError
 import eu.kanade.presentation.entries.components.displayFormat
 import eu.kanade.presentation.entries.components.displayStatus
 import eu.kanade.presentation.entries.components.isCompleted
+import eu.kanade.tachiyomi.animesource.model.SAnime
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.metadata.model.ExternalMetadata
+import tachiyomi.i18n.MR
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Locale
@@ -60,6 +63,7 @@ fun resolveAnimeDetailsSnapshot(
     animeMetadata: ExternalMetadata?,
     isMetadataLoading: Boolean,
     metadataError: MetadataLoadError?,
+    context: Context? = null,
 ): AnimeDetailsSnapshot {
     val ratingValue = resolveAnimeRatingValue(
         anime = anime,
@@ -80,8 +84,12 @@ fun resolveAnimeDetailsSnapshot(
     }
     val statusText = when {
         isMetadataLoading -> "..."
-        metadataError == MetadataLoadError.NotAuthenticated -> AnimeStatusFormatter.formatStatus(anime.status)
-        else -> animeMetadata?.displayStatus() ?: AnimeStatusFormatter.formatStatus(anime.status)
+        metadataError == MetadataLoadError.NotAuthenticated ->
+            context?.let { AnimeStatusFormatter.formatStatus(it, anime.status) }
+                ?: AnimeStatusFormatter.formatStatus(anime.status)
+        else -> context?.let { ctx ->
+            animeMetadata?.displayStatus(ctx) ?: AnimeStatusFormatter.formatStatus(ctx, anime.status)
+        } ?: (animeMetadata?.displayStatus() ?: AnimeStatusFormatter.formatStatus(anime.status))
     }
     val statusBadgeText = when {
         isMetadataLoading -> "..."
@@ -184,9 +192,9 @@ private fun String?.trimOrNull(): String? {
 
 private fun Long.isAnimeCompleted(): Boolean {
     return when (this.toInt()) {
-        eu.kanade.tachiyomi.animesource.model.SAnime.COMPLETED,
-        eu.kanade.tachiyomi.animesource.model.SAnime.PUBLISHING_FINISHED,
-        eu.kanade.tachiyomi.animesource.model.SAnime.CANCELLED,
+        SAnime.COMPLETED,
+        SAnime.PUBLISHING_FINISHED,
+        SAnime.CANCELLED,
         -> true
 
         else -> false
@@ -200,15 +208,31 @@ private fun debugLog(message: String) {
 }
 
 object AnimeStatusFormatter {
+
+    /**
+     * Converts anime status code to readable localized text.
+     */
+    fun formatStatus(context: Context, status: Long): String {
+        return when (status.toInt()) {
+            SAnime.ONGOING -> MR.strings.ongoing.getString(context)
+            SAnime.COMPLETED -> MR.strings.completed.getString(context)
+            SAnime.LICENSED -> MR.strings.licensed.getString(context)
+            SAnime.PUBLISHING_FINISHED -> MR.strings.publishing_finished.getString(context)
+            SAnime.CANCELLED -> MR.strings.cancelled.getString(context)
+            SAnime.ON_HIATUS -> MR.strings.on_hiatus.getString(context)
+            else -> MR.strings.unknown.getString(context)
+        }
+    }
+
     fun formatStatus(status: Long): String {
         return when (status.toInt()) {
-            eu.kanade.tachiyomi.animesource.model.SAnime.ONGOING -> "Онгоинг"
-            eu.kanade.tachiyomi.animesource.model.SAnime.COMPLETED -> "Завершён"
-            eu.kanade.tachiyomi.animesource.model.SAnime.LICENSED -> "Лицензирован"
-            eu.kanade.tachiyomi.animesource.model.SAnime.PUBLISHING_FINISHED -> "Выпуск завершён"
-            eu.kanade.tachiyomi.animesource.model.SAnime.CANCELLED -> "Отменён"
-            eu.kanade.tachiyomi.animesource.model.SAnime.ON_HIATUS -> "На паузе"
-            else -> "Неизвестно"
+            SAnime.ONGOING -> "ongoing"
+            SAnime.COMPLETED -> "completed"
+            SAnime.LICENSED -> "licensed"
+            SAnime.PUBLISHING_FINISHED -> "publishing finished"
+            SAnime.CANCELLED -> "cancelled"
+            SAnime.ON_HIATUS -> "on hiatus"
+            else -> "unknown"
         }
     }
 }

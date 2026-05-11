@@ -54,6 +54,7 @@ import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.LocalCoverTitleFontFamily
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
@@ -89,7 +90,7 @@ fun AnimeHeroContent(
     translation: AuroraEntryTranslationState? = null,
     hasWatchingProgress: Boolean,
     ratingText: String,
-    episodesText: String,
+    episodeCount: Int,
     statusText: String,
     onContinueWatching: () -> Unit,
     onDubbingClicked: (() -> Unit)?,
@@ -155,8 +156,8 @@ fun AnimeHeroContent(
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 30.sp,
-                maxLines = Int.MAX_VALUE,
-                overflow = TextOverflow.Clip,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
                 color = titleColor,
                 style = TextStyle(
                     fontFamily = coverTitleFontFamily,
@@ -201,7 +202,6 @@ fun AnimeHeroContent(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
@@ -226,8 +226,10 @@ fun AnimeHeroContent(
                     )
                 }
 
+                AnimeHeroStatDivider()
+
                 Text(
-                    text = "$episodesText эп.",
+                    text = stringResource(AYMR.strings.aurora_episode_count, episodeCount),
                     color = colors.textSecondary.copy(alpha = 0.82f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
@@ -236,6 +238,8 @@ fun AnimeHeroContent(
                     softWrap = false,
                     modifier = Modifier.weight(1.05f, fill = false),
                 )
+
+                AnimeHeroStatDivider()
 
                 Text(
                     text = statusText,
@@ -313,4 +317,19 @@ fun AnimeHeroContent(
             }
         }
     }
+}
+
+@Composable
+private fun AnimeHeroStatDivider() {
+    val colors = AuroraTheme.colors
+
+    Text(
+        text = " | ",
+        color = colors.textSecondary.copy(alpha = 0.5f),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        overflow = TextOverflow.Clip,
+        softWrap = false,
+    )
 }

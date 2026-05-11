@@ -36,7 +36,10 @@ class NovelPluginFilterMapper(
                 FilterType.PICKER -> {
                     val options = filter.options.orEmpty()
                     val defaultValue = primitiveContent(filter.value)
-                    val index = options.indexOfFirst { it.value == defaultValue }.takeIf { it >= 0 } ?: 0
+                    val index = when {
+                        defaultValue.isNullOrBlank() -> -1
+                        else -> options.indexOfFirst { it.value == defaultValue }.takeIf { it >= 0 } ?: 0
+                    }
                     PluginPickerFilter(
                         key = key,
                         name = filter.label,

@@ -2,6 +2,7 @@ package eu.kanade.presentation.more.settings
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AuroraBackground
 import eu.kanade.presentation.theme.AuroraTheme
-import eu.kanade.presentation.theme.resolveAuroraControlContainerColor
+import eu.kanade.presentation.theme.resolveAuroraTopBarIconSurfaceColor
 import eu.kanade.presentation.theme.resolveAuroraTopBarScrimColor
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
@@ -216,7 +217,10 @@ internal fun AuroraTopBarLayout(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = if (onNavigateUp != null) 12.dp else 4.dp),
+                    .padding(
+                        start = if (onNavigateUp != null) 12.dp else 4.dp,
+                        end = 12.dp,
+                    ),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 titleContent()
@@ -226,12 +230,16 @@ internal fun AuroraTopBarLayout(
                 title = title,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = if (onNavigateUp != null) 12.dp else 4.dp),
+                    .padding(
+                        start = if (onNavigateUp != null) 12.dp else 4.dp,
+                        end = 12.dp,
+                    ),
             )
         }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             content = actions,
         )
     }
@@ -254,8 +262,8 @@ internal fun AuroraTopBarIconButton(
             onClick()
         },
         modifier = modifier
-            .size(40.dp)
-            .background(resolveAuroraControlContainerColor(colors), CircleShape),
+            .size(44.dp)
+            .background(resolveAuroraTopBarIconSurfaceColor(colors), CircleShape),
     ) {
         Icon(
             imageVector = icon,

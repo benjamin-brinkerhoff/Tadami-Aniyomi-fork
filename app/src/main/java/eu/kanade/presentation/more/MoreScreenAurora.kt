@@ -1,7 +1,6 @@
 package eu.kanade.presentation.more
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +30,8 @@ import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.VideoSettings
 import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +40,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,9 +48,12 @@ import com.tadami.aurora.BuildConfig
 import eu.kanade.domain.ui.model.NavStyle
 import eu.kanade.presentation.components.AuroraBackground
 import eu.kanade.presentation.components.LocalHostScaffoldContentPadding
+import eu.kanade.presentation.more.resolveAuroraMoreSwitchColors
 import eu.kanade.presentation.more.settings.AuroraTopBarTitleText
+import eu.kanade.presentation.theme.AuroraSurfaceLevel
 import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.LocalIsDefaultAppUiFont
+import eu.kanade.presentation.theme.resolveAuroraElevation
 import eu.kanade.tachiyomi.ui.more.DownloadQueueState
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -228,41 +232,65 @@ fun AuroraSettingItem(
     val useMediumWeight = LocalIsDefaultAppUiFont.current
     val appHaptics = LocalAppHaptics.current
 
-    Row(
+    Card(
+        onClick = {
+            appHaptics.tap()
+            onClick()
+        },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AURORA_MORE_CARD_VERTICAL_INSET)
-            .clip(RoundedCornerShape(16.dp))
-            .background(resolveAuroraMoreCardContainerColor(colors))
-            .clickable {
-                appHaptics.tap()
-                onClick()
-            }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = colors.accent,
-            modifier = Modifier.size(24.dp),
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column {
-            Text(
-                text = title,
-                color = colors.textPrimary,
-                style = auroraPrimaryMenuTitleTextStyle(
-                    baseStyle = MaterialTheme.typography.bodyLarge,
-                    useMediumWeight = useMediumWeight,
-                ),
+            .padding(vertical = AURORA_MORE_CARD_VERTICAL_INSET),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (!colors.isDark && !colors.isEInk) {
+                Color.White
+            } else {
+                resolveAuroraMoreCardContainerColor(colors)
+            },
+        ),
+        border = if (colors.isEInk) {
+            BorderStroke(
+                width = 1.dp,
+                color = resolveAuroraMoreCardBorderColor(colors),
             )
-            if (subtitle != null) {
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!colors.isDark && !colors.isEInk) {
+                resolveAuroraElevation(colors, AuroraSurfaceLevel.Glass)
+            } else {
+                0.dp
+            },
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = colors.accent,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
                 Text(
-                    text = subtitle,
-                    color = colors.textSecondary,
-                    fontSize = 13.sp,
+                    text = title,
+                    color = colors.textPrimary,
+                    style = auroraPrimaryMenuTitleTextStyle(
+                        baseStyle = MaterialTheme.typography.bodyLarge,
+                        useMediumWeight = useMediumWeight,
+                    ),
                 )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        color = colors.textSecondary,
+                        fontSize = 13.sp,
+                    )
+                }
             }
         }
     }
@@ -279,47 +307,70 @@ fun AuroraToggleItem(
     val useMediumWeight = LocalIsDefaultAppUiFont.current
     val appHaptics = LocalAppHaptics.current
 
-    Row(
+    Card(
+        onClick = {
+            appHaptics.tap()
+            onCheckedChange(!checked)
+        },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = AURORA_MORE_CARD_VERTICAL_INSET)
-            .clip(RoundedCornerShape(16.dp))
-            .background(resolveAuroraMoreCardContainerColor(colors))
-            .clickable {
-                appHaptics.tap()
-                onCheckedChange(!checked)
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(vertical = AURORA_MORE_CARD_VERTICAL_INSET),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (!colors.isDark && !colors.isEInk) {
+                Color.White
+            } else {
+                resolveAuroraMoreCardContainerColor(colors)
+            },
+        ),
+        border = if (colors.isEInk) {
+            BorderStroke(
+                width = 1.dp,
+                color = resolveAuroraMoreCardBorderColor(colors),
+            )
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!colors.isDark && !colors.isEInk) {
+                resolveAuroraElevation(colors, AuroraSurfaceLevel.Glass)
+            } else {
+                0.dp
+            },
+        ),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = colors.accent,
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = title,
-                color = colors.textPrimary,
-                style = auroraPrimaryMenuTitleTextStyle(
-                    baseStyle = MaterialTheme.typography.bodyLarge,
-                    useMediumWeight = useMediumWeight,
-                ),
-            )
-        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = colors.accent,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = title,
+                    color = colors.textPrimary,
+                    style = auroraPrimaryMenuTitleTextStyle(
+                        baseStyle = MaterialTheme.typography.bodyLarge,
+                        useMediumWeight = useMediumWeight,
+                    ),
+                )
+            }
 
-        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
-            androidx.compose.material3.Switch(
-                checked = checked,
-                onCheckedChange = null,
-                colors = androidx.compose.material3.SwitchDefaults.colors(
-                    checkedThumbColor = colors.accent,
-                    checkedTrackColor = resolveAuroraMoreCheckedTrackColor(colors),
-                ),
-            )
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                androidx.compose.material3.Switch(
+                    checked = checked,
+                    onCheckedChange = null,
+                    colors = resolveAuroraMoreSwitchColors(colors, colors.accent),
+                )
+            }
         }
     }
 }

@@ -49,7 +49,10 @@ fun BrowseAnimeSourceList(
                 }
             }
 
-            items(count = animeList.itemCount) { index ->
+            items(
+                count = animeList.itemCount,
+                key = { index -> animeBrowseItemKey(animeList[index]?.value?.url, index) },
+            ) { index ->
                 val anime by animeList[index]?.collectAsState() ?: return@items
                 BrowseAnimeSourceListItem(
                     anime = anime,

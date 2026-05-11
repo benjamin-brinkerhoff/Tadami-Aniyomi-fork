@@ -21,6 +21,20 @@ internal fun parseNovelRichContent(rawHtml: String): NovelRichContentParseResult
         blocks += parseBlockElement(element, context)
     }
 
+    // Capture text from direct TextNode children of body that sit outside block elements
+    // (e.g. text between <br> tags with no <p> wrapper, common in novelhall chapters).
+    // These are not returned by body.children() and would otherwise be lost.
+    val orphanTextSegments = body.childNodes()
+        .filterIsInstance<TextNode>()
+        .map { it.text().trim() }
+        .filter { it.isNotBlank() }
+        .map { NovelRichTextSegment(text = it) }
+    if (orphanTextSegments.isNotEmpty()) {
+        orphanTextSegments.forEach { segment ->
+            blocks += NovelRichContentBlock.Paragraph(listOf(segment))
+        }
+    }
+
     if (blocks.isEmpty()) {
         val segments = parseInlineSegments(body)
         if (segments.isNotEmpty()) {

@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -214,6 +215,7 @@ fun AnimeScreenAuroraImpl(
     val lazyListState = rememberLazyListState()
     val scrollOffset by remember { derivedStateOf { lazyListState.firstVisibleItemScrollOffset } }
     val firstVisibleItemIndex by remember { derivedStateOf { lazyListState.firstVisibleItemIndex } }
+    val context = LocalContext.current
     val animeDetailsSnapshot = remember(
         anime,
         episodes,
@@ -235,6 +237,7 @@ fun AnimeScreenAuroraImpl(
             animeMetadata = state.animeMetadata,
             isMetadataLoading = state.isMetadataLoading,
             metadataError = state.metadataError,
+            context = context,
         )
     }
 
@@ -450,7 +453,7 @@ fun AnimeScreenAuroraImpl(
                                     translation = auroraEntryTranslation,
                                     hasWatchingProgress = hasWatchingProgress,
                                     ratingText = animeDetailsSnapshot.ratingText,
-                                    episodesText = animeDetailsSnapshot.episodesText,
+                                    episodeCount = state.episodes.size,
                                     statusText = animeDetailsSnapshot.statusText,
                                     onContinueWatching = onContinueWatching,
                                     onDubbingClicked = onDubbingClicked,
@@ -894,7 +897,7 @@ fun AnimeScreenAuroraImpl(
                             translation = auroraEntryTranslation,
                             hasWatchingProgress = hasWatchingProgress,
                             ratingText = animeDetailsSnapshot.ratingText,
-                            episodesText = animeDetailsSnapshot.episodesText,
+                            episodeCount = state.episodes.size,
                             statusText = animeDetailsSnapshot.statusText,
                             onContinueWatching = onContinueWatching,
                             onDubbingClicked = onDubbingClicked,

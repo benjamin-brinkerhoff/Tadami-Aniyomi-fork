@@ -142,6 +142,7 @@ class NovelJsRuntime(
         fun domOuterHtml(handle: Int): String
         fun domText(handle: Int): String
         fun domAttr(handle: Int, name: String): String?
+        fun domRemoveAttr(handle: Int, name: String)
         fun domAttrs(handle: Int): String
         fun domHasClass(handle: Int, className: String): Boolean
         fun domData(handle: Int, key: String): String?
@@ -596,6 +597,14 @@ class NovelJsRuntime(
 
         nativeObject.registerJavaMethod(
             JavaCallback { _, parameters ->
+                nativeApi.domRemoveAttr(parameters.intArg(0), parameters.stringArg(1))
+                null
+            },
+            "domRemoveAttr",
+        )
+
+        nativeObject.registerJavaMethod(
+            JavaCallback { _, parameters ->
                 nativeApi.domRemoveClass(parameters.intArg(0), parameters.stringArg(1))
                 null
             },
@@ -831,18 +840,42 @@ class NovelJsRuntime(
                   global.URLSearchParams = URLSearchParams;
                   function URL(input, base) {
                     var resolved = __native.resolveUrl(String(input), base != null ? String(base) : null);
-                    this.href = resolved;
                     this.pathname = __native.getPathname(resolved);
+                    // Split URL into base + query + fragment so toString() can
+                    // rebuild including mutations to this.searchParams.
+                    var qi = resolved.indexOf('?');
+                    var hi = resolved.indexOf('#');
+                    if (qi >= 0) {
+                      this._baseUrl = resolved.substring(0, qi);
+                      var qEnd = hi >= 0 ? hi : resolved.length;
+                      this._fragment = hi >= 0 ? resolved.substring(hi) : '';
+                      this.searchParams = new URLSearchParams(resolved.substring(qi + 1, qEnd));
+                    } else if (hi >= 0) {
+                      this._baseUrl = resolved.substring(0, hi);
+                      this._fragment = resolved.substring(hi);
+                      this.searchParams = new URLSearchParams('');
+                    } else {
+                      this._baseUrl = resolved;
+                      this._fragment = '';
+                      this.searchParams = new URLSearchParams('');
+                    }
                   }
                   URL.prototype.toString = function() {
-                    return this.href;
+                    var qs = this.searchParams.toString();
+                    return this._baseUrl + (qs ? '?' + qs : '') + this._fragment;
                   };
                   URL.prototype.valueOf = function() {
-                    return this.href;
+                    return this.toString();
                   };
                   URL.prototype.toJSON = function() {
-                    return this.href;
+                    return this.toString();
                   };
+                  Object.defineProperty(URL.prototype, 'href', {
+                    get: function() { return this.toString(); },
+                    set: function(v) { this._baseUrl = v; },
+                    configurable: true,
+                    enumerable: true
+                  });
                   global.URL = URL;
 
                   global.console = {
@@ -1217,7 +1250,7 @@ class NovelJsModuleRegistry(
     private val defaultCoverModule = """
         __defineModule("@libs/defaultCover", function(module, exports) {
           module.exports = {
-            defaultCover: "https://github.com/LNReader/lnreader-plugins/blob/main/icons/src/coverNotAvailable.jpg?raw=true"
+            defaultCover: ""
           };
         });
     """.trimIndent()
@@ -1456,7 +1489,11 @@ class NovelJsModuleRegistry(
             var input = normalizeFetchInput(url, options);
             if (input.url == null) throw new Error("fetchApi requires a URL");
             var payload = JSON.stringify(normalizeInit(input.options));
-            var response = JSON.parse(__native.fetch(String(input.url), payload));
+            var raw = __native.fetch(String(input.url), payload);
+            var response = JSON.parse(raw);
+            if (response.status === 0) {
+              throw new Error("Network request failed: " + (response.body || "unknown error"));
+            }
             return Promise.resolve(makeResponse(response));
           }
           function fetchText(url, options, encoding) {
@@ -1942,6 +1979,12 @@ class NovelJsModuleRegistry(
               addClass: function(className) {
                 for (var i = 0; i < handles.length; i++) {
                   __native.domAddClass(handles[i], String(className));
+                }
+                return api;
+              },
+              removeAttr: function(name) {
+                for (var i = 0; i < handles.length; i++) {
+                  __native.domRemoveAttr(handles[i], String(name));
                 }
                 return api;
               },

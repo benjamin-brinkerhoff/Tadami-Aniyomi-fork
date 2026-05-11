@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.theme.AuroraTheme
+import eu.kanade.presentation.theme.resolveAuroraControlContainerColor
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import tachiyomi.domain.category.model.Category
 import tachiyomi.i18n.MR
@@ -68,7 +69,7 @@ fun ReorderableCollectionItemScope.CategoryListItem(
         shape = if (isAurora) RoundedCornerShape(20.dp) else MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = if (isAurora) {
-                colors.glass
+                resolveAuroraControlContainerColor(colors)
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
             },

@@ -207,6 +207,7 @@ class NovelJsRuntimeFactoryTest {
         assertEquals("Tadami-Test-Agent/1.0", request.header("User-Agent"))
         assertEquals("https://www.scribblehub.com/", request.header("Referer"))
         assertEquals("https://www.scribblehub.com", request.header("Origin"))
+        assertEquals("max-age=0", request.header("Cache-Control"))
         assertNotNull(request.header("Accept-Language"))
     }
 

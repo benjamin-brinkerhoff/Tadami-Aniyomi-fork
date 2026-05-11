@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import eu.kanade.presentation.more.resolveAuroraMoreCheckedTrackColor
+import eu.kanade.presentation.more.resolveAuroraMoreSwitchColors
 import eu.kanade.presentation.more.settings.LocalSettingsUiStyle
 import eu.kanade.presentation.more.settings.SettingsUiStyle
 import eu.kanade.presentation.more.settings.settingsAccentColor
@@ -43,10 +43,7 @@ fun SwitchPreferenceWidget(
                 enabled = enabled,
                 onCheckedChange = null,
                 colors = if (isAurora) {
-                    SwitchDefaults.colors(
-                        checkedThumbColor = accent,
-                        checkedTrackColor = resolveAuroraMoreCheckedTrackColor(colors),
-                    )
+                    resolveAuroraMoreSwitchColors(colors, accent)
                 } else {
                     SwitchDefaults.colors()
                 },

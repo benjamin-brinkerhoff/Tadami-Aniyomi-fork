@@ -33,13 +33,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -92,7 +96,14 @@ fun NovelSourcesScreen(
                 if (searchQuery != null && onChangeSearchQuery != null) {
                     item(key = "search") {
                         var isSearchActive by rememberSaveable { mutableStateOf(false) }
+                        val searchFocusRequester = remember { FocusRequester() }
                         val active = isSearchActive || searchQuery.isNotEmpty()
+
+                        LaunchedEffect(active) {
+                            if (active) {
+                                searchFocusRequester.requestFocus()
+                            }
+                        }
 
                         Box(
                             modifier = Modifier
@@ -137,6 +148,7 @@ fun NovelSourcesScreen(
                                         }
                                     },
                                     modifier = Modifier
+                                        .focusRequester(searchFocusRequester)
                                         .fillMaxWidth()
                                         .height(56.dp),
                                     shape = CircleShape,

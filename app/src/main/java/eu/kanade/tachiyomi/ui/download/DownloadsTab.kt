@@ -9,16 +9,17 @@ import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -239,8 +240,6 @@ data object DownloadsTab : Tab {
                                         Pill(
                                             text = "$currentDownloadCount",
                                             modifier = Modifier.padding(start = 4.dp),
-                                            color = auroraColors.accent.copy(alpha = 0.24f),
-                                            contentColor = auroraColors.textPrimary,
                                             fontSize = 14.sp,
                                         )
                                     }
@@ -276,12 +275,9 @@ data object DownloadsTab : Tab {
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                     if (currentDownloadCount > 0) {
-                                        val pillAlpha = if (isSystemInDarkTheme()) 0.12f else 0.08f
                                         Pill(
                                             text = "$currentDownloadCount",
                                             modifier = Modifier.padding(start = 4.dp),
-                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = pillAlpha),
-                                            contentColor = MaterialTheme.colorScheme.onBackground,
                                             fontSize = 14.sp,
                                         )
                                     }
@@ -588,6 +584,7 @@ data object DownloadsTab : Tab {
                         contentDescription = stringResource(MR.strings.action_sort),
                     )
                 }
+                Spacer(modifier = Modifier.width(4.dp))
                 Box {
                     AuroraTopBarIconButton(
                         onClick = { overflowExpanded = true },
@@ -717,6 +714,7 @@ data object DownloadsTab : Tab {
                         contentDescription = stringResource(MR.strings.action_sort),
                     )
                 }
+                Spacer(modifier = Modifier.width(4.dp))
                 Box {
                     AuroraTopBarIconButton(
                         onClick = { overflowExpanded = true },

@@ -39,6 +39,12 @@ kotlin {
                 implementation(aniyomilibs.ffmpeg.kit)
             }
         }
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.bundles.test)
+                runtimeOnly(libs.junitPlatformLauncher)
+            }
+        }
     }
 
     @OptIn(ExperimentalKotlinGradlePluginApi::class)

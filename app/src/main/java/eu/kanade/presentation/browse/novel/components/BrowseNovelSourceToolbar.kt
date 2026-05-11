@@ -15,9 +15,11 @@ import androidx.compose.runtime.setValue
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.AppBarTitle
+import eu.kanade.presentation.components.AuroraAppBarActions
 import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.presentation.components.RadioMenuItem
 import eu.kanade.presentation.components.SearchToolbar
+import eu.kanade.presentation.theme.LocalIsAuroraTheme
 import eu.kanade.tachiyomi.extension.novel.runtime.hasVisiblePluginSettingsByDiscovery
 import eu.kanade.tachiyomi.novelsource.NovelSource
 import kotlinx.collections.immutable.persistentListOf
@@ -36,11 +38,13 @@ fun BrowseNovelSourceToolbar(
     onWebViewClick: (() -> Unit)?,
     onSettingsClick: (() -> Unit)?,
     onSearch: (String) -> Unit,
+    useAuroraAppBarActions: Boolean = true,
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     val title = source?.name
     val hasSourceSettings = source?.hasVisiblePluginSettingsByDiscovery() == true && onSettingsClick != null
     var selectingDisplayMode by remember { mutableStateOf(false) }
+    val isAurora = LocalIsAuroraTheme.current
 
     SearchToolbar(
         navigateUp = navigateUp,
@@ -50,41 +54,45 @@ fun BrowseNovelSourceToolbar(
         onSearch = onSearch,
         onClickCloseSearch = navigateUp,
         actions = {
-            AppBarActions(
-                actions = persistentListOf<AppBar.AppBarAction>().builder()
-                    .apply {
+            val toolbarActions = persistentListOf<AppBar.AppBarAction>().builder()
+                .apply {
+                    add(
+                        AppBar.Action(
+                            title = stringResource(MR.strings.action_display_mode),
+                            icon = if (displayMode == LibraryDisplayMode.List) {
+                                Icons.AutoMirrored.Filled.ViewList
+                            } else {
+                                Icons.Filled.ViewModule
+                            },
+                            onClick = { selectingDisplayMode = true },
+                        ),
+                    )
+                    if (onWebViewClick != null) {
                         add(
                             AppBar.Action(
-                                title = stringResource(MR.strings.action_display_mode),
-                                icon = if (displayMode == LibraryDisplayMode.List) {
-                                    Icons.AutoMirrored.Filled.ViewList
-                                } else {
-                                    Icons.Filled.ViewModule
-                                },
-                                onClick = { selectingDisplayMode = true },
+                                title = stringResource(MR.strings.action_open_in_web_view),
+                                icon = Icons.Outlined.Public,
+                                onClick = onWebViewClick,
                             ),
                         )
-                        if (onWebViewClick != null) {
-                            add(
-                                AppBar.Action(
-                                    title = stringResource(MR.strings.action_open_in_web_view),
-                                    icon = Icons.Outlined.Public,
-                                    onClick = onWebViewClick,
-                                ),
-                            )
-                        }
-                        if (hasSourceSettings) {
-                            add(
-                                AppBar.Action(
-                                    title = stringResource(MR.strings.action_settings),
-                                    icon = Icons.Outlined.Settings,
-                                    onClick = onSettingsClick,
-                                ),
-                            )
-                        }
                     }
-                    .build(),
-            )
+                    if (hasSourceSettings) {
+                        add(
+                            AppBar.Action(
+                                title = stringResource(MR.strings.action_settings),
+                                icon = Icons.Outlined.Settings,
+                                onClick = onSettingsClick,
+                            ),
+                        )
+                    }
+                }
+                .build()
+
+            if (isAurora && useAuroraAppBarActions) {
+                AuroraAppBarActions(actions = toolbarActions)
+            } else {
+                AppBarActions(actions = toolbarActions)
+            }
 
             DropdownMenu(
                 expanded = selectingDisplayMode,

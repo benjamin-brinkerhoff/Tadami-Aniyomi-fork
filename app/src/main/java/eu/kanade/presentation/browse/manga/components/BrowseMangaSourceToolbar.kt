@@ -14,9 +14,11 @@ import androidx.compose.runtime.setValue
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.AppBarTitle
+import eu.kanade.presentation.components.AuroraAppBarActions
 import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.presentation.components.RadioMenuItem
 import eu.kanade.presentation.components.SearchToolbar
+import eu.kanade.presentation.theme.LocalIsAuroraTheme
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.MangaSource
 import kotlinx.collections.immutable.persistentListOf
@@ -37,6 +39,7 @@ fun BrowseMangaSourceToolbar(
     onHelpClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onSearch: (String) -> Unit,
+    useAuroraAppBarActions: Boolean = true,
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     // Avoid capturing unstable source in actions lambda
@@ -45,6 +48,7 @@ fun BrowseMangaSourceToolbar(
     val isConfigurableSource = source is ConfigurableSource
 
     var selectingDisplayMode by remember { mutableStateOf(false) }
+    val isAurora = LocalIsAuroraTheme.current
 
     SearchToolbar(
         navigateUp = navigateUp,
@@ -54,48 +58,52 @@ fun BrowseMangaSourceToolbar(
         onSearch = onSearch,
         onClickCloseSearch = navigateUp,
         actions = {
-            AppBarActions(
-                actions = persistentListOf<AppBar.AppBarAction>().builder()
-                    .apply {
+            val toolbarActions = persistentListOf<AppBar.AppBarAction>().builder()
+                .apply {
+                    add(
+                        AppBar.Action(
+                            title = stringResource(MR.strings.action_display_mode),
+                            icon = if (displayMode == LibraryDisplayMode.List) {
+                                Icons.AutoMirrored.Filled.ViewList
+                            } else {
+                                Icons.Filled.ViewModule
+                            },
+                            onClick = { selectingDisplayMode = true },
+                        ),
+                    )
+                    if (!isLocalSource) {
                         add(
                             AppBar.Action(
-                                title = stringResource(MR.strings.action_display_mode),
-                                icon = if (displayMode == LibraryDisplayMode.List) {
-                                    Icons.AutoMirrored.Filled.ViewList
-                                } else {
-                                    Icons.Filled.ViewModule
-                                },
-                                onClick = { selectingDisplayMode = true },
+                                title = stringResource(MR.strings.action_open_in_web_view),
+                                icon = Icons.Outlined.Public,
+                                onClick = onWebViewClick,
                             ),
                         )
-                        if (!isLocalSource) {
-                            add(
-                                AppBar.Action(
-                                    title = stringResource(MR.strings.action_open_in_web_view),
-                                    icon = Icons.Outlined.Public,
-                                    onClick = onWebViewClick,
-                                ),
-                            )
-                        }
-                        if (isLocalSource) {
-                            add(
-                                AppBar.OverflowAction(
-                                    title = stringResource(MR.strings.label_help),
-                                    onClick = onHelpClick,
-                                ),
-                            )
-                        }
-                        if (isConfigurableSource) {
-                            add(
-                                AppBar.OverflowAction(
-                                    title = stringResource(MR.strings.action_settings),
-                                    onClick = onSettingsClick,
-                                ),
-                            )
-                        }
                     }
-                    .build(),
-            )
+                    if (isLocalSource) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.label_help),
+                                onClick = onHelpClick,
+                            ),
+                        )
+                    }
+                    if (isConfigurableSource) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_settings),
+                                onClick = onSettingsClick,
+                            ),
+                        )
+                    }
+                }
+                .build()
+
+            if (isAurora && useAuroraAppBarActions) {
+                AuroraAppBarActions(actions = toolbarActions)
+            } else {
+                AppBarActions(actions = toolbarActions)
+            }
 
             DropdownMenu(
                 expanded = selectingDisplayMode,

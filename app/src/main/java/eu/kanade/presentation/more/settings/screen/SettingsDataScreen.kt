@@ -227,6 +227,22 @@ object SettingsDataScreen : SearchableSettings {
             navigator.push(RestoreBackupScreen(it.toString()))
         }
 
+        val cloudBackupPicker = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocumentTree(),
+        ) { uri ->
+            if (uri != null) {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                try {
+                    context.contentResolver.takePersistableUriPermission(uri, flags)
+                } catch (e: SecurityException) {
+                    logcat(LogPriority.ERROR, e)
+                    context.toast(MR.strings.file_picker_uri_permission_unsupported)
+                }
+                backupPreferences.cloudBackupUri().set(uri.toString())
+            }
+        }
+
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.label_backup),
             preferenceItems = persistentListOf(
@@ -294,6 +310,22 @@ object SettingsDataScreen : SearchableSettings {
                 Preference.PreferenceItem.InfoPreference(
                     stringResource(MR.strings.backup_info) + "\n\n" +
                         stringResource(MR.strings.last_auto_backup_info, relativeTimeSpanString(lastAutoBackup)),
+                ),
+
+                // ── Cloud Backup ────────────────────────────────────────────────
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.pref_cloud_backup_folder),
+                    subtitle = cloudBackupSubtitle(context, backupPreferences),
+                    onClick = {
+                        try {
+                            cloudBackupPicker.launch(null)
+                        } catch (e: ActivityNotFoundException) {
+                            context.toast(MR.strings.file_picker_error)
+                        }
+                    },
+                ),
+                Preference.PreferenceItem.InfoPreference(
+                    stringResource(MR.strings.cloud_backup_info),
                 ),
             ),
         )
@@ -680,5 +712,20 @@ object SettingsDataScreen : SearchableSettings {
                 }
             },
         )
+    }
+
+    @Composable
+    private fun cloudBackupSubtitle(
+        context: Context,
+        backupPreferences: BackupPreferences,
+    ): String {
+        val uri by backupPreferences.cloudBackupUri().collectAsState()
+        if (uri.isBlank()) {
+            return stringResource(MR.strings.cloud_backup_folder_not_set)
+        }
+        val displayPath = remember(uri) {
+            UniFile.fromUri(context, uri.toUri())?.displayablePath
+        }
+        return displayPath ?: stringResource(MR.strings.invalid_location, uri)
     }
 }

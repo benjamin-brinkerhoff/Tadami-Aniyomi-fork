@@ -672,6 +672,8 @@
     <string name="novel_reader_custom_js">Custom JavaScript</string>
     <string name="novel_reader_custom_js_hint">JavaScript executed after chapter loads</string>
     <string name="novel_reader_custom_js_set">%d characters</string>
+    <string name="novel_reader_text_selection_enabled">Text selection</string>
+    <string name="novel_reader_text_selection_enabled_summary">Select text for copying without translation</string>
     <string name="novel_reader_selected_text_translation_section">Selected text translation</string>
     <string name="novel_reader_selected_text_translation_enabled">Enable selected-text translation</string>
     <string name="novel_reader_selected_text_translation_target_language">Target language</string>
@@ -1000,6 +1002,9 @@
     <string name="pref_bottom_nav_no_updates">Move Updates to the More tab</string>
     <string name="pref_bottom_nav_no_manga">Move Titles to the More tab</string>
     <string name="pref_bottom_nav_no_browse">Move Browse to the More tab</string>
+    <string name="pref_bottom_nav_appearance">Bottom navigation appearance</string>
+    <string name="pref_bottom_nav_classic">Classic</string>
+    <string name="pref_bottom_nav_aurora">Aurora</string>
     <string name="action_filter_unseen">Unseen</string>
     <string name="action_global_manga_search">Global Manga Search</string>
     <string name="action_global_anime_search">Global Anime Search</string>
@@ -1087,7 +1092,7 @@
     <string name="action_order_by_episode_number">By episode number</string>
     <string name="action_start_download_externally">Use external downloader</string>
     <string name="action_start_download_internally">Use internal downloader</string>
-    <string name="pref_bottom_nav_style">Bottom navigation style</string>
+    <string name="pref_bottom_nav_style">Bottom navigation layout</string>
     <string name="pref_category_motion">Motion</string>
     <string name="pref_navigation_transition_mode">Navigation transition mode</string>
     <string name="pref_navigation_transition_mode_summary">Auto uses Modern and falls back to Legacy in Battery Saver</string>
@@ -1708,6 +1713,8 @@
     <string name="aurora_chapters_header">Chapters</string>
     <string name="aurora_chapters">CHAPTERS</string>
     <string name="aurora_chapter_count">%d chs</string>
+    <string name="aurora_episode_progress_format">%1$d/%2$d Episode</string>
+    <string name="aurora_chapter_progress_format">%1$d/%2$d Chapter</string>
     <string name="aurora_chapter_progress">Chapter %d</string>
     <string name="aurora_progress">PROGRESS</string>
     <string name="aurora_select_dubbing">Select Dubbing</string>

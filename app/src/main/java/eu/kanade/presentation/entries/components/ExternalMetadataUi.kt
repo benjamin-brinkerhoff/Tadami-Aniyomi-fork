@@ -1,8 +1,10 @@
 package eu.kanade.presentation.entries.components
 
+import android.content.Context
 import eu.kanade.domain.metadata.model.MetadataLoadError
 import tachiyomi.domain.metadata.model.ExternalMetadata
 import tachiyomi.domain.metadata.model.MetadataSource
+import tachiyomi.i18n.MR
 import java.util.Locale
 
 internal data class ResolvedCover(
@@ -19,15 +21,34 @@ internal fun ExternalMetadata.displayFormat(): String? {
 }
 
 /**
- * Returns display status for external metadata.
- * TODO: This currently returns hardcoded Russian strings.
- * Call sites should use stringResource() with the returned key:
- * - "Завершён" → MR.strings.status_finished
- * - "Онгоинг" → MR.strings.status_releasing
- * - "Анонс" → MR.strings.status_not_yet_released
- * - "Отменён" → MR.strings.status_cancelled
- * - "На паузе" → MR.strings.status_hiatus
- * - "Брошен" → MR.strings.status_discontinued
+ * Returns display status for external metadata, localized.
+ */
+internal fun ExternalMetadata.displayStatus(context: Context): String? {
+    val rawStatus = status?.trim().orEmpty()
+    if (rawStatus.isEmpty()) return null
+
+    return when (source) {
+        MetadataSource.ANILIST -> when (rawStatus.uppercase()) {
+            "FINISHED" -> MR.strings.status_finished.getString(context)
+            "RELEASING" -> MR.strings.status_releasing.getString(context)
+            "NOT_YET_RELEASED" -> MR.strings.status_not_yet_released.getString(context)
+            "CANCELLED" -> MR.strings.status_cancelled.getString(context)
+            "HIATUS" -> MR.strings.status_hiatus.getString(context)
+            else -> rawStatus
+        }
+        MetadataSource.SHIKIMORI -> when (rawStatus.lowercase()) {
+            "anons" -> MR.strings.status_not_yet_released.getString(context)
+            "ongoing" -> MR.strings.status_releasing.getString(context)
+            "released" -> MR.strings.status_finished.getString(context)
+            "discontinued" -> MR.strings.status_discontinued.getString(context)
+            else -> rawStatus
+        }
+        MetadataSource.NONE -> rawStatus
+    }
+}
+
+/**
+ * Returns display status for external metadata, untranslated (English fallback).
  */
 internal fun ExternalMetadata.displayStatus(): String? {
     val rawStatus = status?.trim().orEmpty()
@@ -35,18 +56,18 @@ internal fun ExternalMetadata.displayStatus(): String? {
 
     return when (source) {
         MetadataSource.ANILIST -> when (rawStatus.uppercase()) {
-            "FINISHED" -> "Завершён"
-            "RELEASING" -> "Онгоинг"
-            "NOT_YET_RELEASED" -> "Анонс"
-            "CANCELLED" -> "Отменён"
-            "HIATUS" -> "На паузе"
+            "FINISHED" -> "Finished"
+            "RELEASING" -> "Releasing"
+            "NOT_YET_RELEASED" -> "Announced"
+            "CANCELLED" -> "Cancelled"
+            "HIATUS" -> "On hiatus"
             else -> rawStatus
         }
         MetadataSource.SHIKIMORI -> when (rawStatus.lowercase()) {
-            "anons" -> "Анонс"
-            "ongoing" -> "Онгоинг"
-            "released" -> "Завершён"
-            "discontinued" -> "Брошен"
+            "anons" -> "Announced"
+            "ongoing" -> "Releasing"
+            "released" -> "Finished"
+            "discontinued" -> "Discontinued"
             else -> rawStatus
         }
         MetadataSource.NONE -> rawStatus

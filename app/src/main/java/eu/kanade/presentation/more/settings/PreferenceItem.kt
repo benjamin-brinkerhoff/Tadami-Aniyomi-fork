@@ -5,7 +5,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -17,12 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.more.settings.AURORA_SETTINGS_CARD_SHAPE
 import eu.kanade.presentation.more.settings.LocalSettingsUiStyle
 import eu.kanade.presentation.more.settings.SettingsUiStyle
 import eu.kanade.presentation.more.settings.settingsCardContainerColor
+import eu.kanade.presentation.more.settings.widget.AuroraSettingsCard
 import eu.kanade.presentation.more.settings.widget.EditTextPreferenceWidget
 import eu.kanade.presentation.more.settings.widget.InfoWidget
 import eu.kanade.presentation.more.settings.widget.ListPreferenceWidget
@@ -93,34 +92,45 @@ internal fun PreferenceItem(
                     )
                 }
                 is Preference.PreferenceItem.SliderPreference -> {
-                    BaseSliderItem(
-                        label = item.title,
-                        value = item.value,
-                        valueRange = item.valueRange,
-                        valueText = item.subtitle.takeUnless { it.isNullOrEmpty() } ?: item.value.toString(),
-                        steps = item.steps,
-                        labelStyle = MaterialTheme.typography.titleLarge.copy(fontSize = TitleFontSize),
-                        onChange = {
-                            scope.launch {
-                                item.onValueChanged(it)
-                            }
-                        },
-                        modifier = Modifier
-                            .then(
-                                if (isAurora) {
-                                    Modifier
-                                        .padding(vertical = 4.dp)
-                                        .clip(AURORA_SETTINGS_CARD_SHAPE)
-                                        .background(settingsCardContainerColor())
-                                } else {
-                                    Modifier
+                    if (isAurora) {
+                        AuroraSettingsCard {
+                            BaseSliderItem(
+                                label = item.title,
+                                value = item.value,
+                                valueRange = item.valueRange,
+                                valueText = item.subtitle.takeUnless { it.isNullOrEmpty() } ?: item.value.toString(),
+                                steps = item.steps,
+                                labelStyle = MaterialTheme.typography.titleLarge.copy(fontSize = TitleFontSize),
+                                onChange = {
+                                    scope.launch {
+                                        item.onValueChanged(it)
+                                    }
                                 },
+                                modifier = Modifier.padding(
+                                    horizontal = PrefsHorizontalPadding,
+                                    vertical = PrefsVerticalPadding,
+                                ),
                             )
-                            .padding(
+                        }
+                    } else {
+                        BaseSliderItem(
+                            label = item.title,
+                            value = item.value,
+                            valueRange = item.valueRange,
+                            valueText = item.subtitle.takeUnless { it.isNullOrEmpty() } ?: item.value.toString(),
+                            steps = item.steps,
+                            labelStyle = MaterialTheme.typography.titleLarge.copy(fontSize = TitleFontSize),
+                            onChange = {
+                                scope.launch {
+                                    item.onValueChanged(it)
+                                }
+                            },
+                            modifier = Modifier.padding(
                                 horizontal = PrefsHorizontalPadding,
                                 vertical = PrefsVerticalPadding,
                             ),
-                    )
+                        )
+                    }
                 }
                 is Preference.PreferenceItem.ListPreference<*> -> {
                     val value by item.preference.collectAsState()

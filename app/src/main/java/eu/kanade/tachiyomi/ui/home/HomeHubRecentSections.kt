@@ -215,12 +215,25 @@ internal fun RecommendationsGrid(
                 verticalArrangement = Arrangement.spacedBy(rowSpacing),
             ) {
                 recommendations.forEach { item ->
+                    val recommendationFormat = when (item.section) {
+                        HomeHubSection.Anime -> AYMR.strings.aurora_episode_progress_format
+                        HomeHubSection.Manga, HomeHubSection.Novel -> AYMR.strings.aurora_chapter_progress_format
+                    }
+                    val recommendationSubtitle = if (item.subtitle != null) {
+                        item.subtitle
+                    } else {
+                        stringResource(
+                            recommendationFormat,
+                            item.progressNumerator.toInt(),
+                            item.progressDenominator.toInt(),
+                        )
+                    }
                     HomeHubRecentCard(
                         mode = cardRenderMode,
                         modifier = Modifier.width(cardWidth),
                         title = item.title,
                         coverData = item.coverData,
-                        subtitle = item.subtitle,
+                        subtitle = recommendationSubtitle,
                         onClick = { onEntryClick(item.entryId) },
                         deviceClass = auroraAdaptiveSpec.deviceClass,
                     )
@@ -235,12 +248,25 @@ internal fun RecommendationsGrid(
                 horizontalArrangement = Arrangement.spacedBy(rowSpacing),
             ) {
                 items(recommendations, key = { it.entryId }) { item ->
+                    val recommendationFormat = when (item.section) {
+                        HomeHubSection.Anime -> AYMR.strings.aurora_episode_progress_format
+                        HomeHubSection.Manga, HomeHubSection.Novel -> AYMR.strings.aurora_chapter_progress_format
+                    }
+                    val recommendationSubtitle = if (item.subtitle != null) {
+                        item.subtitle
+                    } else {
+                        stringResource(
+                            recommendationFormat,
+                            item.progressNumerator.toInt(),
+                            item.progressDenominator.toInt(),
+                        )
+                    }
                     HomeHubRecentCard(
                         mode = cardRenderMode,
                         modifier = Modifier.width(cardWidth),
                         title = item.title,
                         coverData = item.coverData,
-                        subtitle = item.subtitle,
+                        subtitle = recommendationSubtitle,
                         onClick = { onEntryClick(item.entryId) },
                         deviceClass = auroraAdaptiveSpec.deviceClass,
                     )

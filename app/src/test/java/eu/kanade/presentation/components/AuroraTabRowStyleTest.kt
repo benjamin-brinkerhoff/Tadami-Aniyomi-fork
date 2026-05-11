@@ -1,5 +1,6 @@
 package eu.kanade.presentation.components
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -24,7 +25,7 @@ class AuroraTabRowStyleTest {
 
     @Test
     fun `light aurora tab container and selection tokens use light surfaces`() {
-        resolveAuroraTabContainerColor(AuroraColors.Light) shouldBe androidx.compose.ui.graphics.Color(0xFFE4EEF6)
+        resolveAuroraTabContainerColor(AuroraColors.Light) shouldBe Color.Transparent
         resolveAuroraTabSelectionBorderColor(AuroraColors.Light) shouldBe AuroraColors.Light.accent.copy(alpha = 0.28f)
     }
 

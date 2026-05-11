@@ -240,8 +240,16 @@ class NovelScreen(
             description = successState.novel.description,
             needsLoginHint = needsWebViewLoginHint,
         )
+        val webViewLoginHintUnsetKey = "__novel_web_view_login_hint_unset__"
+        var lastEvaluatedWebViewLoginHintKey by rememberSaveable(successState.novel.id) {
+            mutableStateOf<String?>(webViewLoginHintUnsetKey)
+        }
         var lastShownWebViewLoginHintKey by rememberSaveable(successState.novel.id) { mutableStateOf<String?>(null) }
         LaunchedEffect(webViewLoginHintKey, openWebViewLoginAction) {
+            if (lastEvaluatedWebViewLoginHintKey == webViewLoginHintKey) {
+                return@LaunchedEffect
+            }
+            lastEvaluatedWebViewLoginHintKey = webViewLoginHintKey
             if (webViewLoginHintKey == null) {
                 logcat {
                     "Novel login hint skipped id=${successState.novel.id} source=${successState.source.name} " +

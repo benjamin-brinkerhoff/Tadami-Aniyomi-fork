@@ -15,4 +15,9 @@ class BackupPreferences(
         "backup_flags",
         setOf(FLAG_CATEGORIES, FLAG_CHAPTERS, FLAG_HISTORY, FLAG_TRACK),
     )
+
+    fun cloudBackupUri() = preferenceStore.getString(
+        key = Preference.appStateKey("cloud_backup_uri"),
+        defaultValue = "",
+    )
 }

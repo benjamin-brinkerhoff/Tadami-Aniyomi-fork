@@ -66,3 +66,16 @@ private val defaultContent: @Composable RowScope.(Source, String?) -> Unit = { s
         }
     }
 }
+
+/**
+ * Generates a unique, stable key for a manga browse item in a lazy grid/list.
+ * Pattern matches [eu.kanade.presentation.browse.novel.novelBrowseItemKey].
+ *
+ * The [url] comes from [tachiyomi.domain.entries.manga.model.Manga.url].
+ * It may be null when [androidx.paging.compose.LazyPagingItems] has a placeholder
+ * at the given [index] (item not yet loaded).
+ * The `#$index` suffix guarantees uniqueness even with duplicate or empty URLs.
+ */
+internal fun mangaBrowseItemKey(url: String?, index: Int): String {
+    return "manga/${url.orEmpty()}#$index"
+}

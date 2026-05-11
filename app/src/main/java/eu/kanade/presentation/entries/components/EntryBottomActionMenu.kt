@@ -38,7 +38,7 @@ import androidx.compose.material.icons.outlined.NewLabel
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.RemoveDone
 import androidx.compose.material.icons.outlined.SwapCalls
-import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -421,7 +421,7 @@ fun LibraryBottomActionMenu(
                 if (onTranslatedDownloadClicked != null) {
                     Button(
                         title = stringResource(AYMR.strings.novel_translated_download_short),
-                        icon = Icons.Outlined.Translate,
+                        icon = Icons.Rounded.Translate,
                         toConfirm = confirm[4],
                         onLongClick = { onLongClickItem(4) },
                         onClick = onTranslatedDownloadClicked,

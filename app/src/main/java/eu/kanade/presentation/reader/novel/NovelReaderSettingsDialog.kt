@@ -967,6 +967,12 @@ private fun GeneralTab(
                 },
             )
             SwitchPreferenceWidget(
+                title = stringResource(AYMR.strings.novel_reader_text_selection_enabled),
+                subtitle = stringResource(AYMR.strings.novel_reader_text_selection_enabled_summary),
+                checked = settings.textSelectionEnabled,
+                onCheckedChanged = { preferences.textSelectionEnabled().set(it) },
+            )
+            SwitchPreferenceWidget(
                 title = stringResource(AYMR.strings.novel_reader_bionic_reading),
                 checked = settings.bionicReading,
                 onCheckedChanged = {

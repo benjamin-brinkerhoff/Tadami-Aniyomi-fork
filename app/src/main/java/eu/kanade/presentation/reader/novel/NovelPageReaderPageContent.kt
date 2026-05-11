@@ -941,7 +941,8 @@ internal fun NovelPageReaderTextBlock(
         textAlign = textAlign,
         shadow = blockTextShadow,
     )
-    val selectionInteractionEnabled = touchHandlingEnabled && readerSettings.selectedTextTranslationEnabled
+    val selectionInteractionEnabled =
+        touchHandlingEnabled && (readerSettings.textSelectionEnabled || readerSettings.selectedTextTranslationEnabled)
     AndroidView(
         modifier = modifier,
         factory = { context ->

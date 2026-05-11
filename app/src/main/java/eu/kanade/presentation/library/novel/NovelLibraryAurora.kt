@@ -645,7 +645,7 @@ private fun NovelLibraryAuroraCoverOnlyCard(
     val tabContainerColor = if (colors.background.luminance() < 0.5f) {
         Color.White.copy(alpha = 0.05f)
     } else {
-        Color.Black.copy(alpha = 0.03f)
+        Color(0xFFF8F9FA) // Opaque light surface — elevation shadow separates
     }
     val placeholderPainter = rememberAuroraCoverPlaceholderPainter()
     Card(
@@ -655,17 +655,16 @@ private fun NovelLibraryAuroraCoverOnlyCard(
         ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = tabContainerColor),
-        border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp,
-            color = if (isSelected) {
-                colors.accent
-            } else if (colors.isDark) {
-                Color.Transparent
-            } else {
-                Color.LightGray.copy(alpha = 0.4f)
-            },
+        border = if (isSelected) {
+            BorderStroke(2.dp, colors.accent)
+        } else if (colors.isDark) {
+            BorderStroke(1.dp, Color.Transparent)
+        } else {
+            null // Light mode: floating shadow
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!colors.isDark && !isSelected) 4.dp else 0.dp,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         BoxWithConstraints(
             modifier = Modifier

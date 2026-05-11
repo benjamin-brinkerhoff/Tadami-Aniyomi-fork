@@ -20,7 +20,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -128,7 +128,7 @@ fun NovelActionCard(
                 ActionButton(
                     icon = {
                         Icon(
-                            Icons.Outlined.Translate,
+                            Icons.Rounded.Translate,
                             contentDescription = null,
                             tint = colors.accent,
                             modifier = Modifier.size(24.dp),

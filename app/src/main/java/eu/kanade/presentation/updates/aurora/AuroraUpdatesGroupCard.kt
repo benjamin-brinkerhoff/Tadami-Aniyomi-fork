@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -48,7 +50,27 @@ fun AuroraUpdatesGroupCard(
 ) {
     val colors = AuroraTheme.colors
     val context = LocalContext.current
-    val tabContainerColor = resolveAuroraControlContainerColor(colors)
+    val tabContainerColor = if (!colors.isDark && !colors.isEInk) {
+        Color.White
+    } else {
+        resolveAuroraControlContainerColor(colors)
+    }
+    val rimBrush = when {
+        colors.isDark -> Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.24f),
+                colors.accent.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.06f),
+            ),
+        )
+        colors.isEInk -> Brush.verticalGradient(
+            colors = listOf(
+                resolveAuroraBorderColor(colors, emphasized = true),
+                resolveAuroraBorderColor(colors, emphasized = false),
+            ),
+        )
+        else -> Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+    }
     val placeholderPainter = rememberAuroraCoverPlaceholderPainter()
     val coverRequest = remember(coverData) {
         buildAuroraCoverImageRequest(context, coverData)
@@ -61,15 +83,17 @@ fun AuroraUpdatesGroupCard(
             .padding(horizontal = 20.dp, vertical = 6.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = tabContainerColor),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (colors.isEInk) {
-                resolveAuroraBorderColor(colors, emphasized = true)
-            } else {
-                colors.accent.copy(alpha = 0.18f)
-            },
+        border = if (colors.isDark || colors.isEInk) {
+            BorderStroke(
+                width = 1.dp,
+                brush = rimBrush,
+            )
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!colors.isDark && !colors.isEInk) 2.dp else 0.dp,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

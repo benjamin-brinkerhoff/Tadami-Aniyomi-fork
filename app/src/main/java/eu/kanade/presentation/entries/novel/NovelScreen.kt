@@ -30,7 +30,7 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -91,6 +91,7 @@ import eu.kanade.tachiyomi.ui.entries.novel.NovelScreenModel
 import eu.kanade.tachiyomi.ui.entries.novel.resolveNovelChapterDisplayData
 import eu.kanade.tachiyomi.ui.entries.novel.resolveNovelChapterRowIndex
 import eu.kanade.tachiyomi.ui.entries.novel.resolveNovelVisibleChapterRows
+import kotlinx.coroutines.delay
 import me.saket.swipe.SwipeableActionsBox
 import tachiyomi.domain.items.novelchapter.model.NovelChapter
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -453,9 +454,15 @@ fun NovelScreen(
                         MaterialTheme.colorScheme.background,
                     )
                     val blurRadiusPx = with(LocalDensity.current) { 4.dp.roundToPx() }
+                    var showBackdropCover by remember(state.novel.id) { mutableStateOf(false) }
                     val fallbackPainter = rememberThemeAwareCoverErrorPainter(
                         variant = AuroraCoverPlaceholderVariant.Wide,
                     )
+
+                    LaunchedEffect(state.novel.id) {
+                        delay(100)
+                        showBackdropCover = true
+                    }
 
                     Box(
                         modifier = Modifier
@@ -465,27 +472,29 @@ fun NovelScreen(
                                 vertical = MaterialTheme.padding.small,
                             ),
                     ) {
-                        AsyncImage(
-                            model = buildNovelCoverImageRequest(context, state.novel) {
-                                crossfade(true)
-                                staticBlur(blurRadiusPx, intensityFactor = 0.6f)
-                            },
-                            error = fallbackPainter,
-                            fallback = fallbackPainter,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            colorFilter = rememberAuroraPosterColorFilter(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(220.dp)
-                                .drawWithContent {
-                                    drawContent()
-                                    drawRect(
-                                        brush = Brush.verticalGradient(colors = backdropGradientColors),
-                                    )
-                                }
-                                .alpha(0.2f),
-                        )
+                        if (showBackdropCover) {
+                            AsyncImage(
+                                model = buildNovelCoverImageRequest(context, state.novel) {
+                                    crossfade(true)
+                                    staticBlur(blurRadiusPx, intensityFactor = 0.6f)
+                                },
+                                error = fallbackPainter,
+                                fallback = fallbackPainter,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                colorFilter = rememberAuroraPosterColorFilter(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp)
+                                    .drawWithContent {
+                                        drawContent()
+                                        drawRect(
+                                            brush = Brush.verticalGradient(colors = backdropGradientColors),
+                                        )
+                                    }
+                                    .alpha(0.2f),
+                            )
+                        }
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -672,7 +681,7 @@ fun NovelScreen(
                         }
                         if (onOpenTranslatedDownloadDialog != null) {
                             TextButton(onClick = onOpenTranslatedDownloadDialog) {
-                                Icon(imageVector = Icons.Outlined.Translate, contentDescription = null)
+                                Icon(imageVector = Icons.Rounded.Translate, contentDescription = null)
                                 Text(
                                     text = stringResource(AYMR.strings.novel_translated_download_short),
                                     modifier = Modifier.padding(start = 4.dp),
@@ -1472,7 +1481,7 @@ private fun NovelClassicChapterRow(
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 val translateState = chapterActionState.translateState
                                 NovelChapterActionButton(
-                                    icon = Icons.Outlined.Translate,
+                                    icon = Icons.Rounded.Translate,
                                     iconTint = when (translateState) {
                                         NovelChapterActionIconState.Active -> MaterialTheme.colorScheme.primary
                                         NovelChapterActionIconState.InProgress -> MaterialTheme.colorScheme.tertiary

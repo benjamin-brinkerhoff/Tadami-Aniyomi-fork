@@ -1,6 +1,7 @@
 package eu.kanade.presentation.components
 
 import android.os.Build
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
@@ -15,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import eu.kanade.presentation.theme.AuroraTheme
 
 /**
  * Aniview Premium Glow Effect
@@ -49,37 +51,46 @@ fun Modifier.glowEffect(
 }
 
 /**
- * Cyan glow effect for library cards and progress indicators
+ * Cyan glow effect for library cards and progress indicators.
+ * Uses the theme's glow color by default for accent-awareness.
  */
+@Composable
 fun Modifier.cyanGlow(
     blurRadius: Dp = 12.dp,
     alpha: Float = 0.15f,
+    color: Color = AuroraTheme.colors.glowEffect,
 ): Modifier = glowEffect(
-    color = Color(0xFF00E5FF),
+    color = color,
     blurRadius = blurRadius,
     alpha = alpha,
 )
 
 /**
- * Electric blue glow for active elements and buttons
+ * Electric blue glow for active elements and buttons.
+ * Uses the theme's accent color by default.
  */
+@Composable
 fun Modifier.electricBlueGlow(
     blurRadius: Dp = 16.dp,
     alpha: Float = 0.6f,
+    color: Color = AuroraTheme.colors.accent,
 ): Modifier = glowEffect(
-    color = Color(0xFF0095FF),
+    color = color,
     blurRadius = blurRadius,
     alpha = alpha,
 )
 
 /**
- * Purple glow for premium features
+ * Purple glow for premium features.
+ * Uses the theme's accent color by default.
  */
+@Composable
 fun Modifier.purpleGlow(
     blurRadius: Dp = 16.dp,
     alpha: Float = 0.5f,
+    color: Color = AuroraTheme.colors.accent,
 ): Modifier = glowEffect(
-    color = Color(0xFF7C4DFF),
+    color = color,
     blurRadius = blurRadius,
     alpha = alpha,
 )

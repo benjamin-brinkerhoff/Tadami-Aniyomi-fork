@@ -317,6 +317,8 @@ class NovelJsRuntimeFactory(
 
         override fun domAttr(handle: Int, name: String): String? = domStore.getAttr(handle, name)
 
+        override fun domRemoveAttr(handle: Int, name: String) = domStore.removeAttr(handle, name)
+
         override fun domAttrs(handle: Int): String =
             json.encodeToString(domStore.getAllAttrs(handle))
 
@@ -657,6 +659,9 @@ class NovelJsRuntimeFactory(
             }
             if ("accept-language" !in presentHeaders) {
                 builder.addHeader("Accept-Language", DEFAULT_ACCEPT_LANGUAGE)
+            }
+            if ("cache-control" !in presentHeaders) {
+                builder.addHeader("Cache-Control", "max-age=0")
             }
             if ("referer" !in presentHeaders && origin != null) {
                 builder.addHeader("Referer", "$origin/")

@@ -125,4 +125,28 @@ class NovelPluginFilterMapperTest {
         val genres = values["genres"]!!.jsonObject["value"] as JsonArray
         genres.size shouldBe 0
     }
+
+    @Test
+    fun `empty picker value stays unselected`() {
+        val mapper = NovelPluginFilterMapper(Json { ignoreUnknownKeys = true })
+        val filtersJson = """
+            {
+              "singlechap": {
+                "type": "Picker",
+                "label": "Single Chapter Stories",
+                "value": "",
+                "options": [
+                  { "label": "Single Chapter", "value": "1" }
+                ]
+              }
+            }
+        """.trimIndent()
+
+        val filterList = mapper.toFilterList(filtersJson)
+        val picker = filterList.first() as NovelPluginFilterMapper.PluginPickerFilter
+        picker.state shouldBe -1
+
+        val values = mapper.toFilterValues(filterList)
+        values["singlechap"]!!.jsonObject["value"]!!.jsonPrimitive.content shouldBe ""
+    }
 }

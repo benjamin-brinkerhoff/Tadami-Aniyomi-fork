@@ -47,7 +47,10 @@ fun BrowseAnimeSourceCompactGrid(
             }
         }
 
-        items(count = animeList.itemCount) { index ->
+        items(
+            count = animeList.itemCount,
+            key = { index -> animeBrowseItemKey(animeList[index]?.value?.url, index) },
+        ) { index ->
             val anime by animeList[index]?.collectAsState() ?: return@items
             BrowseAnimeSourceCompactGridItem(
                 anime = anime,

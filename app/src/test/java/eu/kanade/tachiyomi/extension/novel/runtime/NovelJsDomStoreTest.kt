@@ -441,6 +441,15 @@ class NovelJsDomStoreTest {
         }
 
         @Test
+        fun `removeAttr removes attribute from element`() {
+            val root = store.loadDocument("<a href='https://example.com' data-x='1'>x</a>")
+            val anchor = store.select(root, "a")[0]
+            store.removeAttr(anchor, "href")
+            store.getAttr(anchor, "href") shouldBe null
+            store.getAttr(anchor, "data-x") shouldBe "1"
+        }
+
+        @Test
         fun `before inserts html before element`() {
             val root = store.loadDocument("<ul><li id='me'>me</li></ul>")
             val me = store.select(root, "#me")[0]

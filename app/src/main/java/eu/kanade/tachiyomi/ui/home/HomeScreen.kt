@@ -15,12 +15,19 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -31,6 +38,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -40,9 +48,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +65,7 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabNavigator
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
+import eu.kanade.domain.ui.model.BottomNavAppearance
 import eu.kanade.domain.ui.model.StartScreen
 import eu.kanade.presentation.components.LocalHostScaffoldContentPadding
 import eu.kanade.presentation.components.auroraMenuRimLightBrush
@@ -115,6 +126,7 @@ object HomeScreen : Screen() {
     override fun Content() {
         val context = LocalContext.current
         val navStyle by uiPreferences.navStyle().collectAsState()
+        val bottomNavAppearance by uiPreferences.bottomNavAppearance().collectAsState()
         val isEInkMode = LocalIsEInkMode.current
         val selectedTransitionMode by uiPreferences.navigationTransitionMode().collectAsState()
         val resolvedTransitionMode = resolveNavigationTransitionMode(
@@ -125,8 +137,9 @@ object HomeScreen : Screen() {
         )
         val currentMoreTab = navStyle.moreTab
         val theme by uiPreferences.appTheme().collectAsState()
-        val isAurora = theme.isAuroraStyle
-        val useNavigationRail = isTabletUi() && !isAurora
+        val isAuroraTheme = theme.isAuroraStyle
+        val useNavigationRail = isTabletUi() && !isAuroraTheme
+        val useAuroraBottomNav = bottomNavAppearance == BottomNavAppearance.Aurora
         val navigator = LocalNavigator.currentOrThrow
         val bottomNavVisibilityController = remember { BottomNavVisibilityController() }
         TabNavigator(
@@ -156,44 +169,99 @@ object HomeScreen : Screen() {
                             val showBottomNav = bottomNavVisible &&
                                 bottomNavVisibilityController.isVisible &&
                                 tabNavigator.current != currentMoreTab
+                            val auroraColors = if (useAuroraBottomNav) AuroraTheme.colorsForCurrentTheme() else null
+                            val navBarShape = if (useAuroraBottomNav) {
+                                RoundedCornerShape(28.dp)
+                            } else {
+                                RoundedCornerShape(
+                                    topStart = 20.dp,
+                                    topEnd = 20.dp,
+                                )
+                            }
+                            val navContainerColor = if (useAuroraBottomNav) {
+                                if (auroraColors!!.isDark) {
+                                    auroraColors.surface.copy(alpha = 0.99f)
+                                } else {
+                                    Color.Transparent
+                                }
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainer
+                            }
+                            val navShadowElevation = if (useAuroraBottomNav) {
+                                if (auroraColors!!.isDark) 20.dp else 0.dp
+                            } else {
+                                0.dp
+                            }
+                            val navTonalElevation = if (useAuroraBottomNav) {
+                                if (auroraColors!!.isDark) 0.dp else 0.dp
+                            } else {
+                                0.dp
+                            }
+                            val navModifier = if (useAuroraBottomNav) {
+                                val baseModifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                                if (auroraColors!!.isDark) {
+                                    baseModifier
+                                        .shadow(
+                                            elevation = 10.dp,
+                                            shape = navBarShape,
+                                            ambientColor = Color.White.copy(alpha = 0.12f),
+                                            spotColor = Color.White.copy(alpha = 0.08f),
+                                        )
+                                        .shadow(
+                                            elevation = 3.dp,
+                                            shape = navBarShape,
+                                            ambientColor = Color.White.copy(alpha = 0.18f),
+                                            spotColor = Color.White.copy(alpha = 0.12f),
+                                        )
+                                        .border(
+                                            BorderStroke(
+                                                width = 1.dp,
+                                                brush = auroraMenuRimLightBrush(auroraColors),
+                                            ),
+                                            shape = navBarShape,
+                                        )
+                                } else {
+                                    baseModifier
+                                        .shadow(
+                                            elevation = 16.dp,
+                                            shape = navBarShape,
+                                        )
+                                        .background(
+                                            brush = Brush.verticalGradient(
+                                                listOf(
+                                                    Color.White.copy(alpha = 0.98f),
+                                                    Color.White.copy(alpha = 0.94f),
+                                                ),
+                                            ),
+                                            shape = navBarShape,
+                                        )
+                                        .border(
+                                            BorderStroke(
+                                                width = 1.dp,
+                                                color = Color.White,
+                                            ),
+                                            shape = navBarShape,
+                                        )
+                                }
+                            } else {
+                                Modifier
+                            }
                             if (isEInkMode) {
                                 if (showBottomNav) {
-                                    val auroraColors = if (isAurora) AuroraTheme.colors else null
-                                    val navContainerColor = if (isAurora) {
-                                        if (auroraColors!!.isDark) {
-                                            auroraColors.background
-                                        } else {
-                                            auroraColors.accent.copy(alpha = 0.04f)
-                                                .compositeOver(Color(0xFFF0F4F8))
-                                        }
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainer
-                                    }
                                     NavigationBar(
                                         containerColor = navContainerColor,
-                                        modifier = if (isAurora) {
-                                            Modifier.then(
-                                                if (!auroraColors!!.isDark) {
-                                                    Modifier.border(
-                                                        BorderStroke(
-                                                            width = 1.dp,
-                                                            brush = auroraMenuRimLightBrush(auroraColors),
-                                                        ),
-                                                        shape = RoundedCornerShape(
-                                                            topStart = 20.dp,
-                                                            topEnd = 20.dp,
-                                                        ),
-                                                    )
-                                                } else {
-                                                    Modifier
-                                                },
-                                            )
+                                        contentColor = if (useAuroraBottomNav) {
+                                            auroraColors!!.textPrimary
                                         } else {
-                                            Modifier
+                                            MaterialTheme.colorScheme.contentColorFor(navContainerColor)
                                         },
+                                        shadowElevation = navShadowElevation,
+                                        tonalElevation = navTonalElevation,
+                                        modifier = navModifier,
+                                        shape = navBarShape,
                                     ) {
                                         navStyle.tabs.fastForEach {
-                                            NavigationBarItem(it, isAurora)
+                                            NavigationBarItem(it, useAuroraBottomNav)
                                         }
                                     }
                                 }
@@ -203,42 +271,20 @@ object HomeScreen : Screen() {
                                     enter = expandVertically(expandFrom = Alignment.Bottom),
                                     exit = shrinkVertically(shrinkTowards = Alignment.Bottom),
                                 ) {
-                                    val auroraColors = if (isAurora) AuroraTheme.colors else null
-                                    val navContainerColor = if (isAurora) {
-                                        if (auroraColors!!.isDark) {
-                                            auroraColors.background
-                                        } else {
-                                            auroraColors.accent.copy(alpha = 0.04f)
-                                                .compositeOver(Color(0xFFF0F4F8))
-                                        }
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainer
-                                    }
                                     NavigationBar(
                                         containerColor = navContainerColor,
-                                        modifier = if (isAurora) {
-                                            Modifier.then(
-                                                if (!auroraColors!!.isDark) {
-                                                    Modifier.border(
-                                                        BorderStroke(
-                                                            width = 1.dp,
-                                                            brush = auroraMenuRimLightBrush(auroraColors),
-                                                        ),
-                                                        shape = RoundedCornerShape(
-                                                            topStart = 20.dp,
-                                                            topEnd = 20.dp,
-                                                        ),
-                                                    )
-                                                } else {
-                                                    Modifier
-                                                },
-                                            )
+                                        contentColor = if (useAuroraBottomNav) {
+                                            auroraColors!!.textPrimary
                                         } else {
-                                            Modifier
+                                            MaterialTheme.colorScheme.contentColorFor(navContainerColor)
                                         },
+                                        shadowElevation = navShadowElevation,
+                                        tonalElevation = navTonalElevation,
+                                        modifier = navModifier,
+                                        shape = navBarShape,
                                     ) {
                                         navStyle.tabs.fastForEach {
-                                            NavigationBarItem(it, isAurora)
+                                            NavigationBarItem(it, useAuroraBottomNav)
                                         }
                                     }
                                 }
@@ -402,25 +448,19 @@ object HomeScreen : Screen() {
     }
 
     @Composable
-    private fun RowScope.NavigationBarItem(tab: eu.kanade.presentation.util.Tab, isAurora: Boolean) {
+    private fun RowScope.NavigationBarItem(tab: eu.kanade.presentation.util.Tab, useAuroraBottomNav: Boolean) {
+        if (useAuroraBottomNav) {
+            AuroraNavigationBarItem(tab)
+            return
+        }
+
         val tabNavigator = LocalTabNavigator.current
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
         val selected = tabNavigator.current::class == tab::class
         val appHaptics = LocalAppHaptics.current
 
-        val colors = if (isAurora) {
-            val auroraColors = AuroraTheme.colors
-            NavigationBarItemDefaults.colors(
-                selectedIconColor = auroraColors.accent,
-                selectedTextColor = auroraColors.accent,
-                indicatorColor = auroraColors.accent.copy(alpha = 0.18f),
-                unselectedIconColor = auroraColors.textSecondary.copy(alpha = 0.5f),
-                unselectedTextColor = auroraColors.textSecondary.copy(alpha = 0.5f),
-            )
-        } else {
-            NavigationBarItemDefaults.colors()
-        }
+        val colors = NavigationBarItemDefaults.colors()
 
         NavigationBarItem(
             selected = selected,
@@ -445,6 +485,118 @@ object HomeScreen : Screen() {
             alwaysShowLabel = true,
             colors = colors,
         )
+    }
+
+    @Composable
+    private fun RowScope.AuroraNavigationBarItem(tab: eu.kanade.presentation.util.Tab) {
+        val tabNavigator = LocalTabNavigator.current
+        val navigator = LocalNavigator.currentOrThrow
+        val scope = rememberCoroutineScope()
+        val selected = tabNavigator.current::class == tab::class
+        val appHaptics = LocalAppHaptics.current
+        val auroraColors = AuroraTheme.colorsForCurrentTheme()
+        val interactionSource = remember { MutableInteractionSource() }
+        val iconColor = if (selected) {
+            auroraColors.accent
+        } else {
+            auroraColors.textSecondary.copy(alpha = if (auroraColors.isDark) 0.72f else 0.78f)
+        }
+        val labelColor = if (selected) {
+            auroraColors.accent
+        } else {
+            auroraColors.textSecondary.copy(alpha = if (auroraColors.isDark) 0.82f else 0.88f)
+        }
+        val iconBackgroundBrush = if (selected) {
+            Brush.verticalGradient(
+                listOf(
+                    if (auroraColors.isDark) {
+                        auroraColors.accent.copy(alpha = 0.28f)
+                    } else {
+                        auroraColors.accent.copy(alpha = 0.18f)
+                    },
+                    if (auroraColors.isDark) {
+                        auroraColors.accentVariant.copy(alpha = 0.18f)
+                    } else {
+                        Color.White.copy(alpha = 0.78f)
+                    },
+                ),
+            )
+        } else {
+            null
+        }
+        val iconShape = RoundedCornerShape(999.dp)
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 1.dp)
+                .padding(top = 8.dp, bottom = 0.dp)
+                .selectable(
+                    selected = selected,
+                    role = Role.Tab,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = {
+                        appHaptics.tap()
+                        if (!selected) {
+                            tabNavigator.current = tab
+                        } else {
+                            scope.launch { tab.onReselect(navigator) }
+                        }
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .then(
+                            if (selected) {
+                                Modifier
+                                    .background(iconBackgroundBrush!!, iconShape)
+                                    .border(
+                                        BorderStroke(
+                                            1.dp,
+                                            if (auroraColors.isDark) {
+                                                Color.White.copy(alpha = 0.12f)
+                                            } else {
+                                                auroraColors.accent.copy(alpha = 0.16f)
+                                            },
+                                        ),
+                                        iconShape,
+                                    )
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides iconColor) {
+                        NavigationIconItem(
+                            tab = tab,
+                            selected = selected,
+                            modifier = Modifier.size(21.dp),
+                        )
+                    }
+                }
+
+                Text(
+                    text = tab.options.title,
+                    color = labelColor,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = MaterialTheme.typography.labelLarge.fontSize * 0.92f,
+                    ),
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 
     @Composable
@@ -495,7 +647,11 @@ object HomeScreen : Screen() {
     }
 
     @Composable
-    private fun NavigationIconItem(tab: eu.kanade.presentation.util.Tab, selected: Boolean) {
+    private fun NavigationIconItem(
+        tab: eu.kanade.presentation.util.Tab,
+        selected: Boolean,
+        modifier: Modifier = Modifier,
+    ) {
         BadgedBox(
             badge = {
                 when {
@@ -566,6 +722,7 @@ object HomeScreen : Screen() {
             },
         ) {
             Icon(
+                modifier = modifier,
                 painter = tab.options.icon!!,
                 contentDescription = tab.options.title,
                 // TODO: https://issuetracker.google.com/u/0/issues/316327367

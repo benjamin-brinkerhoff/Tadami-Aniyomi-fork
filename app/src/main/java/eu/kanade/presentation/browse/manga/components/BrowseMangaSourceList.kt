@@ -49,7 +49,10 @@ fun BrowseMangaSourceList(
                 }
             }
 
-            items(count = mangaList.itemCount) { index ->
+            items(
+                count = mangaList.itemCount,
+                key = { index -> mangaBrowseItemKey(mangaList[index]?.value?.url, index) },
+            ) { index ->
                 val manga by mangaList[index]?.collectAsState() ?: return@items
                 BrowseMangaSourceListItem(
                     manga = manga,

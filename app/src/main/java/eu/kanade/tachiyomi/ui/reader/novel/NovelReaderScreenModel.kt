@@ -3,6 +3,7 @@ import android.app.Application
 import android.os.SystemClock
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.entries.novel.model.toSNovel
 import eu.kanade.domain.items.novelchapter.interactor.SyncNovelChaptersWithSource
 import eu.kanade.domain.items.novelchapter.model.toSNovelChapter
@@ -171,6 +172,7 @@ class NovelReaderScreenModel(
     private val novelDownloadManager: NovelDownloadManager = NovelDownloadManager(),
     private val pluginStorage: NovelPluginStorage = Injekt.get(),
     private val historyRepository: NovelHistoryRepository? = null,
+    private val basePreferences: BasePreferences = Injekt.get(),
     private val novelReaderPreferences: NovelReaderPreferences = Injekt.get(),
     private val ttsChapterRepository: NovelTtsChapterRepository = NovelTtsChapterRepository(
         novelChapterRepository = novelChapterRepository,
@@ -4501,6 +4503,7 @@ class NovelReaderScreenModel(
             ?.replace("-", "")
     }
     private suspend fun saveHistorySnapshot(chapterId: Long, sessionReadDurationMs: Long) {
+        if (basePreferences.incognitoMode().get()) return
         runCatching {
             resolvedHistoryRepository?.upsertNovelHistory(
                 NovelHistoryUpdate(

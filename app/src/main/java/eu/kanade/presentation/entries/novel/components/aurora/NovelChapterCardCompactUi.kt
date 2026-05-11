@@ -18,7 +18,7 @@ import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -170,7 +170,7 @@ object NovelChapterCardCompactUi {
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     val translateState = chapterActionState.translateState
                                     NovelChapterActionButton(
-                                        icon = Icons.Outlined.Translate,
+                                        icon = Icons.Rounded.Translate,
                                         iconTint = when (translateState) {
                                             NovelChapterActionIconState.Active -> colors.accent
                                             NovelChapterActionIconState.InProgress -> colors.accent

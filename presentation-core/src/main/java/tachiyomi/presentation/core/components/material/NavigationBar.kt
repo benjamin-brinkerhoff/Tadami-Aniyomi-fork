@@ -23,7 +23,8 @@ fun NavigationBar(
     modifier: Modifier = Modifier,
     containerColor: Color = NavigationBarDefaults.containerColor,
     contentColor: Color = MaterialTheme.colorScheme.contentColorFor(containerColor),
-    tonalElevation: Dp = NavigationBarDefaults.Elevation,
+    shadowElevation: Dp = 0.dp,
+    tonalElevation: Dp = 0.dp,
     windowInsets: WindowInsets = NavigationBarDefaults.windowInsets,
     shape: Shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
     content: @Composable RowScope.() -> Unit,
@@ -32,7 +33,8 @@ fun NavigationBar(
         shape = shape,
         color = containerColor,
         contentColor = contentColor,
-        tonalElevation = 0.dp,
+        shadowElevation = shadowElevation,
+        tonalElevation = tonalElevation,
         modifier = modifier,
     ) {
         Row(

@@ -1,6 +1,7 @@
 package eu.kanade.presentation.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +35,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -55,20 +58,22 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.Hyphens
@@ -92,7 +97,6 @@ import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.LocalAppHaptics
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 data class TabState(
@@ -155,7 +159,7 @@ fun TabbedScreenAurora(
     extraSearchToActionsGap: Dp = 0.dp,
     extraActionGapAfterTitle: String? = null,
     extraHeaderContent: @Composable () -> Unit = {},
-    onPagerSwipeOverride: ((forward: Boolean) -> Boolean)? = null,
+    disablePagerScroll: Boolean = false,
 ) {
     val auroraAdaptiveSpec = rememberAuroraAdaptiveSpec()
     val contentMaxWidthDp = auroraAdaptiveSpec.updatesMaxWidthDp ?: auroraAdaptiveSpec.entryMaxWidthDp
@@ -366,59 +370,12 @@ fun TabbedScreenAurora(
                     }
                 }
             } else {
-                val pagerOverrideActive = onPagerSwipeOverride != null
-                val latestPagerSwipeOverride = rememberUpdatedState(onPagerSwipeOverride)
-                val pagerContainerModifier = if (pagerOverrideActive) {
-                    Modifier
-                        .fillMaxSize()
-                        .pointerInput(switchThresholdPx, maxBouncePx) {
-                            var totalDragPx = 0f
-                            detectHorizontalDragGestures(
-                                onDragStart = {
-                                    totalDragPx = 0f
-                                    edgeBounceTargetPx = 0f
-                                },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    totalDragPx += dragAmount
-                                },
-                                onDragCancel = {
-                                    totalDragPx = 0f
-                                    edgeBounceTargetPx = 0f
-                                },
-                                onDragEnd = {
-                                    val dragMagnitude = abs(totalDragPx)
-                                    if (dragMagnitude >= switchThresholdPx) {
-                                        // Swipe-left (negative) means "forward" (next item).
-                                        val forward = totalDragPx < 0f
-                                        val consumed = latestPagerSwipeOverride.value
-                                            ?.invoke(forward) == true
-                                        if (!consumed) {
-                                            val direction = if (totalDragPx > 0f) 1f else -1f
-                                            scope.launch {
-                                                edgeBounceTargetPx = direction * maxBouncePx
-                                                delay(90)
-                                                edgeBounceTargetPx = 0f
-                                            }
-                                        } else {
-                                            edgeBounceTargetPx = 0f
-                                        }
-                                    } else {
-                                        edgeBounceTargetPx = 0f
-                                    }
-                                    totalDragPx = 0f
-                                },
-                            )
-                        }
-                        .offset { IntOffset(edgeBounceOffsetPx.roundToInt(), 0) }
-                } else {
-                    Modifier.fillMaxSize()
-                }
-                Box(modifier = pagerContainerModifier) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     HorizontalPager(
                         modifier = Modifier.fillMaxSize(),
                         state = state,
                         verticalAlignment = Alignment.Top,
-                        userScrollEnabled = !pagerOverrideActive,
+                        userScrollEnabled = !disablePagerScroll,
                     ) { page ->
                         val tabState = TabState(
                             tabs = tabs,
@@ -472,6 +429,15 @@ private fun AuroraTabHeader(
     val iconActions = actions.filterIsInstance<AppBar.Action>()
     val overflowActions = actions.filterIsInstance<AppBar.OverflowAction>()
     var showOverflowMenu by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(isSearchActive) {
+        if (isSearchActive) {
+            searchFocusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -492,7 +458,9 @@ private fun AuroraTabHeader(
             TextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(searchFocusRequester),
                 placeholder = {
                     Text(
                         text = stringResource(MR.strings.action_search),
@@ -624,27 +592,46 @@ internal fun AuroraTabRow(
     val scrollState = rememberScrollState()
     val menuBorderBrush = remember(colors) { auroraMenuRimLightBrush(colors) }
     val tabContainerColor = resolveAuroraTabContainerColor(colors)
+    val isLightTheme = !colors.isDark && !colors.isEInk
+    val showBorderFinal = showBorder && (colors.isDark || colors.isEInk)
+    val tabShape = RoundedCornerShape(28.dp)
 
-    Box(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(28.dp))
-            .background(
-                tabContainerColor,
-                RoundedCornerShape(28.dp),
-            )
             .then(
-                if (showBorder) {
-                    Modifier.border(
-                        width = 0.75.dp,
-                        brush = menuBorderBrush,
-                        shape = RoundedCornerShape(28.dp),
-                    )
+                if (isLightTheme) {
+                    Modifier
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = tabShape,
+                        )
+                        .background(
+                            brush = Brush.verticalGradient(
+                                listOf(
+                                    Color.White.copy(alpha = 0.70f),
+                                    Color.White.copy(alpha = 0.60f),
+                                ),
+                            ),
+                            shape = tabShape,
+                        )
                 } else {
                     Modifier
                 },
             ),
+        shape = tabShape,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isLightTheme) Color.Transparent else tabContainerColor,
+        ),
+        border = if (showBorderFinal) {
+            BorderStroke(0.75.dp, menuBorderBrush)
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp,
+        ),
     ) {
         Row(
             modifier = Modifier
@@ -696,7 +683,7 @@ internal fun AuroraTab(
                 if (colors.isDark) {
                     colors.accent.copy(alpha = 0.18f)
                 } else {
-                    Color.White.copy(alpha = 0.85f)
+                    Color.White.copy(alpha = 0.40f)
                 },
             ),
             start = androidx.compose.ui.geometry.Offset.Zero,
@@ -837,7 +824,7 @@ internal fun resolveAuroraTabContainerColor(colors: AuroraColors): Color {
     return if (colors.isDark) {
         Color.White.copy(alpha = 0.05f)
     } else {
-        colors.accent.copy(alpha = 0.05f).compositeOver(Color(0xFFF0F4F8))
+        Color.Transparent
     }
 }
 

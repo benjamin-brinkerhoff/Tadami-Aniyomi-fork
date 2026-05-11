@@ -215,6 +215,11 @@ class NovelJsDomStore {
         return el.attr(name)
     }
 
+    fun removeAttr(handle: Int, name: String) {
+        val el = elementOrNull(handle) ?: return
+        el.removeAttr(name)
+    }
+
     fun getAllAttrs(handle: Int): Map<String, String> {
         val el = elementOrNull(handle) ?: return emptyMap()
         return el.attributes().associate { it.key to it.value }

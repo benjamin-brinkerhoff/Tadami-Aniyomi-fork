@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Public
-import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -84,7 +84,7 @@ fun MangaStatsCard(
                     modifier = Modifier.weight(1f),
                 )
                 QuietMetadataRow(
-                    icon = Icons.Outlined.Translate,
+                    icon = Icons.Rounded.Translate,
                     label = stringResource(AYMR.strings.aurora_translation),
                     value = detailsSnapshot.translationText ?: stringResource(MR.strings.not_applicable),
                     modifier = Modifier.weight(1f),

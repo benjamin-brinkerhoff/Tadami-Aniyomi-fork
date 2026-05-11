@@ -138,9 +138,9 @@ data class AuroraColors(
                         cardBackground = if (isDark) {
                             Color.White.copy(alpha = 0.12f)
                         } else {
-                            Color(0xFFF0F4F8)
+                            colorScheme.surfaceContainerHigh
                         },
-                        divider = if (isDark) colorScheme.outlineVariant else Color(0xFFB8CCE0),
+                        divider = if (isDark) colorScheme.outlineVariant else colorScheme.outlineVariant,
                         eInkProfile = EInkProfile.OFF,
                         isDark = isDark,
                         isEInk = false,
@@ -195,20 +195,20 @@ data class AuroraColors(
             accentVariant = AuroraColorScheme.auroraAccentLight,
             background = AuroraColorScheme.auroraLightBackground,
             surface = AuroraColorScheme.auroraLightSurface,
-            gradientStart = AuroraColorScheme.auroraLightGradientStart,
-            gradientEnd = AuroraColorScheme.auroraLightGradientEnd,
+            gradientStart = Color(0xFFF2F2F5),
+            gradientEnd = AuroraColorScheme.auroraLightBackground,
             glass = Color(0xE6FFFFFF),
             textPrimary = Color(0xFF0f172a),
             textSecondary = Color(0xFF475569),
             textOnAccent = Color.White,
-            cardBackground = Color(0xFFF0F4F8),
-            divider = Color(0xFFB8CCE0),
+            cardBackground = Color(0xFFF0F2F4),
+            divider = Color(0xFFD0D4D8),
             eInkProfile = EInkProfile.OFF,
             isDark = false,
             isEInk = false,
             progressCyan = AuroraColorScheme.aniviewCyan,
             glowEffect = AuroraColorScheme.aniviewElectricBlue,
-            gradientPurple = Color(0xFF6366f1),
+            gradientPurple = Color(0xFF6366f1), // ignored in light mode, overridden by accent/tertiary
             // Semantic colors - light theme
             success = Color(0xFF22C55E),
             warning = Color(0xFFF59E0B),
@@ -328,11 +328,11 @@ object AuroraTheme {
 
     @Composable
     fun colorsForCurrentTheme(): AuroraColors {
-        return when {
-            LocalIsEInkMode.current -> LocalAuroraColors.current
-            isSystemInDarkTheme() -> AuroraColors.Dark
-            else -> AuroraColors.Light
-        }
+        if (LocalIsEInkMode.current) return LocalAuroraColors.current
+        return AuroraColors.fromColorScheme(
+            colorScheme = MaterialTheme.colorScheme,
+            isDark = isSystemInDarkTheme(),
+        )
     }
 }
 

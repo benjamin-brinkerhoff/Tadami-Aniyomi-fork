@@ -81,6 +81,8 @@ class NovelJsSource internal constructor(
     private var cachedImageRequestHeaders: Map<String, String>? = null
     private var capabilities: NovelPluginCapabilities? = null
     private var settingsSchema: List<PluginSettingDefinition> = emptyList()
+    private var cachedParseNovelUrl: String? = null
+    private var cachedParseNovelResult: ParsedPluginNovel? = null
 
     override val pluginCapabilities: NovelPluginCapabilities?
         get() = capabilities
@@ -329,17 +331,7 @@ class NovelJsSource internal constructor(
         ) {
             mutex.withLock {
                 val runtime = ensureRuntimeLocked()
-                val payload = callPlugin(runtime, "parseNovel", toJsString(novel.url))
-                logcat(LogPriority.DEBUG) {
-                    "Novel parseNovel payload plugin=${plugin.id} url=${novel.url} " +
-                        "bytes=${payload.length} preview=${payload.take(240)}"
-                }
-                val parsed = NovelJsPayloadParser.parseNovel(json, payload)
-                logcat(LogPriority.DEBUG) {
-                    "Novel parseNovel result plugin=${plugin.id} url=${novel.url} " +
-                        "name=${parsed?.name ?: "null"} path=${parsed?.path ?: "null"} " +
-                        "chapters=${parsed?.chapters?.size ?: 0} totalPages=${parsed?.totalPages?.toString() ?: "null"}"
-                }
+                val parsed = fetchParseNovelLocked(runtime, novel.url)
                 parsed?.let { enrichNovelDetails(runtime, novel.url, it) }
             }
         } ?: return novel
@@ -362,22 +354,9 @@ class NovelJsSource internal constructor(
             defaultValue = emptyList(),
         ) {
             val runtime = mutex.withLock { ensureRuntimeLocked() }
-            val sourceNovel = runCatching {
-                mutex.withLock {
-                    val payload = callPlugin(runtime, "parseNovel", toJsString(novel.url))
-                    logcat(LogPriority.DEBUG) {
-                        "Novel chapterList parseNovel payload plugin=${plugin.id} url=${novel.url} " +
-                            "bytes=${payload.length} preview=${payload.take(240)}"
-                    }
-                    NovelJsPayloadParser.parseNovel(json, payload).also { parsed ->
-                        logcat(LogPriority.DEBUG) {
-                            "Novel chapterList parseNovel result plugin=${plugin.id} url=${novel.url} " +
-                                "name=${parsed?.name ?: "null"} path=${parsed?.path ?: "null"} " +
-                                "chapters=${parsed?.chapters?.size ?: 0} totalPages=${parsed?.totalPages?.toString() ?: "null"}"
-                        }
-                    }
-                }
-            }.getOrNull()
+            val sourceNovel = mutex.withLock {
+                fetchParseNovelLocked(runtime, novel.url)
+            }
 
             if (sourceNovel == null) {
                 if (!runtimeOverride.disableFallbacks) {
@@ -780,6 +759,36 @@ class NovelJsSource internal constructor(
             "novel-plugin-settings.js",
         ) as? String
         return arrayPayload.takeUnless { it.isNullOrBlank() || it == "null" || it == "[]" }
+    }
+
+    /**
+     * Fetches and parses a novel from the plugin, with URL-based caching to avoid
+     * duplicate HTTP requests when both [getNovelDetails] and [getChapterList] need
+     * the same page.
+     * Must be called inside [mutex.withLock].
+     */
+    private fun fetchParseNovelLocked(runtime: NovelJsRuntime, url: String): ParsedPluginNovel? {
+        if (cachedParseNovelUrl == url) {
+            logcat(LogPriority.DEBUG) {
+                "Novel parseNovel cache hit plugin=${plugin.id} url=$url"
+            }
+            return cachedParseNovelResult
+        }
+        val payload = callPlugin(runtime, "parseNovel", toJsString(url))
+        logcat(LogPriority.DEBUG) {
+            "Novel parseNovel payload plugin=${plugin.id} url=$url " +
+                "bytes=${payload.length} preview=${payload.take(240)}"
+        }
+        val parsed = NovelJsPayloadParser.parseNovel(json, payload)
+        logcat(LogPriority.DEBUG) {
+            "Novel parseNovel result plugin=${plugin.id} url=$url " +
+                "name=${parsed?.name ?: "null"} path=${parsed?.path ?: "null"} " +
+                "chapters=${parsed?.chapters?.size ?: 0} " +
+                "totalPages=${parsed?.totalPages?.toString() ?: "null"}"
+        }
+        cachedParseNovelUrl = url
+        cachedParseNovelResult = parsed
+        return parsed
     }
 
     private fun callPlugin(runtime: NovelJsRuntime, functionName: String, vararg args: String): String {

@@ -91,6 +91,9 @@ data class NovelReaderSettings(
     val customCSS: String,
     val customJS: String,
 
+    // Text selection
+    val textSelectionEnabled: Boolean = false,
+
     // Selected text translation
     val selectedTextTranslationEnabled: Boolean = true,
     val selectedTextTranslationTargetLanguage: String = "Russian",
@@ -608,6 +611,9 @@ class NovelReaderPreferences(
 
     fun customJS() = preferenceStore.getString("novel_reader_custom_js", "")
 
+    fun textSelectionEnabled() =
+        preferenceStore.getBoolean("novel_reader_text_selection_enabled", false)
+
     fun selectedTextTranslationEnabled() =
         preferenceStore.getBoolean("novel_reader_selected_text_translation_enabled", false)
 
@@ -1048,6 +1054,8 @@ class NovelReaderPreferences(
             bionicReading = override?.bionicReading ?: bionicReading().get(),
             customCSS = override?.customCSS ?: customCSS().get(),
             customJS = override?.customJS ?: customJS().get(),
+            textSelectionEnabled =
+            textSelectionEnabled().get(),
             selectedTextTranslationEnabled =
             selectedTextTranslationEnabled().get(),
             selectedTextTranslationTargetLanguage =
@@ -1264,14 +1272,16 @@ class NovelReaderPreferences(
         val advancedFlow = combine(
             customCSS().changes(),
             customJS().changes(),
+            textSelectionEnabled().changes(),
             selectedTextTranslationEnabled().changes(),
             selectedTextTranslationTargetLanguage().changes(),
         ) { values: Array<Any?> ->
             AdvancedSettings(
                 customCSS = values[0] as String,
                 customJS = values[1] as String,
-                selectedTextTranslationEnabled = values[2] as Boolean,
-                selectedTextTranslationTargetLanguage = values[3] as String,
+                textSelectionEnabled = values[2] as Boolean,
+                selectedTextTranslationEnabled = values[3] as Boolean,
+                selectedTextTranslationTargetLanguage = values[4] as String,
             )
         }.distinctUntilChanged()
 
@@ -1488,6 +1498,7 @@ class NovelReaderPreferences(
                 bionicReading = override?.bionicReading ?: accessibility.bionicReading,
                 customCSS = override?.customCSS ?: advanced.customCSS,
                 customJS = override?.customJS ?: advanced.customJS,
+                textSelectionEnabled = advanced.textSelectionEnabled,
                 selectedTextTranslationEnabled = advanced.selectedTextTranslationEnabled,
                 selectedTextTranslationTargetLanguage = advanced.selectedTextTranslationTargetLanguage,
                 geminiEnabled = gemini.enabled,
@@ -1633,6 +1644,7 @@ class NovelReaderPreferences(
     private data class AdvancedSettings(
         val customCSS: String,
         val customJS: String,
+        val textSelectionEnabled: Boolean,
         val selectedTextTranslationEnabled: Boolean,
         val selectedTextTranslationTargetLanguage: String,
     )

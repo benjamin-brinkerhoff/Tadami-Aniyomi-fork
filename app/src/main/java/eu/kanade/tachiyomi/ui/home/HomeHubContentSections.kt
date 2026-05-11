@@ -1,8 +1,11 @@
 package eu.kanade.tachiyomi.ui.home
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,9 +27,12 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -171,6 +177,12 @@ internal fun HeroSection(
         }
     }
     val rimLightBrush = remember(colors) { homeHubRimLightBrush(colors) }
+    val heroInteractionSource = remember { MutableInteractionSource() }
+    val isHeroPressed by heroInteractionSource.collectIsPressedAsState()
+    val heroElevation by animateDpAsState(
+        targetValue = if (isHeroPressed) 8.dp else 4.dp,
+        label = "heroElevation",
+    )
     val actionButtonShape = RoundedCornerShape(16.dp)
     val actionButtonSurfaceSpec = remember(ctaMode, colors.isDark) {
         resolveHomeHubHeroButtonSurfaceSpec(
@@ -306,12 +318,27 @@ internal fun HeroSection(
     }
 
     Box(
-        modifier = Modifier.auroraCenteredMaxWidth(contentMaxWidthDp).height(
-            440.dp,
-        ).padding(horizontal = 16.dp, vertical = 14.dp)
+        modifier = Modifier
+            .auroraCenteredMaxWidth(contentMaxWidthDp)
+            .height(440.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
             .clip(heroCardShape)
-            .border(width = 1.dp, brush = rimLightBrush, shape = heroCardShape)
-            .clickable {
+            .then(
+                if (colors.isDark || colors.isEInk) {
+                    Modifier.border(width = 1.dp, brush = rimLightBrush, shape = heroCardShape)
+                } else {
+                    Modifier.shadow(
+                        elevation = heroElevation,
+                        shape = heroCardShape,
+                        ambientColor = Color.Black.copy(alpha = 0.04f),
+                        spotColor = Color.Black.copy(alpha = 0.10f),
+                    )
+                },
+            )
+            .clickable(
+                interactionSource = heroInteractionSource,
+                indication = null,
+            ) {
                 appHaptics.tap()
                 onEntryClick()
             },
@@ -536,63 +563,61 @@ internal fun QuickSourceButton(sourceName: String?, onClick: () -> Unit) {
     val appHaptics = LocalAppHaptics.current
     val auroraAdaptiveSpec = rememberAuroraAdaptiveSpec()
     val contentMaxWidthDp = auroraAdaptiveSpec.updatesMaxWidthDp ?: auroraAdaptiveSpec.entryMaxWidthDp
-    val sourceButtonShape = RoundedCornerShape(16.dp)
+    val sourceButtonShape = RoundedCornerShape(14.dp)
     val sourceSurface = when {
         colors.isEInk -> resolveAuroraSurfaceColor(colors, AuroraSurfaceLevel.Strong)
         colors.background.luminance() < 0.5f -> {
             Color.White.copy(alpha = 0.05f)
         }
-        else -> resolveAuroraSurfaceColor(colors, AuroraSurfaceLevel.Strong)
+        else -> Color.White
     }
     val sourceBorderBrush = remember(colors) { auroraMenuRimLightBrush(colors) }
     val sourceShadowElevation = when {
-        colors.isEInk -> 4.dp
-        colors.isDark -> 8.dp
+        colors.isEInk -> 0.dp
+        colors.isDark -> 2.dp
         else -> 2.dp
     }
-    val sourceAmbientShadow = when {
-        colors.isEInk -> Color.Black.copy(alpha = 0.06f)
-        colors.isDark -> Color.Black.copy(alpha = 0.08f)
-        else -> Color.Black.copy(alpha = 0.03f)
-    }
-    val sourceSpotShadow = when {
-        colors.isEInk -> Color.Black.copy(alpha = 0.08f)
-        colors.isDark -> Color.Black.copy(alpha = 0.12f)
-        else -> Color.Black.copy(alpha = 0.05f)
-    }
-    val sourceBorderWidth = if (colors.isDark) 0.75.dp else 1.dp
+    val sourceShowBorder = colors.isDark || colors.isEInk
+    val sourceBorderWidth = if (sourceShowBorder) 1.dp else 0.dp
 
     Box(
         modifier = Modifier
             .auroraCenteredMaxWidth(contentMaxWidthDp)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 10.dp),
     ) {
         Button(
             onClick = {
                 appHaptics.tap()
                 onClick()
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = sourceSurface,
+                contentColor = colors.textPrimary,
+            ),
             shape = sourceButtonShape,
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = if (sourceShowBorder) 0.dp else 2.dp,
+                pressedElevation = if (sourceShowBorder) 0.dp else 6.dp,
+                focusedElevation = if (sourceShowBorder) 0.dp else 4.dp,
+                hoveredElevation = if (sourceShowBorder) 0.dp else 4.dp,
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .shadow(
-                    elevation = sourceShadowElevation,
-                    shape = sourceButtonShape,
-                    ambientColor = sourceAmbientShadow,
-                    spotColor = sourceSpotShadow,
-                )
-                .clip(sourceButtonShape)
-                .background(sourceSurface)
-                .border(sourceBorderWidth, sourceBorderBrush, sourceButtonShape),
+                .height(48.dp)
+                .then(
+                    if (sourceShowBorder) {
+                        Modifier.border(sourceBorderWidth, sourceBorderBrush, sourceButtonShape)
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
-            Icon(Icons.Filled.Search, null, tint = colors.accent, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(10.dp))
+            Icon(Icons.Filled.Search, null, tint = colors.accent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
                 text = sourceName ?: stringResource(AYMR.strings.aurora_open_source),
                 color = colors.textPrimary,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -659,8 +684,10 @@ internal fun HomeHubRecentPosterCard(
     )
     val outerSurface = if (colors.isDark) {
         colors.glass.copy(alpha = surfaceSpec.containerAlpha)
-    } else {
+    } else if (colors.isEInk) {
         resolveAuroraSurfaceColor(colors, AuroraSurfaceLevel.Glass)
+    } else {
+        Color.White
     }
     val posterSurface = if (colors.isDark) {
         colors.cardBackground.copy(alpha = surfaceSpec.posterAlpha)
@@ -668,70 +695,81 @@ internal fun HomeHubRecentPosterCard(
         resolveAuroraSurfaceColor(colors, AuroraSurfaceLevel.Subtle)
     }
 
-    Column(
-        modifier = modifier
-            .clip(cardShape)
-            .clickable {
-                appHaptics.tap()
-                onClick()
-            }
-            .background(outerSurface)
-            .padding(6.dp),
+    Card(
+        onClick = {
+            appHaptics.tap()
+            onClick()
+        },
+        modifier = modifier,
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = outerSurface),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!colors.isDark && !colors.isEInk) 2.dp else 0.dp,
+            pressedElevation = if (!colors.isDark && !colors.isEInk) 6.dp else 0.dp,
+        ),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(posterSpec.posterAspectRatio)
-                .clip(posterShape)
-                .background(posterSurface)
-                .border(
-                    width = 1.dp,
-                    color = if (colors.isDark) {
-                        Color.White.copy(alpha = 0.06f)
-                    } else {
-                        Color.Black.copy(alpha = 0.04f)
-                    },
-                    shape = posterShape,
-                ),
-        ) {
-            AsyncImage(
-                model = resolveAuroraCoverModel(coverData),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                colorFilter = rememberAuroraPosterColorFilter(),
-                modifier = Modifier.fillMaxSize(),
-                error = fallbackPainter,
-                fallback = fallbackPainter,
-            )
-        }
-
-        Spacer(Modifier.height(posterSpec.textTopSpacingDp.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = posterSpec.textBlockMinHeightDp.dp)
-                .padding(horizontal = posterSpec.textHorizontalPaddingDp.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = title,
-                color = colors.textPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = posterSpec.titleMaxLines,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 17.sp,
-            )
-
-            if (subtitle != null) {
-                Text(
-                    text = subtitle,
-                    color = colors.textSecondary,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+        Column(modifier = Modifier.padding(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(posterSpec.posterAspectRatio)
+                    .clip(posterShape)
+                    .background(posterSurface)
+                    .then(
+                        if (colors.isDark || colors.isEInk) {
+                            Modifier.border(
+                                width = 1.dp,
+                                color = if (colors.isDark) {
+                                    Color.White.copy(alpha = 0.06f)
+                                } else {
+                                    Color.Black.copy(alpha = 0.04f)
+                                },
+                                shape = posterShape,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
+            ) {
+                AsyncImage(
+                    model = resolveAuroraCoverModel(coverData),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    colorFilter = rememberAuroraPosterColorFilter(),
+                    modifier = Modifier.fillMaxSize(),
+                    error = fallbackPainter,
+                    fallback = fallbackPainter,
                 )
+            }
+
+            Spacer(Modifier.height(posterSpec.textTopSpacingDp.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = posterSpec.textBlockMinHeightDp.dp)
+                    .padding(horizontal = posterSpec.textHorizontalPaddingDp.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = title,
+                    color = colors.textPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = posterSpec.titleMaxLines,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 17.sp,
+                )
+
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        color = colors.textSecondary,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

@@ -45,6 +45,7 @@ import eu.kanade.presentation.entries.components.AuroraEntryDropdownMenu
 import eu.kanade.presentation.theme.AuroraSurfaceLevel
 import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.resolveAuroraBorderColor
+import eu.kanade.presentation.theme.resolveAuroraElevation
 import eu.kanade.presentation.theme.resolveAuroraSelectionBorderColor
 import eu.kanade.presentation.theme.resolveAuroraSurfaceColor
 import tachiyomi.presentation.core.util.LocalAppHaptics
@@ -98,15 +99,26 @@ fun AuroraCard(
                 resolveAuroraSurfaceColor(colors, AuroraSurfaceLevel.Glass)
             },
         ),
-        border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp,
-            color = if (isSelected) {
-                if (colors.isDark) colors.accent else resolveAuroraSelectionBorderColor(colors)
-            } else {
-                resolveAuroraBorderColor(colors, emphasized = false)
-            },
+        border = if (colors.isDark || colors.isEInk) {
+            BorderStroke(
+                width = if (isSelected) 2.dp else 1.dp,
+                color = if (isSelected) {
+                    colors.accent
+                } else {
+                    resolveAuroraBorderColor(colors, emphasized = false)
+                },
+            )
+        } else if (isSelected) {
+            BorderStroke(
+                width = 2.dp,
+                color = resolveAuroraSelectionBorderColor(colors),
+            )
+        } else {
+            null // Light mode: no border, shadow provides depth
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = resolveAuroraElevation(colors, AuroraSurfaceLevel.Glass),
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

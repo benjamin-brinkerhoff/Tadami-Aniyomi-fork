@@ -87,8 +87,10 @@ class NovelScreenModelTest {
             runCatching { Injekt.get<Application>() }
                 .getOrElse {
                     val filesDir = File(System.getProperty("java.io.tmpdir"), "novel-screen-model-test-files")
+                        .apply { deleteRecursively() }
                         .apply { mkdirs() }
                     val cacheDir = File(System.getProperty("java.io.tmpdir"), "novel-screen-model-test-cache")
+                        .apply { deleteRecursively() }
                         .apply { mkdirs() }
                     val application = mockk<Application>(relaxed = true)
                     every { application.filesDir } returns filesDir
@@ -939,7 +941,13 @@ class NovelScreenModelTest {
 
             try {
                 awaitResumeScreenModel(screenModel)
-                downloadCacheChanges.emit(NovelDownloadCacheEvent.InvalidateAll)
+                screenModel.handleDownloadCacheEvent(
+                    NovelDownloadCacheEvent.ChaptersChanged(
+                        novelId = novel.id,
+                        chapterIds = setOf(1L),
+                        downloaded = true,
+                    ),
+                )
                 withTimeout(1_000) {
                     while ((screenModel.state.value as? NovelScreenModel.State.Success)?.downloadedChapterIds !=
                         setOf(1L)
@@ -1169,7 +1177,13 @@ class NovelScreenModelTest {
 
             try {
                 awaitResumeScreenModel(screenModel)
-                downloadCacheChanges.emit(NovelDownloadCacheEvent.InvalidateAll)
+                screenModel.handleDownloadCacheEvent(
+                    NovelDownloadCacheEvent.ChaptersChanged(
+                        novelId = novel.id,
+                        chapterIds = setOf(1L),
+                        downloaded = true,
+                    ),
+                )
                 withTimeout(1_000) {
                     while ((screenModel.state.value as? NovelScreenModel.State.Success)?.downloadedChapterIds !=
                         setOf(1L)
@@ -1205,7 +1219,7 @@ class NovelScreenModelTest {
     @Test
     fun `invalidate all download cache event still triggers full rescan`() {
         runBlocking {
-            val novel = novelForResumeTests(302L)
+            val novel = novelForResumeTests(304L)
             val chapters = listOf(
                 novelChapter(id = 1L, novelId = novel.id, chapterNumber = 1.0, read = false),
             )

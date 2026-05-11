@@ -2,7 +2,6 @@ package eu.kanade.presentation.components
 
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -188,11 +187,9 @@ fun AppBarTitle(
                 modifier = Modifier.weight(1f, false),
                 overflow = TextOverflow.Ellipsis,
             )
-            val pillAlpha = if (isSystemInDarkTheme()) 0.12f else 0.08f
             Pill(
                 text = "$count",
                 modifier = Modifier.padding(start = 4.dp),
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = pillAlpha),
                 fontSize = 14.sp,
             )
         }

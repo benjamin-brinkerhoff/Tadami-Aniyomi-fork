@@ -89,9 +89,13 @@ enum class ItemCover(val ratio: Float) {
 internal fun resolveCoverModel(data: Any?): Any? {
     return when (data) {
         is String -> data.takeIf { it.isNotBlank() }
-        is AnimeCover -> data.takeIf { !it.url.isNullOrBlank() }
-        is MangaCover -> data.takeIf { !it.url.isNullOrBlank() }
-        is NovelCover -> data.takeIf { !it.url.isNullOrBlank() }
+        // Keep cover data classes even with blank URLs — let NovelCoverFetcher
+        // (or the equivalent fetcher) decide how to handle them. This avoids
+        // skipping the AsyncImage loading pipeline entirely and showing the
+        // error painter before the fetcher has a chance to run.
+        is AnimeCover -> data
+        is MangaCover -> data
+        is NovelCover -> data
         else -> data
     }
 }

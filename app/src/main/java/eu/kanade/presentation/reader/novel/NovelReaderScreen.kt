@@ -70,18 +70,18 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsVoice
-import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -89,6 +89,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -3105,9 +3106,9 @@ fun NovelReaderScreen(
                         val hasTranslationResult =
                             state.hasGeminiTranslationCache || state.geminiTranslationProgress == 100
                         val quickActionIcon = when {
-                            state.isGeminiTranslating -> Icons.Outlined.Pause
-                            hasTranslationResult && state.isGeminiTranslationVisible -> Icons.Outlined.Public
-                            else -> Icons.Outlined.PlayArrow
+                            state.isGeminiTranslating -> Icons.Filled.Pause
+                            hasTranslationResult && state.isGeminiTranslationVisible -> Icons.Filled.Public
+                            else -> Icons.Filled.PlayArrow
                         }
                         val quickActionDescription = when {
                             state.isGeminiTranslating -> stringResource(MR.strings.reader_action_stop_translation)
@@ -3145,8 +3146,8 @@ fun NovelReaderScreen(
                                     width = 1.dp,
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
                                 ),
-                                tonalElevation = 2.dp,
-                                shadowElevation = 2.dp,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .size(28.dp)
                                     .clickable {
@@ -3157,9 +3158,9 @@ fun NovelReaderScreen(
                                         }
                                     },
                             ) {
-                                androidx.compose.foundation.layout.Box(
+                                Box(
                                     modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         imageVector = quickActionIcon,
@@ -3183,9 +3184,9 @@ fun NovelReaderScreen(
                     if (state.readerSettings.googleTranslationEnabled) {
                         val hasGoogleResult = state.hasGoogleTranslationCache || state.googleTranslationProgress == 100
                         val googleQuickActionIcon = when {
-                            state.isGoogleTranslating -> Icons.Outlined.Pause
-                            hasGoogleResult && state.isGoogleTranslationVisible -> Icons.Outlined.Public
-                            else -> Icons.Outlined.PlayArrow
+                            state.isGoogleTranslating -> Icons.Filled.Pause
+                            hasGoogleResult && state.isGoogleTranslationVisible -> Icons.Filled.Public
+                            else -> Icons.Filled.PlayArrow
                         }
                         val googleQuickActionDescription = when {
                             state.isGoogleTranslating -> stringResource(AYMR.strings.novel_reader_google_translate_stop)
@@ -3224,8 +3225,8 @@ fun NovelReaderScreen(
                                     width = 1.dp,
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
                                 ),
-                                tonalElevation = 2.dp,
-                                shadowElevation = 2.dp,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp,
                                 modifier = Modifier
                                     .size(28.dp)
                                     .clickable {
@@ -3236,9 +3237,9 @@ fun NovelReaderScreen(
                                         }
                                     },
                             ) {
-                                androidx.compose.foundation.layout.Box(
+                                Box(
                                     modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         imageVector = googleQuickActionIcon,
@@ -3478,9 +3479,9 @@ fun NovelReaderScreen(
                                     ) {
                                         Icon(
                                             imageVector = if (autoScrollEnabled) {
-                                                Icons.Outlined.Pause
+                                                Icons.Filled.Pause
                                             } else {
-                                                Icons.Outlined.PlayArrow
+                                                Icons.Filled.PlayArrow
                                             },
                                             contentDescription = null,
                                             tint = Color.White,
@@ -3640,7 +3641,7 @@ fun NovelReaderScreen(
                                 }
                             },
                         ) {
-                            Icon(imageVector = Icons.Outlined.Public, contentDescription = null)
+                            Icon(imageVector = Icons.Filled.Public, contentDescription = null)
                         }
                         IconButton(
                             onClick = {
@@ -3685,7 +3686,7 @@ fun NovelReaderScreen(
                         if (state.readerSettings.googleTranslationEnabled) {
                             IconButton(onClick = { showGoogleDialog = true }) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Translate,
+                                    imageVector = Icons.Default.Translate,
                                     contentDescription = stringResource(AYMR.strings.novel_reader_google_translate),
                                     tint = if (state.isGoogleTranslating ||
                                         state.hasGoogleTranslationCache ||
@@ -6719,6 +6720,8 @@ private fun SelectedTextTranslationOverlay(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (!state.readerSettings.selectedTextTranslationEnabled) return
+
     val selection = state.selectedTextTranslationSelection
     val translationState = state.selectedTextTranslationUiState
 
@@ -6737,9 +6740,12 @@ private fun SelectedTextTranslationOverlay(
             is NovelSelectedTextTranslationUiState.SelectionAvailable -> {
                 FloatingActionButton(
                     onClick = onTranslate,
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 0.dp,
+                    ),
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Translate,
+                        imageVector = Icons.Default.Translate,
                         contentDescription = stringResource(
                             AYMR.strings.novel_reader_selected_text_translation_action_translate,
                         ),
@@ -6792,9 +6798,12 @@ private fun SelectedTextTranslationOverlay(
                 if (selection != null) {
                     FloatingActionButton(
                         onClick = onTranslate,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 0.dp,
+                        ),
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Translate,
+                            imageVector = Icons.Default.Translate,
                             contentDescription = stringResource(
                                 AYMR.strings.novel_reader_selected_text_translation_action_translate,
                             ),

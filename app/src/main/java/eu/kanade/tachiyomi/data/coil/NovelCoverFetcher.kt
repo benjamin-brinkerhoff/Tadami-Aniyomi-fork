@@ -290,7 +290,8 @@ class NovelCoverFetcher(
         private val coverCache: NovelCoverCache by injectLazy()
         private val sourceManager: NovelSourceManager by injectLazy()
 
-        override fun create(data: NovelCover, options: Options, imageLoader: ImageLoader): Fetcher {
+        override fun create(data: NovelCover, options: Options, imageLoader: ImageLoader): Fetcher? {
+            if (data.url.isNullOrBlank()) return null
             return NovelCoverFetcher(
                 data = data,
                 options = options,

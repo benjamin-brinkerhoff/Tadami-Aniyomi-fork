@@ -6,6 +6,7 @@ import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.StartOffsetType
 import androidx.compose.animation.core.repeatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,23 +29,72 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.more.auroraPrimaryMenuTitleTextStyle
+import eu.kanade.presentation.more.resolveAuroraMoreCardBorderColor
+import eu.kanade.presentation.more.resolveAuroraMoreCardContainerColor
 import eu.kanade.presentation.more.settings.AURORA_SETTINGS_CARD_SHAPE
 import eu.kanade.presentation.more.settings.LocalPreferenceHighlighted
 import eu.kanade.presentation.more.settings.LocalPreferenceMinHeight
 import eu.kanade.presentation.more.settings.LocalSettingsUiStyle
 import eu.kanade.presentation.more.settings.SettingsUiStyle
-import eu.kanade.presentation.more.settings.settingsCardContainerColor
 import eu.kanade.presentation.more.settings.settingsTitleColor
+import eu.kanade.presentation.theme.AuroraSurfaceLevel
+import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.LocalIsDefaultAppUiFont
+import eu.kanade.presentation.theme.resolveAuroraElevation
 import kotlinx.coroutines.delay
 import tachiyomi.presentation.core.util.LocalAppHaptics
 import kotlin.time.Duration.Companion.seconds
+
+@Composable
+internal fun AuroraSettingsCard(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
+    val colors = AuroraTheme.colors
+    val appHaptics = LocalAppHaptics.current
+
+    Card(
+        onClick = {
+            appHaptics.tap()
+            onClick?.invoke()
+        },
+        enabled = onClick != null,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = AURORA_SETTINGS_CARD_SHAPE,
+        colors = CardDefaults.cardColors(
+            containerColor = if (!colors.isDark && !colors.isEInk) {
+                Color.White
+            } else {
+                resolveAuroraMoreCardContainerColor(colors)
+            },
+        ),
+        border = if (colors.isEInk) {
+            BorderStroke(
+                width = 1.dp,
+                color = resolveAuroraMoreCardBorderColor(colors),
+            )
+        } else {
+            null
+        },
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (!colors.isDark && !colors.isEInk) {
+                resolveAuroraElevation(colors, AuroraSurfaceLevel.Glass)
+            } else {
+                0.dp
+            },
+        ),
+    ) {
+        content()
+    }
+}
 
 @Composable
 internal fun BasePreferenceWidget(
@@ -59,69 +111,92 @@ internal fun BasePreferenceWidget(
     val isAurora = LocalSettingsUiStyle.current == SettingsUiStyle.Aurora
     val useMediumWeight = LocalIsDefaultAppUiFont.current
     val appHaptics = LocalAppHaptics.current
-    val rowShape = if (isAurora) AURORA_SETTINGS_CARD_SHAPE else MaterialTheme.shapes.medium
-    Row(
-        modifier = modifier
-            .then(
-                if (isAurora) {
-                    Modifier
-                        .padding(vertical = 4.dp)
-                        .clip(rowShape)
-                        .background(settingsCardContainerColor())
-                        .highlightBackground(highlighted)
-                } else {
-                    Modifier.highlightBackground(highlighted)
-                },
-            )
-            .sizeIn(minHeight = minHeight)
-            .combinedClickable(
-                enabled = onClick != null || onLongClick != null,
-                onClick = {
-                    appHaptics.tap()
-                    onClick?.invoke()
-                },
-                onLongClick = onLongClick,
-            )
-            .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (icon != null) {
-            Box(
-                modifier = Modifier.padding(start = PrefsHorizontalPadding, end = 8.dp),
-                content = { icon() },
-            )
-        }
-        Column(
+
+    val rowContent: @Composable () -> Unit = {
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .padding(vertical = PrefsVerticalPadding),
+                .then(
+                    if (isAurora) {
+                        Modifier.highlightBackground(highlighted)
+                    } else {
+                        Modifier
+                    },
+                )
+                .sizeIn(minHeight = minHeight)
+                .then(
+                    if (isAurora && onLongClick != null) {
+                        Modifier.combinedClickable(
+                            onClick = {
+                                appHaptics.tap()
+                                onClick?.invoke()
+                            },
+                            onLongClick = onLongClick,
+                        )
+                    } else if (isAurora) {
+                        Modifier
+                    } else {
+                        Modifier.combinedClickable(
+                            enabled = onClick != null || onLongClick != null,
+                            onClick = {
+                                appHaptics.tap()
+                                onClick?.invoke()
+                            },
+                            onLongClick = onLongClick,
+                        )
+                    },
+                )
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (!title.isNullOrBlank()) {
-                val titleTextStyle = if (isAurora) {
-                    auroraPrimaryMenuTitleTextStyle(
-                        baseStyle = MaterialTheme.typography.bodyLarge,
-                        useMediumWeight = useMediumWeight,
-                    )
-                } else {
-                    MaterialTheme.typography.titleLarge.copy(fontSize = TitleFontSize)
-                }
-                Text(
-                    modifier = Modifier.padding(horizontal = PrefsHorizontalPadding),
-                    text = title,
-                    overflow = if (isAurora) TextOverflow.Clip else TextOverflow.Ellipsis,
-                    maxLines = if (isAurora) Int.MAX_VALUE else 2,
-                    style = titleTextStyle,
-                    color = settingsTitleColor(),
+            if (icon != null) {
+                Box(
+                    modifier = Modifier.padding(start = PrefsHorizontalPadding, end = 8.dp),
+                    content = { icon() },
                 )
             }
-            subcomponent?.invoke(this)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = PrefsVerticalPadding),
+            ) {
+                if (!title.isNullOrBlank()) {
+                    val titleTextStyle = if (isAurora) {
+                        auroraPrimaryMenuTitleTextStyle(
+                            baseStyle = MaterialTheme.typography.bodyLarge,
+                            useMediumWeight = useMediumWeight,
+                        )
+                    } else {
+                        MaterialTheme.typography.titleLarge.copy(fontSize = TitleFontSize)
+                    }
+                    Text(
+                        modifier = Modifier.padding(horizontal = PrefsHorizontalPadding),
+                        text = title,
+                        overflow = if (isAurora) TextOverflow.Clip else TextOverflow.Ellipsis,
+                        maxLines = if (isAurora) Int.MAX_VALUE else 2,
+                        style = titleTextStyle,
+                        color = settingsTitleColor(),
+                    )
+                }
+                subcomponent?.invoke(this)
+            }
+            if (widget != null) {
+                Box(
+                    modifier = Modifier.padding(end = PrefsHorizontalPadding),
+                    content = { widget() },
+                )
+            }
         }
-        if (widget != null) {
-            Box(
-                modifier = Modifier.padding(end = PrefsHorizontalPadding),
-                content = { widget() },
-            )
+    }
+
+    if (isAurora) {
+        AuroraSettingsCard(
+            modifier = modifier,
+            onClick = if (onLongClick == null) onClick else null,
+        ) {
+            rowContent()
         }
+    } else {
+        rowContent()
     }
 }
 

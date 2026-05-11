@@ -45,6 +45,9 @@ import androidx.core.app.ActivityCompat
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.AppTheme
 import eu.kanade.presentation.entries.components.ItemCover
+import eu.kanade.presentation.more.settings.LocalSettingsUiStyle
+import eu.kanade.presentation.more.settings.SettingsUiStyle
+import eu.kanade.presentation.more.settings.settingsTitleColor
 import eu.kanade.presentation.theme.TachiyomiTheme
 import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.isDynamicColorAvailable
@@ -80,6 +83,7 @@ private fun AppThemesList(
     onItemClick: (AppTheme) -> Unit,
 ) {
     val context = LocalContext.current
+    val isAurora = LocalSettingsUiStyle.current == SettingsUiStyle.Aurora
     val appThemes = remember {
         AppTheme.entries
             .filterNot {
@@ -120,11 +124,18 @@ private fun AppThemesList(
                     text = stringResource(appTheme.titleRes!!),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .secondaryItemAlpha(),
+                        .then(
+                            if (isAurora) {
+                                Modifier
+                            } else {
+                                Modifier.secondaryItemAlpha()
+                            },
+                        ),
                     textAlign = TextAlign.Center,
                     maxLines = 2,
                     minLines = 2,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = settingsTitleColor(),
                 )
             }
         }

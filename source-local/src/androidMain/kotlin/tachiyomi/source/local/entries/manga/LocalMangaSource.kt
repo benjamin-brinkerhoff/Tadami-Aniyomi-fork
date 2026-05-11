@@ -240,6 +240,28 @@ actual class LocalMangaSource(
         manga.copyFromComicInfo(comicInfo)
     }
 
+    private fun <T> getComicInfoForChapter(chapter: UniFile, block: (InputStream) -> T): T? {
+        if (chapter.isDirectory) {
+            return chapter.findFile(COMIC_INFO_FILE)?.let { file ->
+                file.openInputStream().use(block)
+            }
+        } else {
+            return chapter.archiveReader(context).use { reader ->
+                reader.getInputStream(COMIC_INFO_FILE)?.use(block)
+            }
+        }
+    }
+
+    private fun setChapterDetailsFromComicInfoFile(stream: InputStream, chapter: SChapter) {
+        val comicInfo = AndroidXmlReader(stream, StandardCharsets.UTF_8.name()).use {
+            xml.decodeFromReader<ComicInfo>(it)
+        }
+
+        comicInfo.title?.let { chapter.name = it.value }
+        comicInfo.number?.value?.toFloatOrNull()?.let { chapter.chapter_number = it }
+        comicInfo.translator?.let { chapter.scanlator = it.value }
+    }
+
     // Chapters
     override suspend fun getChapterList(manga: SManga): List<SChapter> = withIOContext {
         val chaptersData = fileSystem.getFilesInMangaDirectory(manga.url)
@@ -271,9 +293,16 @@ actual class LocalMangaSource(
                     chapter_number = chapterNumber
 
                     val format = Format.valueOf(chapterFile)
-                    if (format is Format.Epub) {
-                        format.file.epubReader(context).use { epub ->
-                            epub.fillMetadata(manga, this)
+                    when (format) {
+                        is Format.Epub -> {
+                            format.file.epubReader(context).use { epub ->
+                                epub.fillMetadata(manga, this)
+                            }
+                        }
+                        else -> {
+                            getComicInfoForChapter(chapterFile) { stream ->
+                                setChapterDetailsFromComicInfoFile(stream, this)
+                            }
                         }
                     }
 

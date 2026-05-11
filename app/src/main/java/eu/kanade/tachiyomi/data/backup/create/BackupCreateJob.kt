@@ -35,6 +35,7 @@ class BackupCreateJob(private val context: Context, workerParams: WorkerParamete
     CoroutineWorker(context, workerParams) {
 
     private val notifier = BackupNotifier(context)
+    private val backupPreferences = Injekt.get<BackupPreferences>()
 
     override suspend fun doWork(): Result {
         setForegroundSafely()
@@ -78,6 +79,10 @@ class BackupCreateJob(private val context: Context, workerParams: WorkerParamete
     }
 
     private fun getAutomaticBackupLocation(): Uri? {
+        val cloudUri = backupPreferences.cloudBackupUri().get()
+        if (cloudUri.isNotBlank()) {
+            return cloudUri.toUri()
+        }
         val storageManager = Injekt.get<StorageManager>()
         return storageManager.getAutomaticBackupsDirectory()?.uri
     }
