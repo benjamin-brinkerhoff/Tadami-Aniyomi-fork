@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.model.rememberScreenModel
+import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import com.tadami.aurora.R
@@ -667,6 +668,10 @@ object HomeHubTab : Tab {
                 icon = rememberAnimatedVectorPainter(image, isSelected),
             )
         }
+
+    override suspend fun onReselect(navigator: Navigator) {
+        navigator.push(uiPreferences.navStyle().get().moreTab)
+    }
 
     @Composable
     override fun Content() {
