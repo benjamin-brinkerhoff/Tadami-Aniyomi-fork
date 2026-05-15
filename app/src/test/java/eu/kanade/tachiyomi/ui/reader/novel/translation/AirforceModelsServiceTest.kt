@@ -1,7 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.novel.translation
 
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -25,7 +25,7 @@ class AirforceModelsServiceTest {
     }
 
     @Test
-    fun `loads model ids from v1 models`() = runTest {
+    fun `loads model ids from v1 models`() = runBlocking {
         server.enqueue(
             MockResponse().setBody(
                 """{"data":[{"id":"openai/gpt-4.1-mini"},{"id":"anthropic/claude-3.5-sonnet"}]}""",

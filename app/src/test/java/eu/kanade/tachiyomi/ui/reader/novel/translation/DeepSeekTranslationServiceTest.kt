@@ -4,7 +4,10 @@ import eu.kanade.tachiyomi.ui.reader.novel.setting.GeminiPromptMode
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -19,12 +22,14 @@ class DeepSeekTranslationServiceTest {
 
     @BeforeEach
     fun setup() {
+        Dispatchers.setMain(Dispatchers.Unconfined)
         server.start()
     }
 
     @AfterEach
     fun teardown() {
         server.shutdown()
+        Dispatchers.resetMain()
     }
 
     @Test

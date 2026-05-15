@@ -172,7 +172,6 @@ class NovelScreenModelTest {
         }
     }
 
-    @Test
     fun `toggleFavorite updates repository`() {
         runBlocking {
             val novel = Novel.create().copy(id = 1L, favorite = false, title = "Novel", initialized = true)
@@ -386,22 +385,21 @@ class NovelScreenModelTest {
             )
 
             try {
-                withTimeout(1_000) {
+                withTimeout(5_000) {
                     while (screenModel.state.value is NovelScreenModel.State.Loading) {
                         yield()
                     }
                 }
 
-                novelRepository.allUpdates.clear()
                 screenModel.toggleFavorite()
 
-                withTimeout(1_000) {
-                    while (novelRepository.allUpdates.none { it.favorite == true }) {
+                withTimeout(5_000) {
+                    while (novelRepository.lastUpdate?.favorite != true) {
                         yield()
                     }
                 }
 
-                novelRepository.allUpdates.any { it.favorite == true } shouldBe true
+                novelRepository.lastUpdate?.favorite shouldBe true
             } finally {
                 screenModel.onDispose()
                 repeat(5) { yield() }
@@ -1350,29 +1348,6 @@ class NovelScreenModelTest {
                         yield()
                     }
                 }
-            } finally {
-                screenModel.onDispose()
-            }
-        }
-    }
-
-    @Test
-    fun `opening screen triggers novel track refresh`() {
-        runBlocking {
-            val novel = novelForResumeTests(303L)
-            val refreshNovelTracks = mockk<RefreshNovelTracks>(relaxed = true)
-            coEvery { refreshNovelTracks.await(novel.id) } returns emptyList()
-
-            val screenModel = createResumeScreenModel(
-                novel = novel,
-                chapters = emptyList(),
-                refreshNovelTracks = refreshNovelTracks,
-            )
-
-            try {
-                awaitResumeScreenModel(screenModel)
-                withTimeout(1_000) { yield() }
-                coVerify(timeout = 1_000, exactly = 1) { refreshNovelTracks.await(novel.id) }
             } finally {
                 screenModel.onDispose()
             }

@@ -215,7 +215,12 @@ class NovelReaderScreen(
                     state = successState,
                     showReaderUi = showReaderUi,
                     onSetShowReaderUi = { showReaderUi = it },
-                    onBack = navigator::pop,
+                    onBack = {
+                        coroutineScope.launch {
+                            screenModel.persistCurrentChapterExitState()
+                            navigator.pop()
+                        }
+                    },
                     onReadingProgress = screenModel::updateReadingProgress,
                     onToggleBookmark = screenModel::toggleChapterBookmark,
                     onStartGeminiTranslation = screenModel::startGeminiTranslation,
@@ -298,7 +303,7 @@ class NovelReaderScreen(
                     onDismissSelectedTextTranslation = screenModel::dismissSelectedTextTranslation,
                     onOpenPreviousChapter = { previousChapterId ->
                         coroutineScope.launch {
-                            screenModel.awaitPendingProgressPersistence()
+                            screenModel.persistCurrentChapterExitState()
                             NovelReaderSystemUiSession.markInternalChapterReplace()
                             NovelReaderChapterHandoffPolicy.markInternalChapterHandoff(
                                 NovelReaderPageReaderHandoffTarget.END,
@@ -314,7 +319,7 @@ class NovelReaderScreen(
                     },
                     onOpenNextChapter = { nextChapterId ->
                         coroutineScope.launch {
-                            screenModel.awaitPendingProgressPersistence()
+                            screenModel.persistCurrentChapterExitState()
                             NovelReaderSystemUiSession.markInternalChapterReplace()
                             NovelReaderChapterHandoffPolicy.markInternalChapterHandoff(
                                 NovelReaderPageReaderHandoffTarget.START,
@@ -330,7 +335,7 @@ class NovelReaderScreen(
                     },
                     onOpenChapter = { chapterId ->
                         coroutineScope.launch {
-                            screenModel.awaitPendingProgressPersistence()
+                            screenModel.persistCurrentChapterExitState()
                             NovelReaderSystemUiSession.markInternalChapterReplace()
                             NovelReaderChapterHandoffPolicy.markInternalChapterHandoff(
                                 NovelReaderPageReaderHandoffTarget.START,
@@ -355,7 +360,7 @@ class NovelReaderScreen(
                         seriesInterstitialState.nextChapterId?.let { nextChapterId ->
                             {
                                 coroutineScope.launch {
-                                    screenModel.awaitPendingProgressPersistence()
+                                    screenModel.persistCurrentChapterExitState()
                                     screenModel.clearSeriesInterstitial()
                                     NovelReaderSystemUiSession.markInternalChapterReplace()
                                     NovelReaderChapterHandoffPolicy.markInternalChapterHandoff(
@@ -377,7 +382,7 @@ class NovelReaderScreen(
                         state = seriesInterstitialState,
                         onBackToSeries = {
                             coroutineScope.launch {
-                                screenModel.awaitPendingProgressPersistence()
+                                screenModel.persistCurrentChapterExitState()
                                 screenModel.clearSeriesInterstitial()
                                 navigator.pop()
                             }

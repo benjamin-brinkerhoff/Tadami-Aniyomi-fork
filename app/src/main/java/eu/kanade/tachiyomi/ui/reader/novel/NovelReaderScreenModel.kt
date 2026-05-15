@@ -97,9 +97,11 @@ import eu.kanade.tachiyomi.ui.reader.novel.tts.SharedNovelTtsSessionStore
 import eu.kanade.tachiyomi.ui.reader.novel.tts.resolveNovelTtsVoiceSelection
 import eu.kanade.tachiyomi.util.system.isNightMode
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancelAndJoin
@@ -445,6 +447,8 @@ class NovelReaderScreenModel(
     private val progressPersistenceMutex = Mutex()
     private var pendingProgressPersistence: PendingProgressPersistence? = null
     private var progressPersistenceJob: Job? = null
+    private val disposalCleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var disposalCleanupJob: Job? = null
 
     @Volatile
     private var progressPersistenceScheduled = false
@@ -1636,6 +1640,18 @@ class NovelReaderScreenModel(
             kotlinx.coroutines.yield()
         }
     }
+    suspend fun persistCurrentChapterExitState() {
+        val chapterId = currentChapter?.id ?: return
+        val finalReadDurationMs = (System.currentTimeMillis() - chapterReadStartTimeMs).coerceAtLeast(0L)
+        awaitPendingProgressPersistence()
+        flushPendingHistorySnapshot(
+            chapterId = chapterId,
+            additionalReadDurationMs = finalReadDurationMs,
+        )
+    }
+    suspend fun awaitDisposalCleanup() {
+        disposalCleanupJob?.join()
+    }
     private suspend fun flushPendingProgressPersistence() {
         while (true) {
             val nextUpdate = progressPersistenceMutex.withLock {
@@ -1887,30 +1903,33 @@ class NovelReaderScreenModel(
         }
     }
     override fun onDispose() {
-        val chapterId = currentChapter?.id
-        kotlinx.coroutines.runBlocking(NonCancellable + Dispatchers.IO) {
-            if (chapterId != null) {
-                val finalReadDurationMs = (System.currentTimeMillis() - chapterReadStartTimeMs).coerceAtLeast(0L)
-                awaitPendingProgressPersistence()
-                flushPendingHistorySnapshot(
-                    chapterId = chapterId,
-                    additionalReadDurationMs = finalReadDurationMs,
-                )
+        settingsJob?.cancel()
+        nextChapterPrefetchJob?.cancel()
+        nextChapterGeminiPrefetchJob?.cancel()
+        adjacentJaomixPageJob?.cancel()
+        geminiTranslationJob?.cancel()
+        queueProgressJob?.cancel()
+        googleTranslationJob?.cancel()
+        selectedTextTranslationJob?.cancel()
+        progressPersistenceJob?.cancel()
+        ttsWordProgressJob?.cancel()
+        if (disposalCleanupJob == null) {
+            disposalCleanupJob = disposalCleanupScope.launch(NonCancellable) {
+                settingsJob?.cancelAndJoin()
+                nextChapterPrefetchJob?.cancelAndJoin()
+                nextChapterGeminiPrefetchJob?.cancelAndJoin()
+                adjacentJaomixPageJob?.cancelAndJoin()
+                geminiTranslationJob?.cancelAndJoin()
+                queueProgressJob?.cancelAndJoin()
+                googleTranslationJob?.cancelAndJoin()
+                selectedTextTranslationJob?.cancelAndJoin()
+                progressPersistenceJob?.cancelAndJoin()
+                ttsWordProgressJob?.cancelAndJoin()
+                clearChapterTransientState()
+                ttsAudioFocusManager.abandonPlaybackFocus()
+                ttsEngine.shutdown()
             }
-            clearChapterTransientState()
-            settingsJob?.cancelAndJoin()
-            nextChapterPrefetchJob?.cancelAndJoin()
-            nextChapterGeminiPrefetchJob?.cancelAndJoin()
-            adjacentJaomixPageJob?.cancelAndJoin()
-            geminiTranslationJob?.cancelAndJoin()
-            queueProgressJob?.cancelAndJoin()
-            googleTranslationJob?.cancelAndJoin()
-            selectedTextTranslationJob?.cancelAndJoin()
-            progressPersistenceJob?.cancelAndJoin()
-            ttsWordProgressJob?.cancelAndJoin()
         }
-        ttsAudioFocusManager.abandonPlaybackFocus()
-        ttsEngine.shutdown()
         super.onDispose()
     }
 

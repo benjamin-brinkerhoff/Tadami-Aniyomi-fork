@@ -83,11 +83,14 @@ class NovelSelectedTextTranslationScreenModelTest {
 
     @AfterEach
     fun tearDown() {
-        activeScreenModels.forEach { it.onDispose() }
-        activeScreenModels.clear()
         runBlocking {
+            activeScreenModels.forEach {
+                it.onDispose()
+                it.awaitDisposalCleanup()
+            }
             yield()
         }
+        activeScreenModels.clear()
         NovelReaderChapterPrefetchCache.clear()
         NovelReaderTranslationDiskCacheStore.clear()
         unmockkAll()
