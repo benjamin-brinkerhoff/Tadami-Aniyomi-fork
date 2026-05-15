@@ -851,6 +851,7 @@ fun NovelScreenAuroraImpl(
                 AuroraNovelSelectionBottomStack(
                     selected = selectedChapters,
                     downloadedChapterIds = downloadedChapterIds,
+                    geminiEnabled = state.geminiEnabled,
                     onSelectAll = { onToggleAllSelection(true) },
                     onInvertSelection = onInvertSelection,
                     onCancel = { onToggleAllSelection(false) },
@@ -859,6 +860,7 @@ fun NovelScreenAuroraImpl(
                     onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                     onMultiDownloadClicked = onMultiDownloadClicked,
                     onMultiDeleteClicked = onMultiDeleteClicked,
+                    onChapterTranslateLongClick = onChapterTranslateLongClick,
                     fillFraction = 0.5f,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -1419,6 +1421,7 @@ fun NovelScreenAuroraImpl(
             AuroraNovelSelectionBottomStack(
                 selected = selectedChapters,
                 downloadedChapterIds = downloadedChapterIds,
+                geminiEnabled = state.geminiEnabled,
                 onSelectAll = { onToggleAllSelection(true) },
                 onInvertSelection = onInvertSelection,
                 onCancel = { onToggleAllSelection(false) },
@@ -1427,6 +1430,7 @@ fun NovelScreenAuroraImpl(
                 onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                 onMultiDownloadClicked = onMultiDownloadClicked,
                 onMultiDeleteClicked = onMultiDeleteClicked,
+                onChapterTranslateLongClick = onChapterTranslateLongClick,
                 fillFraction = 1f,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -1721,6 +1725,7 @@ private fun AuroraSelectionIconButton(
 private fun AuroraNovelSelectionBottomStack(
     selected: List<NovelChapter>,
     downloadedChapterIds: Set<Long>,
+    geminiEnabled: Boolean,
     onSelectAll: () -> Unit,
     onInvertSelection: () -> Unit,
     onCancel: () -> Unit,
@@ -1729,6 +1734,7 @@ private fun AuroraNovelSelectionBottomStack(
     onMarkPreviousAsReadClicked: (NovelChapter) -> Unit,
     onMultiDownloadClicked: () -> Unit,
     onMultiDeleteClicked: () -> Unit,
+    onChapterTranslateLongClick: (Long) -> Unit,
     fillFraction: Float,
     modifier: Modifier = Modifier,
 ) {
@@ -1798,6 +1804,13 @@ private fun AuroraNovelSelectionBottomStack(
             onDownloadClicked = onMultiDownloadClicked.takeIf {
                 selected.any { it.id !in downloadedChapterIds }
             },
+            onTranslationBatchClicked = if (geminiEnabled) {
+                {
+                    selected.firstOrNull()?.let { chapter ->
+                        onChapterTranslateLongClick(chapter.id)
+                    }
+                }
+            } else null,
             onDeleteClicked = onMultiDeleteClicked.takeIf {
                 selected.any { it.id in downloadedChapterIds }
             },

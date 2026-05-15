@@ -93,28 +93,29 @@ fun EntryBottomActionMenu(
     onDeleteClicked: (() -> Unit)? = null,
     onExternalClicked: (() -> Unit)? = null,
     onInternalClicked: (() -> Unit)? = null,
+    onTranslationBatchClicked: (() -> Unit)? = null,
 ) {
     AnimatedVisibility(
         visible = visible,
         enter = expandVertically(expandFrom = Alignment.Bottom),
         exit = shrinkVertically(shrinkTowards = Alignment.Bottom),
     ) {
-        val scope = rememberCoroutineScope()
-        val playerPreferences: PlayerPreferences = Injekt.get()
-        Surface(
-            modifier = modifier,
-            shape = MaterialTheme.shapes.large.copy(
-                bottomEnd = ZeroCornerSize,
-                bottomStart = ZeroCornerSize,
-            ),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ) {
-            val haptic = LocalHapticFeedback.current
-            val confirm =
-                remember {
-                    mutableStateListOf(false, false, false, false, false, false, false, false, false, false, false)
-                }
-            val confirmRange = 0..<11
+            val scope = rememberCoroutineScope()
+            val playerPreferences: PlayerPreferences = Injekt.get()
+            Surface(
+                modifier = modifier,
+                shape = MaterialTheme.shapes.large.copy(
+                    bottomEnd = ZeroCornerSize,
+                    bottomStart = ZeroCornerSize,
+                ),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                val haptic = LocalHapticFeedback.current
+                val confirm =
+                    remember {
+                        mutableStateListOf(false, false, false, false, false, false, false, false, false, false, false, false)
+                    }
+                val confirmRange = 0..<12
             var resetJob: Job? = remember { null }
             val onLongClickItem: (Int) -> Unit = { toConfirmIndex ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -217,6 +218,15 @@ fun EntryBottomActionMenu(
                         toConfirm = confirm[7],
                         onLongClick = { onLongClickItem(7) },
                         onClick = onDownloadClicked,
+                    )
+                }
+                if (onTranslationBatchClicked != null) {
+                    Button(
+                        title = stringResource(AYMR.strings.novel_reader_selected_text_translation_action_translate),
+                        icon = Icons.Rounded.Translate,
+                        toConfirm = confirm[11],
+                        onLongClick = { onLongClickItem(11) },
+                        onClick = onTranslationBatchClicked,
                     )
                 }
                 if (onDeleteClicked != null) {

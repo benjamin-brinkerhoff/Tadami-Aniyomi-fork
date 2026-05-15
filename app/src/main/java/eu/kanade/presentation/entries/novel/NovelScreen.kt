@@ -419,6 +419,13 @@ fun NovelScreen(
                 onDownloadClicked = onMultiDownloadClicked.takeIf {
                     selectedChapters.any { chapter -> chapter.id !in downloadedChapterIds }
                 },
+                onTranslationBatchClicked = if (state.geminiEnabled) {
+                    {
+                        selectedChapters.firstOrNull()?.let { chapter ->
+                            onChapterTranslateLongClick(chapter.id)
+                        }
+                    }
+                } else null,
                 onDeleteClicked = onMultiDeleteClicked.takeIf {
                     selectedChapters.any { chapter -> chapter.id in downloadedChapterIds }
                 },
