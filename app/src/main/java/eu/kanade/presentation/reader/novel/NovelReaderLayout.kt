@@ -139,7 +139,7 @@ internal fun autoScrollPageDelayMs(speed: Int): Long {
 
 internal fun autoScrollScrollStepPx(speed: Int): Float {
     val clamped = speed.coerceIn(1, 100)
-    return 1.5f + (clamped - 1) * (8.5f / 99f)
+    return 0.5f + (clamped - 1) * (4.5f / 99f)
 }
 
 internal fun autoScrollFrameStepPx(
