@@ -48,7 +48,6 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.util.collectAsState
 import tachiyomi.presentation.core.util.plus
-import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items as listItems
@@ -348,7 +347,7 @@ private fun AnimeLibraryAuroraCardGrid(
     glowDisplayMode: LibraryDisplayMode,
 ) {
     val useGlowContourCards = cardStyle == AuroraLibraryCardStyle.GlowContour
-    val showPinnedSection = items.count { it.pinned } > 1
+    val showPinnedSection = remember(items) { items.count { it.pinned } > 1 }
 
     LazyLibraryGrid(
         modifier = Modifier

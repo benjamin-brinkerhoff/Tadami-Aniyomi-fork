@@ -98,7 +98,6 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.LocalAppHaptics
 import tachiyomi.presentation.core.util.collectAsState
 import tachiyomi.presentation.core.util.plus
-import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items as listItems
@@ -182,12 +181,14 @@ fun NovelLibraryAuroraContent(
     var isSearchActive by remember(searchQuery) { mutableStateOf(!searchQuery.isNullOrBlank()) }
 
     val query = searchQuery.orEmpty()
-    val filteredItems = if (query.isBlank()) {
-        items
-    } else {
-        items.filter { it.title.contains(query, ignoreCase = true) }
+    val filteredItems = remember(items, query) {
+        if (query.isBlank()) {
+            items
+        } else {
+            items.filter { it.title.contains(query, ignoreCase = true) }
+        }
     }
-    val showPinnedSection = filteredItems.count { it.pinned } > 1
+    val showPinnedSection = remember(filteredItems) { filteredItems.count { it.pinned } > 1 }
     val isSelectionMode = selection.isNotEmpty() && onToggleSelection != null
     val onClickNovelItem: (NovelLibraryItem) -> Unit = { libraryItem ->
         if (isSelectionMode) {
