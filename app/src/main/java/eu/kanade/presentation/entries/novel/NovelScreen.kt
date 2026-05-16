@@ -425,7 +425,9 @@ fun NovelScreen(
                             onChapterTranslateLongClick(chapter.id)
                         }
                     }
-                } else null,
+                } else {
+                    null
+                },
                 onDeleteClicked = onMultiDeleteClicked.takeIf {
                     selectedChapters.any { chapter -> chapter.id in downloadedChapterIds }
                 },

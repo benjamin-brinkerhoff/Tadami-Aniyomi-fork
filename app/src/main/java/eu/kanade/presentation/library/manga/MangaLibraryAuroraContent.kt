@@ -680,8 +680,7 @@ private fun MangaLibraryAuroraEmptyScreen(
     Column(
         modifier = Modifier
             .padding(contentPadding + PaddingValues(8.dp))
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .fillMaxSize(),
     ) {
         if (!searchQuery.isNullOrEmpty()) {
             eu.kanade.presentation.library.components.GlobalSearchItem(

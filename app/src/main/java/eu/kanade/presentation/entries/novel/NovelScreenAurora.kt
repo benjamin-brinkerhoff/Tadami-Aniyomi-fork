@@ -1810,7 +1810,9 @@ private fun AuroraNovelSelectionBottomStack(
                         onChapterTranslateLongClick(chapter.id)
                     }
                 }
-            } else null,
+            } else {
+                null
+            },
             onDeleteClicked = onMultiDeleteClicked.takeIf {
                 selected.any { it.id in downloadedChapterIds }
             },
