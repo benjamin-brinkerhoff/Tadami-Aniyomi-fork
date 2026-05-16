@@ -11,6 +11,7 @@ class BrowseTabTest {
     @Test
     fun `buildBrowseSections returns only anime when manga section hidden`() {
         BrowseTab.buildBrowseSections(
+            showAnimeSection = true,
             showMangaSection = false,
             showNovelSection = false,
         ).shouldContainExactly(
@@ -21,6 +22,7 @@ class BrowseTabTest {
     @Test
     fun `buildBrowseSections includes anime manga and novel when sections shown`() {
         BrowseTab.buildBrowseSections(
+            showAnimeSection = true,
             showMangaSection = true,
             showNovelSection = true,
         ).shouldContainExactly(
@@ -33,6 +35,7 @@ class BrowseTabTest {
     @Test
     fun `buildBrowseSections includes anime and novel when manga section hidden`() {
         BrowseTab.buildBrowseSections(
+            showAnimeSection = true,
             showMangaSection = false,
             showNovelSection = true,
         ).shouldContainExactly(

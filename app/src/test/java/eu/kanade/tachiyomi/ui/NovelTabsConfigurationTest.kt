@@ -15,7 +15,7 @@ class NovelTabsConfigurationTest {
 
     @Test
     fun `history tabs include novel tab in expected order`() {
-        historyContentTabs() shouldBe listOf(
+        historyContentTabs(true, true, true) shouldBe listOf(
             HistoryContentTab.ANIME,
             HistoryContentTab.MANGA,
             HistoryContentTab.NOVEL,
