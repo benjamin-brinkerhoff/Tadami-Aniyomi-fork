@@ -89,11 +89,12 @@ data object BrowseTab : Tab {
     }
 
     internal fun buildBrowseSections(
+        showAnimeSection: Boolean,
         showMangaSection: Boolean,
         showNovelSection: Boolean,
     ): List<BrowseSection> {
         return buildList {
-            add(BrowseSection.Anime)
+            if (showAnimeSection) add(BrowseSection.Anime)
             if (showMangaSection) add(BrowseSection.Manga)
             if (showNovelSection) add(BrowseSection.Novel)
         }
@@ -122,6 +123,7 @@ data object BrowseTab : Tab {
     @Composable
     override fun Content() {
         val context = LocalContext.current
+        val showAnimeSection by uiPreferences.showAnimeSection().collectAsState()
         val showMangaSection by uiPreferences.showMangaSection().collectAsState()
         val showNovelSection by uiPreferences.showNovelSection().collectAsState()
         val colors = AuroraTheme.colors
@@ -195,8 +197,9 @@ data object BrowseTab : Tab {
             add(migrateNovelSourceTab())
         }.toPersistentList()
 
-        val sections = remember(showMangaSection, showNovelSection) {
+        val sections = remember(showAnimeSection, showMangaSection, showNovelSection) {
             buildBrowseSections(
+                showAnimeSection = showAnimeSection,
                 showMangaSection = showMangaSection,
                 showNovelSection = showNovelSection,
             )

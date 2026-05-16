@@ -74,6 +74,11 @@ data object HistoriesTab : Tab {
         val fromMore = currentNavigationStyle() == NavStyle.MOVE_HISTORY_TO_MORE
         val uiPreferences = Injekt.get<UiPreferences>()
         val theme by uiPreferences.appTheme().collectAsState()
+        
+        val showAnimeSection by uiPreferences.showAnimeSection().collectAsState()
+        val showMangaSection by uiPreferences.showMangaSection().collectAsState()
+        val showNovelSection by uiPreferences.showNovelSection().collectAsState()
+
         // Hoisted for history tab's search bar
         val mangaHistoryScreenModel = rememberScreenModel { MangaHistoryScreenModel() }
         val mangaSearchQuery by mangaHistoryScreenModel.query.collectAsState()
@@ -81,7 +86,7 @@ data object HistoriesTab : Tab {
         val animeHistoryScreenModel = rememberScreenModel { AnimeHistoryScreenModel() }
         val animeSearchQuery by animeHistoryScreenModel.query.collectAsState()
 
-        val tabs = historyContentTabs()
+        val tabs = historyContentTabs(showAnimeSection, showMangaSection, showNovelSection)
             .map { tab ->
                 when (tab) {
                     HistoryContentTab.ANIME -> animeHistoryTab(context, fromMore)
@@ -130,23 +135,32 @@ internal enum class HistoryContentTab {
     NOVEL,
 }
 
-internal fun historyContentTabs(): List<HistoryContentTab> {
-    return listOf(
-        HistoryContentTab.ANIME,
-        HistoryContentTab.MANGA,
-        HistoryContentTab.NOVEL,
-    )
+internal fun historyContentTabs(
+    showAnimeSection: Boolean,
+    showMangaSection: Boolean,
+    showNovelSection: Boolean,
+): List<HistoryContentTab> {
+    return buildList {
+        if (showAnimeSection) add(HistoryContentTab.ANIME)
+        if (showMangaSection) add(HistoryContentTab.MANGA)
+        if (showNovelSection) add(HistoryContentTab.NOVEL)
+    }
 }
 
 internal suspend fun resolveLatestHistoryContentTab(
     animeHistoryRepository: AnimeHistoryRepository = Injekt.get(),
     mangaHistoryRepository: MangaHistoryRepository = Injekt.get(),
     novelHistoryRepository: NovelHistoryRepository = Injekt.get(),
+    uiPreferences: UiPreferences = Injekt.get(),
 ): HistoryContentTab? {
+    val showAnimeSection = uiPreferences.showAnimeSection().get()
+    val showMangaSection = uiPreferences.showMangaSection().get()
+    val showNovelSection = uiPreferences.showNovelSection().get()
+
     return resolveLatestHistoryContentTab(
-        animeLastSeenAt = animeHistoryRepository.getLastAnimeHistory()?.seenAt,
-        mangaLastReadAt = mangaHistoryRepository.getLastMangaHistory()?.readAt,
-        novelLastReadAt = novelHistoryRepository.getLastNovelHistory()?.readAt,
+        animeLastSeenAt = animeHistoryRepository.getLastAnimeHistory()?.seenAt.takeIf { showAnimeSection },
+        mangaLastReadAt = mangaHistoryRepository.getLastMangaHistory()?.readAt.takeIf { showMangaSection },
+        novelLastReadAt = novelHistoryRepository.getLastNovelHistory()?.readAt.takeIf { showNovelSection },
     )
 }
 
@@ -175,11 +189,16 @@ private suspend fun openLatestHistoryEntry(navigator: Navigator) {
     val mangaHistory = mangaHistoryRepository.getLastMangaHistory()
     val novelHistory = novelHistoryRepository.getLastNovelHistory()
 
+    val uiPreferences = Injekt.get<UiPreferences>()
+    val showAnimeSection = uiPreferences.showAnimeSection().get()
+    val showMangaSection = uiPreferences.showMangaSection().get()
+    val showNovelSection = uiPreferences.showNovelSection().get()
+
     when (
         resolveLatestHistoryContentTab(
-            animeLastSeenAt = animeHistory?.seenAt,
-            mangaLastReadAt = mangaHistory?.readAt,
-            novelLastReadAt = novelHistory?.readAt,
+            animeLastSeenAt = animeHistory?.seenAt.takeIf { showAnimeSection },
+            mangaLastReadAt = mangaHistory?.readAt.takeIf { showMangaSection },
+            novelLastReadAt = novelHistory?.readAt.takeIf { showNovelSection },
         )
     ) {
         HistoryContentTab.ANIME -> {
