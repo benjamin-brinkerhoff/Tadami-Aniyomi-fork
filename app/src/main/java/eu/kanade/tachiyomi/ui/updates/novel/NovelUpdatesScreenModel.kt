@@ -47,6 +47,7 @@ class NovelUpdatesScreenModel(
                     mutableState.value = State(
                         isLoading = false,
                         items = updates
+                            .filter { !it.read }
                             .map { update ->
                                 NovelUpdatesItem(
                                     update = update,

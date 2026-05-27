@@ -106,6 +106,7 @@ class AnimeUpdatesScreenModel(
 
     private fun List<AnimeUpdatesWithRelations>.toUpdateItems(): PersistentList<AnimeUpdatesItem> {
         return this
+            .filter { !it.seen }
             .map { update ->
                 val activeDownload = downloadManager.getQueuedDownloadOrNull(update.episodeId)
                 val downloaded = downloadManager.isEpisodeDownloaded(

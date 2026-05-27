@@ -821,8 +821,11 @@ class NovelScreenModel(
 
             downloadedStateVersion.incrementAndGet()
             updateSuccessState {
-                if (mergedIds == it.downloadedChapterIds) it
-                else it.copy(downloadedChapterIds = mergedIds)
+                if (mergedIds == it.downloadedChapterIds) {
+                    it
+                } else {
+                    it.copy(downloadedChapterIds = mergedIds)
+                }
             }
         }
     }

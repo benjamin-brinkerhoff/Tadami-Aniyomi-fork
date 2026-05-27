@@ -102,6 +102,7 @@ class MangaUpdatesScreenModel(
 
     private fun List<MangaUpdatesWithRelations>.toUpdateItems(): PersistentList<MangaUpdatesItem> {
         return this
+            .filter { !it.read }
             .map { update ->
                 val activeDownload = downloadManager.getQueuedDownloadOrNull(update.chapterId)
                 val downloaded = downloadManager.isChapterDownloaded(
