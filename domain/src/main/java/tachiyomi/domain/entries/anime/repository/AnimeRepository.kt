@@ -54,4 +54,14 @@ interface AnimeRepository {
     fun getDeletableParentAnime(): Flow<List<DeletableAnime>>
 
     suspend fun getChildrenByParentId(parentId: Long): List<Anime>
+
+    suspend fun updateAnimeMetadata(
+        animeId: Long,
+        customTitle: String?,
+        customArtist: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean
 }

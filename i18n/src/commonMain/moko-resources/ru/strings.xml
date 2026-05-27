@@ -1150,4 +1150,27 @@
     <string name="omnibuilder_action_back">Назад</string>
     <string name="omnibuilder_mode_select">Режим выбора</string>
     <string name="omnibuilder_mode_interact">Режим сайта</string>
+    <!-- Edit Metadata Feature -->
+    <string name="action_edit_info">Изменить метаданные</string>
+    <string name="action_edit_metadata">Изменить метаданные</string>
+    <string name="action_reset_metadata">Сбросить изменения</string>
+    <string name="action_reset_metadata_confirmation">Вы уверены, что хотите сбросить все изменения к оригинальным значениям из источника?</string>
+    <string name="action_add_genre">Добавить жанр</string>
+    <string name="genre_input_placeholder">Добавить жанр...</string>
+    <string name="label_custom_title">Пользовательское название</string>
+    <string name="label_custom_author">Пользовательский автор</string>
+    <string name="label_custom_artist">Пользовательский художник</string>
+    <string name="label_custom_description">Пользовательское описание</string>
+    <string name="label_custom_status">Пользовательский статус</string>
+    <string name="label_custom_genres">Пользовательские жанры</string>
+    <string name="status_default">По умолчанию (из источника)</string>
+    <string name="status_ongoing">Выходит</string>
+    <string name="status_completed">Завершено</string>
+    <string name="status_licensed">Лицензировано</string>
+    <string name="status_publishing_finished">Издание завершено</string>
+    <string name="status_cancelled">Отменено</string>
+    <string name="status_on_hiatus">Приостановлено</string>
+    <string name="status_unknown">Неизвестно</string>
+    <string name="metadata_saved_successfully">Метаданные успешно сохранены</string>
 </resources>
+

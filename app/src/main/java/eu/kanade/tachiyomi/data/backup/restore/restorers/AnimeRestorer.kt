@@ -119,6 +119,12 @@ class AnimeRestorer(
             version = newer.version,
             fetchType = newer.fetchType,
             parentId = newer.parentId,
+            customTitle = newer.customTitle ?: this.customTitle,
+            customArtist = newer.customArtist ?: this.customArtist,
+            customAuthor = newer.customAuthor ?: this.customAuthor,
+            customDescription = newer.customDescription ?: this.customDescription,
+            customGenre = newer.customGenre ?: this.customGenre,
+            customStatus = newer.customStatus ?: this.customStatus,
         )
     }
 
@@ -156,6 +162,15 @@ class AnimeRestorer(
                 seasonSourceOrder = anime.seasonSourceOrder,
                 backgroundUrl = anime.backgroundUrl,
                 backgroundLastModified = anime.backgroundLastModified,
+            )
+            db.animesQueries.updateMetadata(
+                customTitle = anime.customTitle,
+                customArtist = anime.customArtist,
+                customAuthor = anime.customAuthor,
+                customDescription = anime.customDescription,
+                customGenre = anime.customGenre,
+                customStatus = anime.customStatus,
+                animeId = anime.id,
             )
         }
         return anime
@@ -275,7 +290,7 @@ class AnimeRestorer(
      * @return id of [Anime], null if not found
      */
     private suspend fun insertAnime(anime: Anime): Long {
-        return handler.awaitOneExecutable(true) { db ->
+        return handler.await(true) { db ->
             db.animesQueries.insert(
                 source = anime.source,
                 url = anime.url,
@@ -307,7 +322,17 @@ class AnimeRestorer(
                 backgroundUrl = anime.backgroundUrl,
                 backgroundLastModified = anime.backgroundLastModified,
             )
-            db.animesQueries.selectLastInsertedRowId()
+            val animeId = db.animesQueries.selectLastInsertedRowId().executeAsOne()
+            db.animesQueries.updateMetadata(
+                customTitle = anime.customTitle,
+                customArtist = anime.customArtist,
+                customAuthor = anime.customAuthor,
+                customDescription = anime.customDescription,
+                customGenre = anime.customGenre,
+                customStatus = anime.customStatus,
+                animeId = animeId,
+            )
+            animeId
         }
     }
 

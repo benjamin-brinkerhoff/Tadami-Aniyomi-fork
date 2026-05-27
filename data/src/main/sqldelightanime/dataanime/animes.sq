@@ -37,7 +37,13 @@ CREATE TABLE animes(
     season_source_order INTEGER NOT NULL,
     background_url TEXT,
     background_last_modified INTEGER NOT NULL,
-    pinned INTEGER AS Boolean NOT NULL DEFAULT 0
+    pinned INTEGER AS Boolean NOT NULL DEFAULT 0,
+    custom_title TEXT,
+    custom_artist TEXT,
+    custom_author TEXT,
+    custom_description TEXT,
+    custom_genre TEXT AS List<String>,
+    custom_status INTEGER
 );
 
 CREATE INDEX animelib_favorite_index ON animes(favorite) WHERE favorite = 1;
@@ -207,6 +213,16 @@ UPDATE animes SET
     season_source_order = coalesce(:seasonSourceOrder, season_source_order),
     background_url = coalesce(:backgroundUrl, background_url),
     background_last_modified = coalesce(:backgroundLastModified, background_last_modified)
+WHERE _id = :animeId;
+
+updateMetadata:
+UPDATE animes SET
+    custom_title = :customTitle,
+    custom_artist = :customArtist,
+    custom_author = :customAuthor,
+    custom_description = :customDescription,
+    custom_genre = :customGenre,
+    custom_status = :customStatus
 WHERE _id = :animeId;
 
 selectLastInsertedRowId:

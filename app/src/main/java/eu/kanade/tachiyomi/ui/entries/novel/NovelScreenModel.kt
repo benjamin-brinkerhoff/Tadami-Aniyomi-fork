@@ -75,6 +75,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import logcat.LogPriority
@@ -158,6 +159,7 @@ class NovelScreenModel(
     private val novelId: Long,
     private val context: Application = Injekt.get(),
     private val basePreferences: BasePreferences = Injekt.get(),
+    private val novelRepository: tachiyomi.domain.entries.novel.repository.NovelRepository = Injekt.get(),
     private val libraryPreferences: LibraryPreferences = Injekt.get(),
     private val getNovelWithChapters: GetNovelWithChapters = Injekt.get(),
     private val updateNovel: UpdateNovel = Injekt.get(),
@@ -573,6 +575,56 @@ class NovelScreenModel(
                     refreshNovel = shouldAutoRefreshNovel,
                     refreshChapters = shouldAutoRefreshChapters,
                 )
+            }
+        }
+    }
+
+    fun updateNovelMetadata(
+        customTitle: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ) {
+        screenModelScope.launchIO {
+            if (updateNovel.awaitUpdateMetadata(
+                    novelId = novelId,
+                    customTitle = customTitle,
+                    customAuthor = customAuthor,
+                    customDescription = customDescription,
+                    customGenre = customGenre,
+                    customStatus = customStatus,
+                )
+            ) {
+                val newNovel = novelRepository.getNovelById(novelId)
+                updateSuccessState { it.copy(novel = newNovel) }
+                screenModelScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.stringResource(MR.strings.metadata_saved_successfully),
+                    )
+                }
+            }
+        }
+    }
+
+    fun resetNovelMetadata() {
+        screenModelScope.launchIO {
+            if (updateNovel.awaitUpdateMetadata(
+                    novelId = novelId,
+                    customTitle = null,
+                    customAuthor = null,
+                    customDescription = null,
+                    customGenre = null,
+                    customStatus = null,
+                )
+            ) {
+                val newNovel = novelRepository.getNovelById(novelId)
+                updateSuccessState { it.copy(novel = newNovel) }
+                screenModelScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.stringResource(MR.strings.metadata_saved_successfully),
+                    )
+                }
             }
         }
     }

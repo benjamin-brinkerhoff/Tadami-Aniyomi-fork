@@ -32,4 +32,13 @@ interface NovelRepository {
     suspend fun updateAllNovel(novelUpdates: List<NovelUpdate>): Boolean
 
     suspend fun resetNovelViewerFlags(): Boolean
+
+    suspend fun updateNovelMetadata(
+        novelId: Long,
+        customTitle: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean
 }

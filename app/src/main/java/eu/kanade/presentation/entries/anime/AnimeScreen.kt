@@ -200,6 +200,8 @@ fun AnimeScreen(
 
     // Metadata retry (Anilist/Shikimori)
     onRetryMetadata: () -> Unit,
+
+    onClickEditInfo: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val uiPreferences = Injekt.get<eu.kanade.domain.ui.UiPreferences>()
@@ -271,6 +273,7 @@ fun AnimeScreen(
             isAutoJumpToNextEnabled = autoJumpToNextEnabled,
             autoJumpToNextLabel = autoJumpToNextLabel,
             onToggleAutoJumpToNext = onToggleAutoJumpToNext,
+            onClickEditInfo = onClickEditInfo,
         )
         return
     }
@@ -327,6 +330,7 @@ fun AnimeScreen(
             isAutoJumpToNextEnabled = autoJumpToNextEnabled,
             autoJumpToNextLabel = autoJumpToNextLabel,
             onToggleAutoJumpToNext = onToggleAutoJumpToNext,
+            onClickEditInfo = onClickEditInfo,
         )
     } else {
         AnimeScreenLargeImpl(
@@ -374,6 +378,7 @@ fun AnimeScreen(
             isAutoJumpToNextEnabled = autoJumpToNextEnabled,
             autoJumpToNextLabel = autoJumpToNextLabel,
             onToggleAutoJumpToNext = onToggleAutoJumpToNext,
+            onClickEditInfo = onClickEditInfo,
         )
     }
 }
@@ -416,6 +421,7 @@ private fun AnimeScreenSmallImpl(
     onMigrateClicked: (() -> Unit)?,
     changeAnimeSkipIntro: (() -> Unit)?,
     onSettingsClicked: (() -> Unit)?,
+    onClickEditInfo: (() -> Unit)?,
     isAutoJumpToNextEnabled: Boolean,
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
@@ -447,13 +453,13 @@ private fun AnimeScreenSmallImpl(
     val uiPreferences = remember { Injekt.get<eu.kanade.domain.ui.UiPreferences>() }
     val metadataSource by uiPreferences.metadataSource().collectAsState()
     val showOriginalTitle by uiPreferences.showOriginalTitle().collectAsState()
-    val originalTitle = remember(state.anime.description) {
-        parseOriginalTitle(state.anime.description)
+    val originalTitle = remember(state.anime.displayDescription) {
+        parseOriginalTitle(state.anime.displayDescription)
     }
     val displayTitle = if (showOriginalTitle && originalTitle != null) {
-        "${state.anime.title} ($originalTitle)"
+        "${state.anime.displayTitle} ($originalTitle)"
     } else {
-        state.anime.title
+        state.anime.displayTitle
     }
 
     val resolvedCoverUrl = remember(
@@ -568,6 +574,7 @@ private fun AnimeScreenSmallImpl(
                     titleAlphaProvider = { titleAlpha },
                     backgroundAlphaProvider = { backgroundAlpha },
                     isManga = false,
+                    onClickEditInfo = onClickEditInfo,
                     modifier = Modifier.onSizeChanged { toolbarHeight = it.height },
                 )
             },
@@ -710,8 +717,8 @@ private fun AnimeScreenSmallImpl(
                     ) {
                         ExpandableAnimeDescription(
                             defaultExpandState = state.isFromSource,
-                            description = state.anime.description,
-                            tagsProvider = { state.anime.genre },
+                            description = state.anime.displayDescription,
+                            tagsProvider = { state.anime.displayGenre },
                             onTagSearch = onTagSearch,
                             onCopyTagToClipboard = onCopyTagToClipboard,
                             modifier = Modifier.ignorePadding(offsetGridPaddingPx),
@@ -772,7 +779,7 @@ private fun AnimeScreenSmallImpl(
                                     }
                                     if (timer > 0L &&
                                         showNextEpisodeAirTime &&
-                                        state.anime.status.toInt() != SAnime.COMPLETED
+                                        state.anime.displayStatus.toInt() != SAnime.COMPLETED
                                     ) {
                                         NextEpisodeAiringListItem(
                                             title = stringResource(
@@ -856,6 +863,7 @@ fun AnimeScreenLargeImpl(
     onMigrateClicked: (() -> Unit)?,
     changeAnimeSkipIntro: (() -> Unit)?,
     onSettingsClicked: (() -> Unit)?,
+    onClickEditInfo: (() -> Unit)?,
     isAutoJumpToNextEnabled: Boolean,
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
@@ -886,13 +894,13 @@ fun AnimeScreenLargeImpl(
     val uiPreferences = remember { Injekt.get<eu.kanade.domain.ui.UiPreferences>() }
     val metadataSource by uiPreferences.metadataSource().collectAsState()
     val showOriginalTitle by uiPreferences.showOriginalTitle().collectAsState()
-    val originalTitle = remember(state.anime.description) {
-        parseOriginalTitle(state.anime.description)
+    val originalTitle = remember(state.anime.displayDescription) {
+        parseOriginalTitle(state.anime.displayDescription)
     }
     val displayTitle = if (showOriginalTitle && originalTitle != null) {
-        "${state.anime.title} ($originalTitle)"
+        "${state.anime.displayTitle} ($originalTitle)"
     } else {
-        state.anime.title
+        state.anime.displayTitle
     }
 
     val resolvedCoverUrl = remember(
@@ -989,6 +997,7 @@ fun AnimeScreenLargeImpl(
                     titleAlphaProvider = { 1f },
                     backgroundAlphaProvider = { 1f },
                     isManga = false,
+                    onClickEditInfo = onClickEditInfo,
                 )
             },
             bottomBar = {
@@ -1090,8 +1099,8 @@ fun AnimeScreenLargeImpl(
                             )
                             ExpandableAnimeDescription(
                                 defaultExpandState = true,
-                                description = state.anime.description,
-                                tagsProvider = { state.anime.genre },
+                                description = state.anime.displayDescription,
+                                tagsProvider = { state.anime.displayGenre },
                                 onTagSearch = onTagSearch,
                                 onCopyTagToClipboard = onCopyTagToClipboard,
                             )
@@ -1162,7 +1171,7 @@ fun AnimeScreenLargeImpl(
                                             }
                                             if (timer > 0L &&
                                                 showNextEpisodeAirTime &&
-                                                state.anime.status.toInt() != SAnime.COMPLETED
+                                                state.anime.displayStatus.toInt() != SAnime.COMPLETED
                                             ) {
                                                 NextEpisodeAiringListItem(
                                                     title = stringResource(

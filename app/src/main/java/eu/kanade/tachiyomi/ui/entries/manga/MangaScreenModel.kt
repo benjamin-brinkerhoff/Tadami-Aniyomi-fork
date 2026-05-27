@@ -318,6 +318,59 @@ class MangaScreenModel(
         }
     }
 
+    fun updateMangaMetadata(
+        customTitle: String?,
+        customAuthor: String?,
+        customArtist: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ) {
+        screenModelScope.launchIO {
+            if (updateManga.awaitUpdateMetadata(
+                    mangaId = mangaId,
+                    customTitle = customTitle,
+                    customAuthor = customAuthor,
+                    customArtist = customArtist,
+                    customDescription = customDescription,
+                    customGenre = customGenre,
+                    customStatus = customStatus,
+                )
+            ) {
+                val newManga = mangaRepository.getMangaById(mangaId)
+                updateSuccessState { it.copy(manga = newManga) }
+                screenModelScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.stringResource(MR.strings.metadata_saved_successfully),
+                    )
+                }
+            }
+        }
+    }
+
+    fun resetMangaMetadata() {
+        screenModelScope.launchIO {
+            if (updateManga.awaitUpdateMetadata(
+                    mangaId = mangaId,
+                    customTitle = null,
+                    customAuthor = null,
+                    customArtist = null,
+                    customDescription = null,
+                    customGenre = null,
+                    customStatus = null,
+                )
+            ) {
+                val newManga = mangaRepository.getMangaById(mangaId)
+                updateSuccessState { it.copy(manga = newManga) }
+                screenModelScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.stringResource(MR.strings.metadata_saved_successfully),
+                    )
+                }
+            }
+        }
+    }
+
     // Manga info - start
 
     /**

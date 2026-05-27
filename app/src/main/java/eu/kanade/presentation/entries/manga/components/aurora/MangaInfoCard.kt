@@ -75,7 +75,7 @@ fun MangaInfoCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top,
                 ) {
-                    val displayDescription = translation?.description ?: manga.description
+                    val displayDescription = translation?.description ?: manga.displayDescription
                     val descriptionToggleEnabled = (displayDescription?.length ?: 0) > 200
                     Text(
                         text = displayDescription ?: stringResource(AYMR.strings.aurora_no_description),
@@ -112,7 +112,7 @@ fun MangaInfoCard(
                 }
             }
 
-            if (!manga.genre.isNullOrEmpty()) {
+            if (!manga.displayGenre.isNullOrEmpty()) {
                 Column(
                     verticalArrangement = Arrangement.Top,
                     modifier = Modifier.fillMaxWidth(),
@@ -127,7 +127,13 @@ fun MangaInfoCard(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.weight(1f),
                         ) {
-                            val genresToShow = if (genresExpanded) manga.genre!! else manga.genre!!.take(3)
+                            val genresToShow = if (genresExpanded) {
+                                manga.displayGenre!!
+                            } else {
+                                manga.displayGenre!!.take(
+                                    3,
+                                )
+                            }
                             genresToShow.forEach { genre ->
                                 Box(
                                     modifier = Modifier
@@ -146,7 +152,7 @@ fun MangaInfoCard(
                             }
                         }
 
-                        if (manga.genre!!.size > 3) {
+                        if (manga.displayGenre!!.size > 3) {
                             Icon(
                                 imageVector = if (genresExpanded) {
                                     Icons.Filled.KeyboardArrowUp

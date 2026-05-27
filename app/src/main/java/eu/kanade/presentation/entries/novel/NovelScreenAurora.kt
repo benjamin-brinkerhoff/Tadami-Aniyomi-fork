@@ -176,9 +176,10 @@ fun NovelScreenAuroraImpl(
     isAutoJumpToNextEnabled: Boolean,
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
+    onClickEditInfo: (() -> Unit)? = null,
 ) {
     val novel = state.novel
-    val globalSearchQuery = remember(novel.title) { normalizeAuroraGlobalSearchQuery(novel.title) }
+    val globalSearchQuery = remember(novel.displayTitle) { normalizeAuroraGlobalSearchQuery(novel.displayTitle) }
     val posterLongPressModifier = onPosterLongClicked?.let { Modifier.auroraPosterLongPress(it) } ?: Modifier
     val chapters = state.processedChapters
     val readChapterCount = remember(state.chapters) { state.chapters.count { it.read } }
@@ -239,8 +240,8 @@ fun NovelScreenAuroraImpl(
         .auroraEntryTranslationSourceLanguages()
         .collectAsState()
     val auroraEntryTranslation = rememberAuroraEntryTranslation(
-        title = novel.title,
-        description = normalizeNovelDescription(novel.description),
+        title = novel.displayTitle,
+        description = normalizeNovelDescription(novel.displayDescription),
         sourceLanguage = state.source.lang,
         enabled = auroraEntryTranslationEnabled,
         allowedSourceFamilies = auroraEntryTranslationSourceLanguages,
@@ -814,6 +815,15 @@ fun NovelScreenAuroraImpl(
                                             },
                                         )
                                     }
+                                    if (onClickEditInfo != null) {
+                                        AuroraEntryDropdownMenuItem(
+                                            text = stringResource(MR.strings.action_edit_info),
+                                            onClick = {
+                                                onClickEditInfo()
+                                                showMenu = false
+                                            },
+                                        )
+                                    }
                                 } else {
                                     AuroraEntryDropdownMenuItem(
                                         text = stringResource(MR.strings.action_webview_refresh),
@@ -845,6 +855,15 @@ fun NovelScreenAuroraImpl(
                                             text = stringResource(MR.strings.action_notes),
                                             onClick = {
                                                 onEditNotesClicked()
+                                                showMenu = false
+                                            },
+                                        )
+                                    }
+                                    if (onClickEditInfo != null) {
+                                        AuroraEntryDropdownMenuItem(
+                                            text = stringResource(MR.strings.action_edit_info),
+                                            onClick = {
+                                                onClickEditInfo()
                                                 showMenu = false
                                             },
                                         )
@@ -1383,6 +1402,24 @@ fun NovelScreenAuroraImpl(
                                         },
                                     )
                                 }
+                                if (onEditNotesClicked != null) {
+                                    AuroraEntryDropdownMenuItem(
+                                        text = stringResource(MR.strings.action_notes),
+                                        onClick = {
+                                            onEditNotesClicked()
+                                            showMenu = false
+                                        },
+                                    )
+                                }
+                                if (onClickEditInfo != null) {
+                                    AuroraEntryDropdownMenuItem(
+                                        text = stringResource(MR.strings.action_edit_info),
+                                        onClick = {
+                                            onClickEditInfo()
+                                            showMenu = false
+                                        },
+                                    )
+                                }
                             } else {
                                 AuroraEntryDropdownMenuItem(
                                     text = stringResource(MR.strings.action_webview_refresh),
@@ -1414,6 +1451,15 @@ fun NovelScreenAuroraImpl(
                                         text = stringResource(MR.strings.action_notes),
                                         onClick = {
                                             onEditNotesClicked()
+                                            showMenu = false
+                                        },
+                                    )
+                                }
+                                if (onClickEditInfo != null) {
+                                    AuroraEntryDropdownMenuItem(
+                                        text = stringResource(MR.strings.action_edit_info),
+                                        onClick = {
+                                            onClickEditInfo()
                                             showMenu = false
                                         },
                                     )

@@ -435,6 +435,7 @@ class AppModule(val app: Application) : InjektModule {
                 ),
                 mangasAdapter = Mangas.Adapter(
                     genreAdapter = StringListColumnAdapter,
+                    custom_genreAdapter = StringListColumnAdapter,
                     update_strategyAdapter = MangaUpdateStrategyColumnAdapter,
                 ),
             )
@@ -448,6 +449,7 @@ class AppModule(val app: Application) : InjektModule {
                 ),
                 novelsAdapter = Novels.Adapter(
                     genreAdapter = StringListColumnAdapter,
+                    custom_genreAdapter = StringListColumnAdapter,
                     update_strategyAdapter = MangaUpdateStrategyColumnAdapter,
                 ),
             )
@@ -461,6 +463,7 @@ class AppModule(val app: Application) : InjektModule {
                 ),
                 animesAdapter = Animes.Adapter(
                     genreAdapter = StringListColumnAdapter,
+                    custom_genreAdapter = StringListColumnAdapter,
                     update_strategyAdapter = AnimeUpdateStrategyColumnAdapter,
                     fetch_typeAdapter = FetchTypeColumnAdapter,
                 ),

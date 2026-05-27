@@ -52,13 +52,13 @@ fun NovelInfoCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = AuroraTheme.colors
-    val normalizedDescription = remember(novel.description, translation?.description) {
-        translation?.description ?: normalizeNovelDescription(novel.description)
+    val normalizedDescription = remember(novel.displayDescription, translation?.description) {
+        translation?.description ?: normalizeNovelDescription(novel.displayDescription)
     }
     var hasDescriptionOverflow by remember(normalizedDescription) { mutableStateOf(false) }
-    val normalizedGenres = remember(novel.genre) {
+    val normalizedGenres = remember(novel.displayGenre) {
         val seen = LinkedHashSet<String>()
-        novel.genre.orEmpty()
+        novel.displayGenre.orEmpty()
             .flatMap { value ->
                 value
                     .split(Regex("[,;/|\\n\\r\\t•·]+"))

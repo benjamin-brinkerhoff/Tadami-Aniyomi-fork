@@ -398,6 +398,11 @@ class BackupCreator(
             favoriteModifiedAt = this.favoriteModifiedAt,
             excludedScanlators = this.excludedScanlators,
             version = this.version,
+            customTitle = this.customTitle,
+            customAuthor = this.customAuthor,
+            customDescription = this.customDescription,
+            customGenre = this.customGenre,
+            customStatus = this.customStatus,
         )
     }
 

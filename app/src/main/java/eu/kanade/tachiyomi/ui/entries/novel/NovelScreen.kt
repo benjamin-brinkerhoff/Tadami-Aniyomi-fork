@@ -89,6 +89,7 @@ import eu.kanade.domain.entries.novel.interactor.UpdateNovel
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.components.NavigatorAdaptiveSheet
 import eu.kanade.presentation.entries.EditCoverAction
+import eu.kanade.presentation.entries.components.EditMetadataSheet
 import eu.kanade.presentation.entries.components.aurora.AuroraNoteEditorDialog
 import eu.kanade.presentation.entries.novel.NovelChapterSettingsDialog
 import eu.kanade.presentation.entries.novel.NovelScreen
@@ -175,6 +176,7 @@ class NovelScreen(
         var showEpubExportDialog by remember { mutableStateOf(false) }
         var epubExportProgress by remember { mutableStateOf<NovelEpubExportProgress?>(null) }
         var showNotesDialog by remember { mutableStateOf(false) }
+        var showEditMetadataSheet by remember { mutableStateOf(false) }
         val epubExportPreferences = screenModel.getEpubExportPreferences()
         BackHandler(enabled = screenModel.isAnyChapterSelected) {
             screenModel.toggleAllSelection(false)
@@ -500,6 +502,7 @@ class NovelScreen(
             onMultiDownloadClicked = screenModel::downloadSelectedChapters,
             onMultiDeleteClicked = screenModel::deleteDownloadedSelectedChapters,
             onSaveScrollPosition = screenModel::saveScrollPosition,
+            onClickEditInfo = { showEditMetadataSheet = true },
         )
 
         if (showBatchDownloadDialog) {
@@ -607,6 +610,25 @@ class NovelScreen(
                             ),
                         )
                     }
+                },
+            )
+        }
+
+        if (showEditMetadataSheet) {
+            EditMetadataSheet(
+                onDismissRequest = { showEditMetadataSheet = false },
+                currentTitle = successState.novel.displayTitle,
+                currentAuthor = successState.novel.displayAuthor,
+                currentArtist = null,
+                currentDescription = successState.novel.displayDescription,
+                currentGenre = successState.novel.displayGenre,
+                currentStatus = successState.novel.displayStatus,
+                hasArtist = false,
+                onSave = { title, author, _, description, tags, status ->
+                    screenModel.updateNovelMetadata(title, author, description, tags, status)
+                },
+                onReset = {
+                    screenModel.resetNovelMetadata()
                 },
             )
         }

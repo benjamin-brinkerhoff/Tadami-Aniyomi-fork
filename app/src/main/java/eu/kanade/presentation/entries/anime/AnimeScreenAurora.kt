@@ -176,9 +176,10 @@ fun AnimeScreenAuroraImpl(
     isAutoJumpToNextEnabled: Boolean,
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
+    onClickEditInfo: (() -> Unit)? = null,
 ) {
     val anime = state.anime
-    val globalSearchQuery = remember(anime.title) { normalizeAuroraGlobalSearchQuery(anime.title) }
+    val globalSearchQuery = remember(anime.displayTitle) { normalizeAuroraGlobalSearchQuery(anime.displayTitle) }
     val episodes = state.episodeListItems
     val selectedEpisodes = remember(episodes) {
         episodes.filterIsInstance<EpisodeList.Item>().filter { it.selected }
@@ -391,8 +392,8 @@ fun AnimeScreenAuroraImpl(
         .auroraEntryTranslationSourceLanguages()
         .collectAsState()
     val auroraEntryTranslation = rememberAuroraEntryTranslation(
-        title = anime.title,
-        description = filterAnimeDescription(anime.description),
+        title = anime.displayTitle,
+        description = filterAnimeDescription(anime.displayDescription),
         sourceLanguage = state.source.lang,
         enabled = auroraEntryTranslationEnabled,
         allowedSourceFamilies = auroraEntryTranslationSourceLanguages,
@@ -1058,6 +1059,15 @@ fun AnimeScreenAuroraImpl(
                                 text = stringResource(MR.strings.action_notes),
                                 onClick = {
                                     onEditNotesClicked()
+                                    showMenu = false
+                                },
+                            )
+                        }
+                        if (onClickEditInfo != null) {
+                            AuroraEntryDropdownMenuItem(
+                                text = stringResource(MR.strings.action_edit_info),
+                                onClick = {
+                                    onClickEditInfo()
                                     showMenu = false
                                 },
                             )

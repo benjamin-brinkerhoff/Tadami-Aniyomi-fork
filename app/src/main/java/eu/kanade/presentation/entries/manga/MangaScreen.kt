@@ -134,6 +134,7 @@ fun MangaScreen(
     onEditFetchIntervalClicked: (() -> Unit)?,
     onEditNotesClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onClickEditInfo: (() -> Unit)? = null,
 
     // For bottom action menu
     onMultiBookmarkClicked: (List<Chapter>, bookmarked: Boolean) -> Unit,
@@ -199,6 +200,7 @@ fun MangaScreen(
             onEditFetchIntervalClicked = onEditFetchIntervalClicked,
             onEditNotesClicked = onEditNotesClicked,
             onMigrateClicked = onMigrateClicked,
+            onClickEditInfo = onClickEditInfo,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
             onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
@@ -252,6 +254,7 @@ fun MangaScreen(
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
             onMigrateClicked = onMigrateClicked,
+            onClickEditInfo = onClickEditInfo,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
             onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
@@ -295,6 +298,7 @@ fun MangaScreen(
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
             onMigrateClicked = onMigrateClicked,
+            onClickEditInfo = onClickEditInfo,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
             onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
@@ -348,6 +352,7 @@ private fun MangaScreenSmallImpl(
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onClickEditInfo: (() -> Unit)?,
     onSettingsClicked: (() -> Unit)?,
     isAutoJumpToNextEnabled: Boolean,
     autoJumpToNextLabel: String,
@@ -430,7 +435,7 @@ private fun MangaScreenSmallImpl(
                 label = "Top Bar Background",
             )
             EntryToolbar(
-                title = state.manga.title,
+                title = state.manga.displayTitle,
                 hasFilters = state.filterActive,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterClicked,
@@ -439,6 +444,7 @@ private fun MangaScreenSmallImpl(
                 onClickEditCategory = onEditCategoryClicked,
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
+                onClickEditInfo = onClickEditInfo,
                 onClickSettings = onSettingsClicked,
                 onToggleAutoJumpToNext = onToggleAutoJumpToNext,
                 autoJumpToNextLabel = autoJumpToNextLabel,
@@ -573,8 +579,8 @@ private fun MangaScreenSmallImpl(
                     ) {
                         ExpandableMangaDescription(
                             defaultExpandState = state.isFromSource,
-                            description = state.manga.description,
-                            tagsProvider = { state.manga.genre },
+                            description = state.manga.displayDescription,
+                            tagsProvider = { state.manga.displayGenre },
                             onTagSearch = onTagSearch,
                             onCopyTagToClipboard = onCopyTagToClipboard,
                         )
@@ -672,6 +678,7 @@ fun MangaScreenLargeImpl(
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onClickEditInfo: (() -> Unit)?,
     onSettingsClicked: (() -> Unit)?,
     isAutoJumpToNextEnabled: Boolean,
     autoJumpToNextLabel: String,
@@ -738,7 +745,7 @@ fun MangaScreenLargeImpl(
             }
             EntryToolbar(
                 modifier = Modifier.onSizeChanged { topBarHeight = it.height },
-                title = state.manga.title,
+                title = state.manga.displayTitle,
                 hasFilters = state.filterActive,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterButtonClicked,
@@ -747,6 +754,7 @@ fun MangaScreenLargeImpl(
                 onClickEditCategory = onEditCategoryClicked,
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
+                onClickEditInfo = onClickEditInfo,
                 onClickSettings = onSettingsClicked,
                 onToggleAutoJumpToNext = onToggleAutoJumpToNext,
                 autoJumpToNextLabel = autoJumpToNextLabel,
@@ -851,8 +859,8 @@ fun MangaScreenLargeImpl(
                         )
                         ExpandableMangaDescription(
                             defaultExpandState = true,
-                            description = state.manga.description,
-                            tagsProvider = { state.manga.genre },
+                            description = state.manga.displayDescription,
+                            tagsProvider = { state.manga.displayGenre },
                             onTagSearch = onTagSearch,
                             onCopyTagToClipboard = onCopyTagToClipboard,
                         )

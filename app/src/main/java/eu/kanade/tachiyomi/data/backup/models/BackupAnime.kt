@@ -40,6 +40,12 @@ data class BackupAnime(
     @ProtoNumber(106) var lastModifiedAt: Long = 0,
     @ProtoNumber(107) var favoriteModifiedAt: Long? = null,
     @ProtoNumber(109) var version: Long = 0,
+    @ProtoNumber(800) var customTitle: String? = null,
+    @ProtoNumber(801) var customArtist: String? = null,
+    @ProtoNumber(802) var customAuthor: String? = null,
+    @ProtoNumber(803) var customDescription: String? = null,
+    @ProtoNumber(804) var customGenre: List<String>? = null,
+    @ProtoNumber(805) var customStatus: Long? = null,
 
     // Aniyomi specific values
     @ProtoNumber(500) var backgroundUrl: String? = null,
@@ -77,6 +83,12 @@ data class BackupAnime(
             seasonFlags = this@BackupAnime.seasonFlags,
             seasonNumber = this@BackupAnime.seasonNumber,
             seasonSourceOrder = this@BackupAnime.seasonSourceOrder,
+            customTitle = this@BackupAnime.customTitle,
+            customArtist = this@BackupAnime.customArtist,
+            customAuthor = this@BackupAnime.customAuthor,
+            customDescription = this@BackupAnime.customDescription,
+            customGenre = this@BackupAnime.customGenre,
+            customStatus = this@BackupAnime.customStatus,
         )
     }
 }

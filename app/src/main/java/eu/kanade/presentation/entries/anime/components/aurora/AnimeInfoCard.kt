@@ -1,4 +1,4 @@
-﻿package eu.kanade.presentation.entries.anime.components.aurora
+package eu.kanade.presentation.entries.anime.components.aurora
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,8 +77,8 @@ fun AnimeInfoCard(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            val filteredDescription = remember(anime.description, translation?.description) {
-                translation?.description ?: filterAnimeDescription(anime.description)
+            val filteredDescription = remember(anime.displayDescription, translation?.description) {
+                translation?.description ?: filterAnimeDescription(anime.displayDescription)
             }
 
             Text(
@@ -129,7 +129,7 @@ fun AnimeInfoCard(
                 }
             }
 
-            if (!anime.genre.isNullOrEmpty()) {
+            if (!anime.displayGenre.isNullOrEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -140,7 +140,7 @@ fun AnimeInfoCard(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.weight(1f),
                     ) {
-                        val genresToShow = if (genresExpanded) anime.genre!! else anime.genre!!.take(3)
+                        val genresToShow = if (genresExpanded) anime.displayGenre!! else anime.displayGenre!!.take(3)
                         genresToShow.forEach { genre ->
                             Box(
                                 modifier = Modifier
@@ -159,7 +159,7 @@ fun AnimeInfoCard(
                         }
                     }
 
-                    if (anime.genre!!.size > 3) {
+                    if (anime.displayGenre!!.size > 3) {
                         Icon(
                             imageVector = if (genresExpanded) {
                                 Icons.Filled.KeyboardArrowUp

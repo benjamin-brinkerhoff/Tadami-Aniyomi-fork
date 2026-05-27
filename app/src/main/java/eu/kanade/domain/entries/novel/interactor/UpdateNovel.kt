@@ -15,6 +15,24 @@ class UpdateNovel(
         return novelRepository.updateNovel(novelUpdate)
     }
 
+    suspend fun awaitUpdateMetadata(
+        novelId: Long,
+        customTitle: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean {
+        return novelRepository.updateNovelMetadata(
+            novelId = novelId,
+            customTitle = customTitle,
+            customAuthor = customAuthor,
+            customDescription = customDescription,
+            customGenre = customGenre,
+            customStatus = customStatus,
+        )
+    }
+
     suspend fun awaitAll(novelUpdates: List<NovelUpdate>): Boolean {
         return novelRepository.updateAllNovel(novelUpdates)
     }

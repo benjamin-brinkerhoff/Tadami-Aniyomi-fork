@@ -33,7 +33,18 @@ data class Novel(
     val lastModifiedAt: Long,
     val favoriteModifiedAt: Long?,
     val version: Long,
+    val customTitle: String? = null,
+    val customAuthor: String? = null,
+    val customDescription: String? = null,
+    val customGenre: List<String>? = null,
+    val customStatus: Long? = null,
 ) : Serializable {
+
+    val displayTitle: String get() = customTitle ?: title
+    val displayAuthor: String? get() = customAuthor ?: author
+    val displayDescription: String? get() = customDescription ?: description
+    val displayGenre: List<String>? get() = customGenre ?: genre
+    val displayStatus: Long get() = customStatus ?: status
 
     val expectedNextUpdate: Instant?
         get() = nextUpdate
@@ -128,6 +139,11 @@ data class Novel(
             lastModifiedAt = 0L,
             favoriteModifiedAt = null,
             version = 0L,
+            customTitle = null,
+            customAuthor = null,
+            customDescription = null,
+            customGenre = null,
+            customStatus = null,
         )
     }
 }

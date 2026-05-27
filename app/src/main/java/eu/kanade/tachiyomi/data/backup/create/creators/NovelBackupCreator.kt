@@ -86,4 +86,9 @@ private fun Novel.toBackupNovel() =
         lastModifiedAt = this.lastModifiedAt,
         favoriteModifiedAt = this.favoriteModifiedAt,
         version = this.version,
+        customTitle = this.customTitle,
+        customAuthor = this.customAuthor,
+        customDescription = this.customDescription,
+        customGenre = this.customGenre,
+        customStatus = this.customStatus,
     )

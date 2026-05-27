@@ -35,7 +35,20 @@ data class Manga(
     val lastModifiedAt: Long,
     val favoriteModifiedAt: Long?,
     val version: Long,
+    val customTitle: String? = null,
+    val customArtist: String? = null,
+    val customAuthor: String? = null,
+    val customDescription: String? = null,
+    val customGenre: List<String>? = null,
+    val customStatus: Long? = null,
 ) : Serializable {
+
+    val displayTitle: String get() = customTitle ?: title
+    val displayAuthor: String? get() = customAuthor ?: author
+    val displayArtist: String? get() = customArtist ?: artist
+    val displayDescription: String? get() = customDescription ?: description
+    val displayGenre: List<String>? get() = customGenre ?: genre
+    val displayStatus: Long get() = customStatus ?: status
 
     val expectedNextUpdate: Instant?
         get() = nextUpdate
@@ -132,6 +145,12 @@ data class Manga(
             lastModifiedAt = 0L,
             favoriteModifiedAt = null,
             version = 0L,
+            customTitle = null,
+            customArtist = null,
+            customAuthor = null,
+            customDescription = null,
+            customGenre = null,
+            customStatus = null,
         )
     }
 }

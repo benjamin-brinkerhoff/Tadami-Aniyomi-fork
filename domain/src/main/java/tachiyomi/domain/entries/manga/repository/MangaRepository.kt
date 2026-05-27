@@ -38,4 +38,14 @@ interface MangaRepository {
     suspend fun updateManga(update: MangaUpdate): Boolean
 
     suspend fun updateAllManga(mangaUpdates: List<MangaUpdate>): Boolean
+
+    suspend fun updateMangaMetadata(
+        mangaId: Long,
+        customTitle: String?,
+        customArtist: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean
 }

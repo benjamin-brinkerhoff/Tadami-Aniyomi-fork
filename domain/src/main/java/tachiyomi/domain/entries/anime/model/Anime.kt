@@ -44,7 +44,20 @@ data class Anime(
     val seasonFlags: Long,
     val seasonNumber: Double,
     val seasonSourceOrder: Long,
+    val customTitle: String? = null,
+    val customArtist: String? = null,
+    val customAuthor: String? = null,
+    val customDescription: String? = null,
+    val customGenre: List<String>? = null,
+    val customStatus: Long? = null,
 ) : Serializable {
+
+    val displayTitle: String get() = customTitle ?: title
+    val displayAuthor: String? get() = customAuthor ?: author
+    val displayArtist: String? get() = customArtist ?: artist
+    val displayDescription: String? get() = customDescription ?: description
+    val displayGenre: List<String>? get() = customGenre ?: genre
+    val displayStatus: Long get() = customStatus ?: status
 
     val expectedNextUpdate: Instant?
         get() = nextUpdate
@@ -344,6 +357,12 @@ data class Anime(
             seasonFlags = 0L,
             seasonNumber = -1.0,
             seasonSourceOrder = 0L,
+            customTitle = null,
+            customArtist = null,
+            customAuthor = null,
+            customDescription = null,
+            customGenre = null,
+            customStatus = null,
         )
     }
 }

@@ -195,4 +195,32 @@ class MangaRepositoryImpl(
             }
         }
     }
+
+    override suspend fun updateMangaMetadata(
+        mangaId: Long,
+        customTitle: String?,
+        customArtist: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean {
+        return try {
+            handler.await { db ->
+                db.mangasQueries.updateMetadata(
+                    customTitle = customTitle,
+                    customArtist = customArtist,
+                    customAuthor = customAuthor,
+                    customDescription = customDescription,
+                    customGenre = customGenre,
+                    customStatus = customStatus,
+                    mangaId = mangaId,
+                )
+            }
+            true
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e)
+            false
+        }
+    }
 }

@@ -92,11 +92,11 @@ fun resolveMangaDetailsSnapshot(
     val statusText = when {
         isMetadataLoading -> "..."
         metadataError == MetadataLoadError.NotAuthenticated ->
-            context?.let { MangaStatusFormatter.formatStatus(it, manga.status) }
-                ?: MangaStatusFormatter.formatStatus(manga.status)
+            context?.let { MangaStatusFormatter.formatStatus(it, manga.displayStatus) }
+                ?: MangaStatusFormatter.formatStatus(manga.displayStatus)
         else -> context?.let { ctx ->
-            mangaMetadata?.displayStatus(ctx) ?: MangaStatusFormatter.formatStatus(ctx, manga.status)
-        } ?: (mangaMetadata?.displayStatus() ?: MangaStatusFormatter.formatStatus(manga.status))
+            mangaMetadata?.displayStatus(ctx) ?: MangaStatusFormatter.formatStatus(ctx, manga.displayStatus)
+        } ?: (mangaMetadata?.displayStatus() ?: MangaStatusFormatter.formatStatus(manga.displayStatus))
     }
     val progress = resolveMangaProgressSnapshot(chapters)
     val metadataCompleted = mangaMetadata?.let { it.isCompleted() } == true
@@ -132,7 +132,7 @@ fun resolveMangaRatingValue(
         return normalized
     }
 
-    SourceMangaRatingResolver.resolve(sourceName, manga.description)?.let {
+    SourceMangaRatingResolver.resolve(sourceName, manga.displayDescription)?.let {
         val normalized = (it / 10f).coerceIn(0f, 1f)
         debugLog(
             "resolveMangaRatingValue: source resolver rating=${it.previewFloat()} normalized=${normalized.previewFloat()} sourceName=$sourceName loading=$isMetadataLoading error=$metadataError",
@@ -155,7 +155,7 @@ fun resolveMangaRatingValue(
         return normalized
     }
 
-    return SourceMangaRatingParser.parse(manga.description)?.let {
+    return SourceMangaRatingParser.parse(manga.displayDescription)?.let {
         val normalized = (it / 10f).coerceIn(0f, 1f)
         debugLog(
             "resolveMangaRatingValue: fallback parser rating=${it.previewFloat()} normalized=${normalized.previewFloat()} sourceName=$sourceName",

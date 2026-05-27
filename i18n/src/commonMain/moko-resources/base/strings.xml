@@ -1283,4 +1283,26 @@
     <string name="omnibuilder_action_back">Back</string>
     <string name="omnibuilder_mode_select">Selection Mode</string>
     <string name="omnibuilder_mode_interact">Interaction Mode</string>
+    <!-- Edit Metadata Feature -->
+    <string name="action_edit_info">Edit info</string>
+    <string name="action_edit_metadata">Edit info</string>
+    <string name="action_reset_metadata">Reset custom info</string>
+    <string name="action_reset_metadata_confirmation">Are you sure you want to reset all edits to original source values?</string>
+    <string name="action_add_genre">Add tag</string>
+    <string name="genre_input_placeholder">Add tag...</string>
+    <string name="label_custom_title">Custom title</string>
+    <string name="label_custom_author">Custom author</string>
+    <string name="label_custom_artist">Custom artist</string>
+    <string name="label_custom_description">Custom description</string>
+    <string name="label_custom_status">Custom status</string>
+    <string name="label_custom_genres">Custom tags</string>
+    <string name="status_default">Default (from source)</string>
+    <string name="status_ongoing">Ongoing</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_licensed">Licensed</string>
+    <string name="status_publishing_finished">Publishing finished</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="status_on_hiatus">On hiatus</string>
+    <string name="status_unknown">Unknown</string>
+    <string name="metadata_saved_successfully">Metadata saved successfully</string>
 </resources>

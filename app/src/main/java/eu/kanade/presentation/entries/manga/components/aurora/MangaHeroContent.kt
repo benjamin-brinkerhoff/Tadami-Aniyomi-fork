@@ -86,12 +86,12 @@ fun MangaHeroContent(
                 ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (!manga.genre.isNullOrEmpty() && manga.genre!!.isNotEmpty()) {
+            if (!manga.displayGenre.isNullOrEmpty() && manga.displayGenre!!.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    manga.genre!!.take(3).forEach { genre ->
+                    manga.displayGenre!!.take(3).forEach { genre ->
                         if (genre.isNotBlank()) {
                             Box(
                                 modifier = Modifier
@@ -123,7 +123,7 @@ fun MangaHeroContent(
             }
 
             Text(
-                text = translation?.title ?: manga.title,
+                text = translation?.title ?: manga.displayTitle,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
                 color = titleColor,

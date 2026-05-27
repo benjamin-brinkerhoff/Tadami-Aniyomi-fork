@@ -431,6 +431,59 @@ class AnimeScreenModel(
         }
     }
 
+    fun updateAnimeMetadata(
+        customTitle: String?,
+        customAuthor: String?,
+        customArtist: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ) {
+        screenModelScope.launchIO {
+            if (updateAnime.awaitUpdateMetadata(
+                    animeId = animeId,
+                    customTitle = customTitle,
+                    customAuthor = customAuthor,
+                    customArtist = customArtist,
+                    customDescription = customDescription,
+                    customGenre = customGenre,
+                    customStatus = customStatus,
+                )
+            ) {
+                val newAnime = animeRepository.getAnimeById(animeId)
+                updateSuccessState { it.copy(anime = newAnime) }
+                screenModelScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.stringResource(MR.strings.metadata_saved_successfully),
+                    )
+                }
+            }
+        }
+    }
+
+    fun resetAnimeMetadata() {
+        screenModelScope.launchIO {
+            if (updateAnime.awaitUpdateMetadata(
+                    animeId = animeId,
+                    customTitle = null,
+                    customAuthor = null,
+                    customArtist = null,
+                    customDescription = null,
+                    customGenre = null,
+                    customStatus = null,
+                )
+            ) {
+                val newAnime = animeRepository.getAnimeById(animeId)
+                updateSuccessState { it.copy(anime = newAnime) }
+                screenModelScope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = context.stringResource(MR.strings.metadata_saved_successfully),
+                    )
+                }
+            }
+        }
+    }
+
     // Anime info - start
 
     /**

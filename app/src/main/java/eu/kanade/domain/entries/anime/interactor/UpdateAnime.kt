@@ -24,6 +24,26 @@ class UpdateAnime(
         return animeRepository.updateAnime(animeUpdate)
     }
 
+    suspend fun awaitUpdateMetadata(
+        animeId: Long,
+        customTitle: String?,
+        customArtist: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean {
+        return animeRepository.updateAnimeMetadata(
+            animeId = animeId,
+            customTitle = customTitle,
+            customArtist = customArtist,
+            customAuthor = customAuthor,
+            customDescription = customDescription,
+            customGenre = customGenre,
+            customStatus = customStatus,
+        )
+    }
+
     suspend fun awaitAll(animeUpdates: List<AnimeUpdate>): Boolean {
         return animeRepository.updateAllAnime(animeUpdates)
     }

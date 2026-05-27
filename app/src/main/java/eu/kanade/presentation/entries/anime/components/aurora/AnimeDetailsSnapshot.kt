@@ -1,4 +1,4 @@
-﻿package eu.kanade.presentation.entries.anime.components.aurora
+package eu.kanade.presentation.entries.anime.components.aurora
 
 import android.content.Context
 import android.util.Log
@@ -85,11 +85,11 @@ fun resolveAnimeDetailsSnapshot(
     val statusText = when {
         isMetadataLoading -> "..."
         metadataError == MetadataLoadError.NotAuthenticated ->
-            context?.let { AnimeStatusFormatter.formatStatus(it, anime.status) }
-                ?: AnimeStatusFormatter.formatStatus(anime.status)
+            context?.let { AnimeStatusFormatter.formatStatus(it, anime.displayStatus) }
+                ?: AnimeStatusFormatter.formatStatus(anime.displayStatus)
         else -> context?.let { ctx ->
-            animeMetadata?.displayStatus(ctx) ?: AnimeStatusFormatter.formatStatus(ctx, anime.status)
-        } ?: (animeMetadata?.displayStatus() ?: AnimeStatusFormatter.formatStatus(anime.status))
+            animeMetadata?.displayStatus(ctx) ?: AnimeStatusFormatter.formatStatus(ctx, anime.displayStatus)
+        } ?: (animeMetadata?.displayStatus() ?: AnimeStatusFormatter.formatStatus(anime.displayStatus))
     }
     val statusBadgeText = when {
         isMetadataLoading -> "..."
@@ -104,7 +104,7 @@ fun resolveAnimeDetailsSnapshot(
     )
     val updateText = resolveAnimeUpdateText(
         nextUpdate = nextUpdate,
-        isCompleted = animeMetadata?.isCompleted() == true || anime.status.isAnimeCompleted(),
+        isCompleted = animeMetadata?.isCompleted() == true || anime.displayStatus.isAnimeCompleted(),
     )
 
     return AnimeDetailsSnapshot(
@@ -118,7 +118,7 @@ fun resolveAnimeDetailsSnapshot(
         progress = progress,
         episodesText = totalEpisodes.toString(),
         updateText = updateText,
-        isCompleted = animeMetadata?.isCompleted() == true || anime.status.isAnimeCompleted(),
+        isCompleted = animeMetadata?.isCompleted() == true || anime.displayStatus.isAnimeCompleted(),
     )
 }
 

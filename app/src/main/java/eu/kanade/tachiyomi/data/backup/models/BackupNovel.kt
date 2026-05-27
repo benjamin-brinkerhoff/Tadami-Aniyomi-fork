@@ -28,6 +28,11 @@ data class BackupNovel(
     @ProtoNumber(107) var favoriteModifiedAt: Long? = null,
     @ProtoNumber(108) var excludedScanlators: List<String> = emptyList(),
     @ProtoNumber(109) var version: Long = 0,
+    @ProtoNumber(800) var customTitle: String? = null,
+    @ProtoNumber(802) var customAuthor: String? = null,
+    @ProtoNumber(803) var customDescription: String? = null,
+    @ProtoNumber(804) var customGenre: List<String>? = null,
+    @ProtoNumber(805) var customStatus: Long? = null,
 ) {
     fun getNovelImpl(): Novel {
         return Novel.create().copy(
@@ -48,6 +53,11 @@ data class BackupNovel(
             lastModifiedAt = lastModifiedAt,
             favoriteModifiedAt = favoriteModifiedAt,
             version = version,
+            customTitle = customTitle,
+            customAuthor = customAuthor,
+            customDescription = customDescription,
+            customGenre = customGenre,
+            customStatus = customStatus,
         )
     }
 }

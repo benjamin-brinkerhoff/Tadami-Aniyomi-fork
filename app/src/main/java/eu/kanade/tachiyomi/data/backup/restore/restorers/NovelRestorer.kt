@@ -83,6 +83,11 @@ class NovelRestorer(
             status = newer.status,
             initialized = this.initialized || newer.initialized,
             version = newer.version,
+            customTitle = newer.customTitle ?: this.customTitle,
+            customAuthor = newer.customAuthor ?: this.customAuthor,
+            customDescription = newer.customDescription ?: this.customDescription,
+            customGenre = newer.customGenre ?: this.customGenre,
+            customStatus = newer.customStatus ?: this.customStatus,
         )
     }
 
@@ -112,6 +117,14 @@ class NovelRestorer(
                 updateStrategy = novel.updateStrategy.let(MangaUpdateStrategyColumnAdapter::encode),
                 version = novel.version,
                 isSyncing = 1,
+            )
+            db.novelsQueries.updateMetadata(
+                customTitle = novel.customTitle,
+                customAuthor = novel.customAuthor,
+                customDescription = novel.customDescription,
+                customGenre = novel.customGenre,
+                customStatus = novel.customStatus,
+                novelId = novel.id,
             )
         }
         return novel
@@ -225,7 +238,7 @@ class NovelRestorer(
     }
 
     private suspend fun insertNovel(novel: Novel): Long {
-        return handler.awaitOneExecutable(true) { db ->
+        return handler.await(true) { db ->
             db.novelsQueries.insert(
                 source = novel.source,
                 url = novel.url,
@@ -249,7 +262,16 @@ class NovelRestorer(
                 updateStrategy = novel.updateStrategy,
                 version = novel.version,
             )
-            db.novelsQueries.selectLastInsertedRowId()
+            val novelId = db.novelsQueries.selectLastInsertedRowId().executeAsOne()
+            db.novelsQueries.updateMetadata(
+                customTitle = novel.customTitle,
+                customAuthor = novel.customAuthor,
+                customDescription = novel.customDescription,
+                customGenre = novel.customGenre,
+                customStatus = novel.customStatus,
+                novelId = novelId,
+            )
+            novelId
         }
     }
 

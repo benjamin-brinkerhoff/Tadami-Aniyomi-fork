@@ -40,6 +40,7 @@ import eu.kanade.presentation.entries.anime.EpisodeSettingsDialog
 import eu.kanade.presentation.entries.anime.SeasonSettingsDialog
 import eu.kanade.presentation.entries.anime.components.AnimeImagesDialog
 import eu.kanade.presentation.entries.components.DeleteItemsDialog
+import eu.kanade.presentation.entries.components.EditMetadataSheet
 import eu.kanade.presentation.entries.components.SetIntervalDialog
 import eu.kanade.presentation.entries.components.aurora.AuroraNoteEditorDialog
 import eu.kanade.presentation.more.settings.screen.player.PlayerSettingsGesturesScreen.SkipIntroLengthDialog
@@ -118,6 +119,7 @@ class AnimeScreen(
         val successState = state as AnimeScreenModel.State.Success
         val isAnimeHttpSource = remember { successState.source is AnimeHttpSource }
         var showNotesDialog by remember { mutableStateOf(false) }
+        var showEditMetadataSheet by remember { mutableStateOf(false) }
 
         LaunchedEffect(successState.anime, screenModel.source) {
             if (isAnimeHttpSource) {
@@ -206,6 +208,9 @@ class AnimeScreen(
             },
             onEditNotesClicked = {
                 showNotesDialog = true
+            },
+            onClickEditInfo = {
+                showEditMetadataSheet = true
             },
             onMigrateClicked = {
                 navigator.push(MigrateAnimeSearchScreen(successState.anime.id))
@@ -453,6 +458,25 @@ class AnimeScreen(
                             ),
                         )
                     }
+                },
+            )
+        }
+
+        if (showEditMetadataSheet) {
+            EditMetadataSheet(
+                onDismissRequest = { showEditMetadataSheet = false },
+                currentTitle = successState.anime.displayTitle,
+                currentAuthor = successState.anime.displayAuthor,
+                currentArtist = successState.anime.displayArtist,
+                currentDescription = successState.anime.displayDescription,
+                currentGenre = successState.anime.displayGenre,
+                currentStatus = successState.anime.displayStatus,
+                hasArtist = true,
+                onSave = { title, author, artist, description, tags, status ->
+                    screenModel.updateAnimeMetadata(title, author, artist, description, tags, status)
+                },
+                onReset = {
+                    screenModel.resetAnimeMetadata()
                 },
             )
         }

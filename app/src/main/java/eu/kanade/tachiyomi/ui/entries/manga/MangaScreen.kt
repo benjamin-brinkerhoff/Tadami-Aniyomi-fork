@@ -34,6 +34,7 @@ import eu.kanade.presentation.components.NavigatorAdaptiveSheet
 import eu.kanade.presentation.entries.EditCoverAction
 import eu.kanade.presentation.entries.components.AuthRequiredDialog
 import eu.kanade.presentation.entries.components.DeleteItemsDialog
+import eu.kanade.presentation.entries.components.EditMetadataSheet
 import eu.kanade.presentation.entries.components.SetIntervalDialog
 import eu.kanade.presentation.entries.components.aurora.AuroraNoteEditorDialog
 import eu.kanade.presentation.entries.manga.ChapterSettingsDialog
@@ -116,6 +117,7 @@ class MangaScreen(
         val successState = state as MangaScreenModel.State.Success
         val isHttpSource = remember { successState.source is HttpSource }
         var showNotesDialog by remember { mutableStateOf(false) }
+        var showEditMetadataSheet by remember { mutableStateOf(false) }
         val showScanlatorSelector = successState.showScanlatorSelector &&
             shouldShowMangaScanlatorSelector(
                 isPreferenceEnabled = showMangaScanlatorBranches,
@@ -193,6 +195,9 @@ class MangaScreen(
             },
             onEditNotesClicked = {
                 showNotesDialog = true
+            },
+            onClickEditInfo = {
+                showEditMetadataSheet = true
             },
             onMigrateClicked = {
                 navigator.push(MigrateMangaSearchScreen(successState.manga.id))
@@ -361,6 +366,25 @@ class MangaScreen(
                             ),
                         )
                     }
+                },
+            )
+        }
+
+        if (showEditMetadataSheet) {
+            EditMetadataSheet(
+                onDismissRequest = { showEditMetadataSheet = false },
+                currentTitle = successState.manga.displayTitle,
+                currentAuthor = successState.manga.displayAuthor,
+                currentArtist = successState.manga.displayArtist,
+                currentDescription = successState.manga.displayDescription,
+                currentGenre = successState.manga.displayGenre,
+                currentStatus = successState.manga.displayStatus,
+                hasArtist = true,
+                onSave = { title, author, artist, description, tags, status ->
+                    screenModel.updateMangaMetadata(title, author, artist, description, tags, status)
+                },
+                onReset = {
+                    screenModel.resetMangaMetadata()
                 },
             )
         }

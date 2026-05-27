@@ -32,6 +32,11 @@ object NovelMapper {
         @Suppress("UNUSED_PARAMETER")
         isSyncing: Long,
         pinned: Boolean,
+        customTitle: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
     ): Novel = Novel(
         id = id,
         source = source,
@@ -57,6 +62,11 @@ object NovelMapper {
         lastModifiedAt = lastModifiedAt,
         favoriteModifiedAt = favoriteModifiedAt,
         version = version,
+        customTitle = customTitle,
+        customAuthor = customAuthor,
+        customDescription = customDescription,
+        customGenre = customGenre,
+        customStatus = customStatus,
     )
 
     fun mapLibraryNovel(
@@ -85,6 +95,11 @@ object NovelMapper {
         version: Long,
         isSyncing: Long,
         pinned: Boolean,
+        customTitle: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
         totalCount: Long,
         readCount: Double,
         latestUpload: Long,
@@ -119,6 +134,11 @@ object NovelMapper {
             version,
             isSyncing,
             pinned,
+            customTitle,
+            customAuthor,
+            customDescription,
+            customGenre,
+            customStatus,
         ),
         category = category,
         totalChapters = totalCount,

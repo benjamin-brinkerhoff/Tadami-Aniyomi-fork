@@ -439,10 +439,10 @@ private fun AnimeAndSourceTitlesLarge(
         }
         Spacer(modifier = Modifier.height(16.dp))
         AnimeContentInfo(
-            title = anime.title,
-            author = anime.author,
-            artist = anime.artist,
-            status = anime.status,
+            title = anime.displayTitle,
+            author = anime.displayAuthor,
+            artist = anime.displayArtist,
+            status = anime.displayStatus,
             sourceName = sourceName,
             isStubSource = isStubSource,
             doSearch = doSearch,
@@ -495,10 +495,10 @@ private fun AnimeAndSourceTitlesSmall(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             AnimeContentInfo(
-                title = anime.title,
-                author = anime.author,
-                artist = anime.artist,
-                status = anime.status,
+                title = anime.displayTitle,
+                author = anime.displayAuthor,
+                artist = anime.displayArtist,
+                status = anime.displayStatus,
                 sourceName = sourceName,
                 isStubSource = isStubSource,
                 doSearch = doSearch,

@@ -101,4 +101,10 @@ private fun Anime.toBackupAnime() =
         seasonFlags = this.seasonFlags,
         seasonNumber = this.seasonNumber,
         seasonSourceOrder = this.seasonSourceOrder,
+        customTitle = this.customTitle,
+        customArtist = this.customArtist,
+        customAuthor = this.customAuthor,
+        customDescription = this.customDescription,
+        customGenre = this.customGenre,
+        customStatus = this.customStatus,
     )

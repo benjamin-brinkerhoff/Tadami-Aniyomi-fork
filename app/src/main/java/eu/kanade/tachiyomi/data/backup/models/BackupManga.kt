@@ -42,6 +42,12 @@ data class BackupManga(
     @ProtoNumber(107) var favoriteModifiedAt: Long? = null,
     @ProtoNumber(108) var excludedScanlators: List<String> = emptyList(),
     @ProtoNumber(109) var version: Long = 0,
+    @ProtoNumber(800) var customTitle: String? = null,
+    @ProtoNumber(801) var customArtist: String? = null,
+    @ProtoNumber(802) var customAuthor: String? = null,
+    @ProtoNumber(803) var customDescription: String? = null,
+    @ProtoNumber(804) var customGenre: List<String>? = null,
+    @ProtoNumber(805) var customStatus: Long? = null,
 ) {
     fun getMangaImpl(): Manga {
         return Manga.create().copy(
@@ -64,6 +70,12 @@ data class BackupManga(
             lastModifiedAt = this@BackupManga.lastModifiedAt,
             favoriteModifiedAt = this@BackupManga.favoriteModifiedAt,
             version = this@BackupManga.version,
+            customTitle = this@BackupManga.customTitle,
+            customArtist = this@BackupManga.customArtist,
+            customAuthor = this@BackupManga.customAuthor,
+            customDescription = this@BackupManga.customDescription,
+            customGenre = this@BackupManga.customGenre,
+            customStatus = this@BackupManga.customStatus,
         )
     }
 }

@@ -203,6 +203,34 @@ class AnimeRepositoryImpl(
         return handler.awaitList { db -> db.animesQueries.getChildrenByParentId(parentId, AnimeMapper::mapAnime) }
     }
 
+    override suspend fun updateAnimeMetadata(
+        animeId: Long,
+        customTitle: String?,
+        customArtist: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean {
+        return try {
+            handler.await { db ->
+                db.animesQueries.updateMetadata(
+                    customTitle = customTitle,
+                    customArtist = customArtist,
+                    customAuthor = customAuthor,
+                    customDescription = customDescription,
+                    customGenre = customGenre,
+                    customStatus = customStatus,
+                    animeId = animeId,
+                )
+            }
+            true
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e)
+            false
+        }
+    }
+
     private suspend fun partialUpdateAnime(vararg animeUpdates: AnimeUpdate) {
         handler.await(inTransaction = true) { db ->
             animeUpdates.forEach { value ->

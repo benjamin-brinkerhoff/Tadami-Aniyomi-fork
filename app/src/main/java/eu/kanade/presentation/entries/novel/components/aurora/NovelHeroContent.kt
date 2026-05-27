@@ -74,9 +74,9 @@ fun NovelHeroContent(
     val coverTitleFontFamily = LocalCoverTitleFontFamily.current
     val heroPanelShape = RoundedCornerShape(24.dp)
     val titleColor = resolveAuroraHeroTitleColor(colors)
-    val normalizedGenres = remember(novel.genre) {
+    val normalizedGenres = remember(novel.displayGenre) {
         val seen = LinkedHashSet<String>()
-        novel.genre.orEmpty()
+        novel.displayGenre.orEmpty()
             .flatMap { value ->
                 value
                     .split(Regex("[,;/|\\n\\r\\t•·]+"))
@@ -147,7 +147,7 @@ fun NovelHeroContent(
             }
 
             Text(
-                text = translation?.title ?: novel.title,
+                text = translation?.title ?: novel.displayTitle,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
                 color = titleColor,
@@ -165,7 +165,7 @@ fun NovelHeroContent(
                 modifier = Modifier.fillMaxWidth(),
                 ratingValue = rating?.let { String.format(Locale.ROOT, "%.1f", it) }
                     ?: stringResource(MR.strings.not_applicable),
-                statusValue = MangaStatusFormatter.formatStatus(context, novel.status),
+                statusValue = MangaStatusFormatter.formatStatus(context, novel.displayStatus),
                 chaptersValue = pluralStringResource(
                     MR.plurals.manga_num_chapters,
                     count = chapterCount,

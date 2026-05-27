@@ -167,9 +167,10 @@ fun MangaScreenAuroraImpl(
     isAutoJumpToNextEnabled: Boolean,
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
+    onClickEditInfo: (() -> Unit)? = null,
 ) {
     val manga = state.manga
-    val globalSearchQuery = remember(manga.title) { normalizeAuroraGlobalSearchQuery(manga.title) }
+    val globalSearchQuery = remember(manga.displayTitle) { normalizeAuroraGlobalSearchQuery(manga.displayTitle) }
     val chapters = state.chapterListItems
     val selectedChapters = remember(chapters) {
         chapters.filterIsInstance<ChapterList.Item>().filter { it.selected }
@@ -242,8 +243,8 @@ fun MangaScreenAuroraImpl(
         .auroraEntryTranslationSourceLanguages()
         .collectAsState()
     val auroraEntryTranslation = rememberAuroraEntryTranslation(
-        title = manga.title,
-        description = manga.description,
+        title = manga.displayTitle,
+        description = manga.displayDescription,
         sourceLanguage = state.source.lang,
         enabled = auroraEntryTranslationEnabled,
         allowedSourceFamilies = auroraEntryTranslationSourceLanguages,
@@ -995,6 +996,7 @@ fun MangaScreenAuroraImpl(
                             hasShare = onShareClicked != null,
                             hasSettings = onSettingsClicked != null,
                             hasNotes = onEditNotesClicked != null,
+                            hasEditInfo = onClickEditInfo != null,
                             hasMigrate = onMigrateClicked != null,
                         ).forEach { action ->
                             AuroraEntryDropdownMenuItem(
@@ -1011,6 +1013,8 @@ fun MangaScreenAuroraImpl(
                                         stringResource(MR.strings.action_settings)
                                     AuroraMangaOverflowAction.Notes ->
                                         stringResource(MR.strings.action_notes)
+                                    AuroraMangaOverflowAction.EditInfo ->
+                                        stringResource(MR.strings.action_edit_info)
                                     AuroraMangaOverflowAction.Migrate ->
                                         stringResource(MR.strings.action_migrate)
                                 },
@@ -1022,6 +1026,7 @@ fun MangaScreenAuroraImpl(
                                         AuroraMangaOverflowAction.Share -> onShareClicked!!()
                                         AuroraMangaOverflowAction.Settings -> onSettingsClicked!!()
                                         AuroraMangaOverflowAction.Notes -> onEditNotesClicked!!()
+                                        AuroraMangaOverflowAction.EditInfo -> onClickEditInfo!!()
                                         AuroraMangaOverflowAction.Migrate -> onMigrateClicked!!()
                                     }
                                     showMenu = false
@@ -1129,6 +1134,7 @@ internal enum class AuroraMangaOverflowAction {
     Share,
     Settings,
     Notes,
+    EditInfo,
     Migrate,
 }
 
@@ -1137,6 +1143,7 @@ internal fun resolveMangaAuroraOverflowActions(
     hasShare: Boolean,
     hasSettings: Boolean,
     hasNotes: Boolean,
+    hasEditInfo: Boolean = false,
     hasMigrate: Boolean,
 ): List<AuroraMangaOverflowAction> {
     return buildList {
@@ -1146,6 +1153,7 @@ internal fun resolveMangaAuroraOverflowActions(
         if (hasShare) add(AuroraMangaOverflowAction.Share)
         if (hasSettings) add(AuroraMangaOverflowAction.Settings)
         if (hasNotes) add(AuroraMangaOverflowAction.Notes)
+        if (hasEditInfo) add(AuroraMangaOverflowAction.EditInfo)
         if (hasMigrate) add(AuroraMangaOverflowAction.Migrate)
     }
 }

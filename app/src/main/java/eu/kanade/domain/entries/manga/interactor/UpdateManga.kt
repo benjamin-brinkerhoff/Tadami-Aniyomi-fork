@@ -25,6 +25,26 @@ class UpdateManga(
         return mangaRepository.updateManga(mangaUpdate)
     }
 
+    suspend fun awaitUpdateMetadata(
+        mangaId: Long,
+        customTitle: String?,
+        customArtist: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean {
+        return mangaRepository.updateMangaMetadata(
+            mangaId = mangaId,
+            customTitle = customTitle,
+            customArtist = customArtist,
+            customAuthor = customAuthor,
+            customDescription = customDescription,
+            customGenre = customGenre,
+            customStatus = customStatus,
+        )
+    }
+
     suspend fun awaitAll(mangaUpdates: List<MangaUpdate>): Boolean {
         return mangaRepository.updateAllManga(mangaUpdates)
     }

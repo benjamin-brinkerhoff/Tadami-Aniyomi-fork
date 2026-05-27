@@ -126,6 +126,32 @@ class NovelRepositoryImpl(
         }
     }
 
+    override suspend fun updateNovelMetadata(
+        novelId: Long,
+        customTitle: String?,
+        customAuthor: String?,
+        customDescription: String?,
+        customGenre: List<String>?,
+        customStatus: Long?,
+    ): Boolean {
+        return try {
+            handler.await { db ->
+                db.novelsQueries.updateMetadata(
+                    customTitle = customTitle,
+                    customAuthor = customAuthor,
+                    customDescription = customDescription,
+                    customGenre = customGenre,
+                    customStatus = customStatus,
+                    novelId = novelId,
+                )
+            }
+            true
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e)
+            false
+        }
+    }
+
     private suspend fun partialUpdateNovel(vararg novelUpdates: NovelUpdate) {
         handler.await(inTransaction = true) { db ->
             novelUpdates.forEach { value ->

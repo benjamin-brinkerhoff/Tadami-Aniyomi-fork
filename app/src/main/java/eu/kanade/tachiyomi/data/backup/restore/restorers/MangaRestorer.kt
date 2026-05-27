@@ -106,6 +106,12 @@ class MangaRestorer(
             status = newer.status,
             initialized = this.initialized || newer.initialized,
             version = newer.version,
+            customTitle = newer.customTitle ?: this.customTitle,
+            customArtist = newer.customArtist ?: this.customArtist,
+            customAuthor = newer.customAuthor ?: this.customAuthor,
+            customDescription = newer.customDescription ?: this.customDescription,
+            customGenre = newer.customGenre ?: this.customGenre,
+            customStatus = newer.customStatus ?: this.customStatus,
         )
     }
 
@@ -137,6 +143,15 @@ class MangaRestorer(
                 updateStrategy = manga.updateStrategy.let(MangaUpdateStrategyColumnAdapter::encode),
                 version = manga.version,
                 isSyncing = 1,
+            )
+            db.mangasQueries.updateMetadata(
+                customTitle = manga.customTitle,
+                customArtist = manga.customArtist,
+                customAuthor = manga.customAuthor,
+                customDescription = manga.customDescription,
+                customGenre = manga.customGenre,
+                customStatus = manga.customStatus,
+                mangaId = manga.id,
             )
         }
         return manga
@@ -247,7 +262,7 @@ class MangaRestorer(
      * @return id of [Manga], null if not found
      */
     private suspend fun insertManga(manga: Manga): Long {
-        return handler.awaitOneExecutable(true) { db ->
+        return handler.await(true) { db ->
             db.mangasQueries.insert(
                 source = manga.source,
                 url = manga.url,
@@ -273,7 +288,17 @@ class MangaRestorer(
                 updateStrategy = manga.updateStrategy,
                 version = manga.version,
             )
-            db.mangasQueries.selectLastInsertedRowId()
+            val mangaId = db.mangasQueries.selectLastInsertedRowId().executeAsOne()
+            db.mangasQueries.updateMetadata(
+                customTitle = manga.customTitle,
+                customArtist = manga.customArtist,
+                customAuthor = manga.customAuthor,
+                customDescription = manga.customDescription,
+                customGenre = manga.customGenre,
+                customStatus = manga.customStatus,
+                mangaId = mangaId,
+            )
+            mangaId
         }
     }
 
