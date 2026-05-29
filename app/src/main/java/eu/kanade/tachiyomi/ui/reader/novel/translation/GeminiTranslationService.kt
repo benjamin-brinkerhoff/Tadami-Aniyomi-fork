@@ -1,4 +1,4 @@
-﻿package eu.kanade.tachiyomi.ui.reader.novel.translation
+package eu.kanade.tachiyomi.ui.reader.novel.translation
 
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.await
@@ -103,9 +103,9 @@ class GeminiTranslationService(
             params.topK
         }
         val requestMaxOutputTokens = if (usePrivateBridge) {
-            GeminiPrivateBridge.requestMaxOutputTokensOverride(8192)
+            GeminiPrivateBridge.requestMaxOutputTokensOverride(16384)
         } else {
-            8192
+            16384
         }
         val requestFrequencyPenalty = if (usePrivateBridge) {
             GeminiPrivateBridge.requestFrequencyPenaltyOverride(0f)

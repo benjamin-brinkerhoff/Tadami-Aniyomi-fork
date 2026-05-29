@@ -86,7 +86,7 @@ class OpenRouterTranslationService(
                         },
                     )
                 }
-            put("max_tokens", 4096)
+            put("max_tokens", computeTranslationMaxTokens(segments))
             put("stream", false)
         }
 
@@ -392,3 +392,8 @@ private fun String.trimNonXmlTail(): String {
 
 private const val MAX_ATTEMPTS = 3
 private val openRouterErrorJson = Json { ignoreUnknownKeys = true }
+
+private fun computeTranslationMaxTokens(segments: List<String>): Int {
+    val estimated = segments.sumOf { (it.length / 2).coerceAtLeast(32) } + segments.size * 24
+    return estimated.coerceIn(4_096, 16_384)
+}

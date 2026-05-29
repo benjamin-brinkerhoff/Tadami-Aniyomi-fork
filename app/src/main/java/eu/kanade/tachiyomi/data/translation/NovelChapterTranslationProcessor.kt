@@ -46,7 +46,10 @@ class NovelChapterTranslationProcessor(
         val networkHelper = Injekt.get<NetworkHelper>()
         val json = Injekt.get<Json>()
         GeminiTranslationService(
-            client = networkHelper.client,
+            client = networkHelper.client.newBuilder()
+                .callTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
+                .build(),
             json = json,
             promptResolver = GeminiPromptResolver(application),
         )
