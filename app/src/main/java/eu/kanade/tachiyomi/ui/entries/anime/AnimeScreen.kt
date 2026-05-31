@@ -250,6 +250,25 @@ class AnimeScreen(
                 if (dubbing.isNotBlank()) append(dubbing)
             }.takeIf { it.isNotBlank() },
             onRetryMetadata = screenModel::retryMetadataLoad,
+            onRetrySuggestions = screenModel::retrySuggestions,
+            onOpenSuggestions = {
+                val seed = screenModel.getSuggestionSeed()
+                    ?: eu.kanade.tachiyomi.data.suggestions.SuggestionSeed(
+                        mediaType = eu.kanade.tachiyomi.data.suggestions.sources.SuggestionMediaType.ANIME,
+                        primaryTitle = successState.anime.title,
+                        candidateTitles = emptyList(),
+                        description = successState.anime.description,
+                        author = successState.anime.displayAuthor,
+                        genres = successState.anime.displayGenre,
+                    )
+                navigator.push(
+                    eu.kanade.tachiyomi.ui.entries.suggestions.EntrySuggestionsScreen(
+                        seed = seed,
+                        sourceId = successState.source.id,
+                        entryUrl = successState.anime.url,
+                    ),
+                )
+            },
         )
 
         val onDismissRequest = {

@@ -502,6 +502,25 @@ class NovelScreen(
             onMultiDeleteClicked = screenModel::deleteDownloadedSelectedChapters,
             onSaveScrollPosition = screenModel::saveScrollPosition,
             onClickEditInfo = { showEditMetadataSheet = true },
+            onRetrySuggestions = screenModel::retrySuggestions,
+            onOpenSuggestions = {
+                val seed = screenModel.getSuggestionSeed()
+                    ?: eu.kanade.tachiyomi.data.suggestions.SuggestionSeed(
+                        mediaType = eu.kanade.tachiyomi.data.suggestions.sources.SuggestionMediaType.NOVEL,
+                        primaryTitle = successState.novel.displayTitle,
+                        candidateTitles = emptyList(),
+                        description = successState.novel.displayDescription,
+                        author = successState.novel.displayAuthor,
+                        genres = successState.novel.displayGenre,
+                    )
+                navigator.push(
+                    eu.kanade.tachiyomi.ui.entries.suggestions.EntrySuggestionsScreen(
+                        seed = seed,
+                        sourceId = successState.novel.source,
+                        entryUrl = successState.novel.url,
+                    ),
+                )
+            },
         )
 
         if (showBatchDownloadDialog) {

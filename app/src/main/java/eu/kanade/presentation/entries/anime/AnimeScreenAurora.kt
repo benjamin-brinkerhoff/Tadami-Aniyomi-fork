@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import aniyomi.domain.anime.SeasonAnime
 import eu.kanade.domain.metadata.model.MetadataLoadError
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.EntryDownloadDropdownMenu
 import eu.kanade.presentation.entries.DownloadAction
@@ -189,8 +190,15 @@ fun AnimeScreenAuroraImpl(
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
     onClickEditInfo: (() -> Unit)? = null,
+    onRetrySuggestions: () -> Unit = {},
+    onOpenSuggestions: () -> Unit = {},
 ) {
     val anime = state.anime
+    val sourcePreferences = remember { Injekt.get<SourcePreferences>() }
+    val uiPreferences = remember { Injekt.get<UiPreferences>() }
+    val entrySuggestionsEnabled by sourcePreferences.entrySuggestionsEnabled().collectAsState()
+    val entrySuggestionsExpandInline by uiPreferences.entrySuggestionsExpandInline().collectAsState()
+    val entrySuggestionsInOverflow by uiPreferences.entrySuggestionsInOverflow().collectAsState()
     val globalSearchQuery = remember(anime.displayTitle) { normalizeAuroraGlobalSearchQuery(anime.displayTitle) }
     val episodes = state.episodeListItems
     val selectedEpisodes = remember(episodes) {
@@ -1006,6 +1014,43 @@ fun AnimeScreenAuroraImpl(
                             }
                         }
 
+                        if (entrySuggestionsEnabled) {
+                            if (entrySuggestionsExpandInline) {
+                                item(key = "suggestions_row") {
+                                    eu.kanade.presentation.entries.components.aurora.AuroraSuggestionsRow(
+                                        state = state.suggestions,
+                                        onSuggestionClick = { item -> onSearch(item.searchQuery, true) },
+                                        onOpenSuggestions = onOpenSuggestions,
+                                        onRetryClick = onRetrySuggestions,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .auroraCenteredMaxWidth(contentMaxWidthDp),
+                                    )
+                                }
+                            } else if (!entrySuggestionsInOverflow) {
+                                item(key = "suggestions_button") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .auroraCenteredMaxWidth(contentMaxWidthDp)
+                                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.08f))
+                                            .clickable { onOpenSuggestions() }
+                                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = stringResource(MR.strings.suggestions_similar_titles),
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         item(
                             key = ANIME_AURORA_EPISODES_HEADER_KEY,
                             contentType = ANIME_AURORA_EPISODES_HEADER_KEY,
@@ -1317,6 +1362,15 @@ fun AnimeScreenAuroraImpl(
                                 text = stringResource(MR.strings.action_global_search),
                                 onClick = {
                                     onSearch(globalSearchQuery, true)
+                                    showMenu = false
+                                },
+                            )
+                        }
+                        if (entrySuggestionsEnabled && entrySuggestionsInOverflow) {
+                            AuroraEntryDropdownMenuItem(
+                                text = stringResource(MR.strings.pref_entry_suggestions),
+                                onClick = {
+                                    onOpenSuggestions()
                                     showMenu = false
                                 },
                             )

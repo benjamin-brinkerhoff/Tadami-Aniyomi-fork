@@ -22,6 +22,7 @@ import eu.kanade.domain.entries.novel.model.toSNovel
 import eu.kanade.domain.items.novelchapter.interactor.GetAvailableNovelScanlators
 import eu.kanade.domain.items.novelchapter.interactor.GetNovelScanlatorChapterCounts
 import eu.kanade.domain.items.novelchapter.interactor.SyncNovelChaptersWithSource
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.track.model.AutoTrackState
 import eu.kanade.domain.track.novel.interactor.RefreshNovelTracks
 import eu.kanade.domain.track.novel.interactor.TrackNovelChapter
@@ -39,6 +40,15 @@ import eu.kanade.tachiyomi.data.download.novel.NovelTranslatedDownloadManager
 import eu.kanade.tachiyomi.data.export.novel.NovelEpubExportOptions
 import eu.kanade.tachiyomi.data.export.novel.NovelEpubExportProgress
 import eu.kanade.tachiyomi.data.export.novel.NovelEpubExporter
+import eu.kanade.tachiyomi.data.suggestions.SuggestionCoordinator
+import eu.kanade.tachiyomi.data.suggestions.SuggestionItem
+import eu.kanade.tachiyomi.data.suggestions.SuggestionSeed
+import eu.kanade.tachiyomi.data.suggestions.SuggestionState
+import eu.kanade.tachiyomi.data.suggestions.SuggestionTitleResolver
+import eu.kanade.tachiyomi.data.suggestions.novel.NovelFallbackOutcome
+import eu.kanade.tachiyomi.data.suggestions.novel.NovelRelatedSuggestionCoordinator
+import eu.kanade.tachiyomi.data.suggestions.novel.NovelSearchFallbackEngine
+import eu.kanade.tachiyomi.data.suggestions.sources.SuggestionMediaType
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.translation.TranslationBatchRequest
 import eu.kanade.tachiyomi.data.translation.TranslationJob
@@ -47,6 +57,7 @@ import eu.kanade.tachiyomi.data.translation.TranslationStatus
 import eu.kanade.tachiyomi.data.translation.toTranslationQueueProfileSnapshot
 import eu.kanade.tachiyomi.extension.novel.runtime.NovelJsSource
 import eu.kanade.tachiyomi.extension.novel.runtime.hasVisiblePluginSettingsByDiscovery
+import eu.kanade.tachiyomi.novelsource.NovelCatalogueSource
 import eu.kanade.tachiyomi.novelsource.NovelSource
 import eu.kanade.tachiyomi.source.novel.NovelSiteSource
 import eu.kanade.tachiyomi.source.novel.NovelWebUrlSource
@@ -64,6 +75,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -209,8 +221,13 @@ class NovelScreenModel(
     private val novelReaderPreferences: NovelReaderPreferences = Injekt.get(),
     private val translationQueueManager: TranslationQueueManager = Injekt.get(),
     private val eventBus: AchievementEventBus? = runCatching { Injekt.get<AchievementEventBus>() }.getOrNull(),
+    private val suggestionCoordinator: SuggestionCoordinator = Injekt.get(),
+    private val sourcePreferences: SourcePreferences = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<NovelScreenModel.State>(State.Loading) {
+
+    private val relatedCoordinator = NovelRelatedSuggestionCoordinator()
+    private val searchFallbackEngine = NovelSearchFallbackEngine()
 
     private data class QueueNotifySummary(
         val pending: Int = 0,
@@ -299,6 +316,12 @@ class NovelScreenModel(
                         ?.let { existingChapters -> existingChapters.mapTo(mutableSetOf()) { it.id } }
                         ?: emptySet()
                     val chapterIdsChanged = previousChapterIds != chapterIds
+                    val previousNovel = successState?.novel
+                    val metadataChanged = previousNovel == null ||
+                        previousNovel.initialized != novel.initialized ||
+                        previousNovel.author != novel.author ||
+                        previousNovel.genre != novel.genre
+
                     updateSuccessState {
                         it.copy(
                             novel = novel,
@@ -314,6 +337,9 @@ class NovelScreenModel(
                                 emptySet()
                             },
                         )
+                    }
+                    if (metadataChanged) {
+                        loadSuggestions(buildSuggestionSeed(novel), novel = novel, source = novel.toCatalogueSource())
                     }
                     if (chapterIdsChanged) {
                         syncDownloadedState(deferFilesystemFallback = false)
@@ -455,10 +481,18 @@ class NovelScreenModel(
                 chapterPageVisibleUrls = emptySet(),
                 resumeChapterId = resumeChapterId,
                 hasCompletedChapterRefresh = chapters.isNotEmpty(),
+                suggestions = if (sourcePreferences.entrySuggestionsEnabled().get()) {
+                    SuggestionState.Loading
+                } else {
+                    SuggestionState.Disabled
+                },
             )
             mutableState.update {
                 initialState
             }
+
+            // Fetch suggestions asynchronously
+            loadSuggestions(buildSuggestionSeed(novel), novel = novel, source = novel.toCatalogueSource())
             // Seed the UI with lightweight neutral Gemini actions immediately, then
             // resolve translated download and translation cache state in the background.
             queuedChapterIds = translationQueueManager.queue.value.mapTo(mutableSetOf()) { it.chapterId }
@@ -601,6 +635,7 @@ class NovelScreenModel(
             ) {
                 val newNovel = novelRepository.getNovelById(novelId)
                 updateSuccessState { it.copy(novel = newNovel) }
+                loadSuggestions(buildSuggestionSeed(newNovel), novel = newNovel, source = newNovel.toCatalogueSource())
                 screenModelScope.launch {
                     snackbarHostState.showSnackbar(
                         message = context.stringResource(MR.strings.metadata_saved_successfully),
@@ -623,6 +658,7 @@ class NovelScreenModel(
             ) {
                 val newNovel = novelRepository.getNovelById(novelId)
                 updateSuccessState { it.copy(novel = newNovel) }
+                loadSuggestions(buildSuggestionSeed(newNovel), novel = newNovel, source = newNovel.toCatalogueSource())
                 screenModelScope.launch {
                     snackbarHostState.showSnackbar(
                         message = context.stringResource(MR.strings.metadata_saved_successfully),
@@ -632,6 +668,216 @@ class NovelScreenModel(
         }
     }
 
+    private fun buildSuggestionSeed(novel: Novel): SuggestionSeed {
+        val displayTitle = novel.displayTitle
+        val altTitles = listOfNotNull(novel.title, novel.customTitle)
+        val candidates = SuggestionTitleResolver.resolveCandidates(
+            title = displayTitle,
+            description = novel.description,
+            url = novel.url,
+            metadataAlternativeTitles = altTitles,
+        )
+        return SuggestionSeed(
+            mediaType = SuggestionMediaType.NOVEL,
+            primaryTitle = displayTitle,
+            candidateTitles = candidates,
+            description = novel.displayDescription,
+            author = novel.author,
+            genres = novel.genre,
+        )
+    }
+
+    private fun Novel.toCatalogueSource(): NovelCatalogueSource? =
+        sourceManager.getOrStub(source) as? NovelCatalogueSource
+
+    private var suggestionSeedUsed: SuggestionSeed? = null
+
+    fun getSuggestionSeed(): SuggestionSeed? = suggestionSeedUsed
+
+    fun retrySuggestions() {
+        val success = successState ?: return
+        eu.kanade.tachiyomi.data.suggestions.SuggestionCache.invalidateAll()
+        screenModelScope.launchIO {
+            loadSuggestions(
+                buildSuggestionSeed(success.novel),
+                novel = success.novel,
+                source = success.novel.toCatalogueSource(),
+                force = true,
+            )
+        }
+    }
+    private fun emitProgressiveSuggestions(list: List<SuggestionItem>, currentNovel: Novel?) {
+        val seed = suggestionSeedUsed ?: return
+        val sorted = synchronized(list) {
+            list.distinctBy { it.providerId ?: it.providerUrl }
+                .filter { item ->
+                    val isSelf = (currentNovel != null && item.providerUrl == currentNovel.url) ||
+                        (item.providerId?.endsWith(":${currentNovel?.url}") == true)
+                    val isFranchise = SuggestionTitleResolver.isFranchiseDuplicate(item.title, seed.primaryTitle)
+                    !isSelf && !isFranchise
+                }
+                .take(20)
+        }
+        if (sorted.isNotEmpty()) {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Success(sorted)) }
+        }
+    }
+
+    private var suggestionsJob: Job? = null
+
+    private fun loadSuggestions(
+        seed: SuggestionSeed,
+        novel: Novel? = null,
+        source: NovelCatalogueSource? = null,
+        force: Boolean = false,
+    ) {
+        if (!sourcePreferences.entrySuggestionsEnabled().get()) {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Disabled) }
+            return
+        }
+        if (!force && suggestionSeedUsed == seed) {
+            return
+        }
+        suggestionSeedUsed = seed
+
+        val currentNovel = novel ?: successState?.novel
+        val currentSource =
+            source ?: (currentNovel?.let { sourceManager.getOrStub(it.source) } as? NovelCatalogueSource)
+
+        suggestionsJob?.cancel()
+        suggestionsJob = screenModelScope.launchIO {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Loading) }
+            try {
+                val suggestionsList = java.util.Collections.synchronizedList(mutableListOf<SuggestionItem>())
+                val externalMatchedBase = java.util.concurrent.atomic.AtomicBoolean(false)
+                val pluginFetchedAny = java.util.concurrent.atomic.AtomicBoolean(false)
+
+                coroutineScope {
+                    // Task 1: External Suggestions (AniList/etc)
+                    launch {
+                        try {
+                            val externalResult = suggestionCoordinator.fetchSuggestions(seed, limit = 40)
+                            if (externalResult.items.isNotEmpty()) {
+                                val externalFiltered = externalResult.items.filter { item ->
+                                    val isSelf = (currentNovel != null && item.providerUrl == currentNovel.url) ||
+                                        (item.providerId?.endsWith(":${currentNovel?.url}") == true)
+                                    val isFranchise = eu.kanade.tachiyomi.data.suggestions
+                                        .SuggestionTitleResolver.isFranchiseDuplicate(
+                                            item.title,
+                                            seed.primaryTitle,
+                                        )
+                                    !isSelf && !isFranchise
+                                }
+                                if (externalFiltered.isNotEmpty()) {
+                                    externalMatchedBase.set(externalResult.matchedBase)
+                                    synchronized(suggestionsList) {
+                                        suggestionsList.addAll(externalFiltered)
+                                    }
+                                    emitProgressiveSuggestions(suggestionsList, currentNovel)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            logcat { "[NovelScreenModel] External suggestions failed: ${e.message}" }
+                        }
+                    }
+
+                    // Task 2: Native Related suggestions
+                    if (currentNovel != null && currentSource != null) {
+                        launch {
+                            try {
+                                val relatedOutcome = relatedCoordinator.fetchRelatedSuggestions(
+                                    currentNovel,
+                                    currentSource,
+                                    seed,
+                                )
+                                if (relatedOutcome is NovelFallbackOutcome.Success &&
+                                    relatedOutcome.items.isNotEmpty()
+                                ) {
+                                    pluginFetchedAny.set(true)
+                                    synchronized(suggestionsList) {
+                                        suggestionsList.addAll(relatedOutcome.items)
+                                    }
+                                    emitProgressiveSuggestions(suggestionsList, currentNovel)
+                                }
+                            } catch (e: Exception) {
+                                logcat { "[NovelScreenModel] Native related suggestions failed: ${e.message}" }
+                            }
+                        }
+                    }
+
+                    // Task 3: Search Fallback suggestions
+                    if (currentNovel != null && currentSource != null) {
+                        launch {
+                            try {
+                                val searchOutcome = searchFallbackEngine.fetchSearchFallback(
+                                    novel = currentNovel,
+                                    source = currentSource,
+                                    seed = seed,
+                                    maxResults = 40,
+                                    onProgress = { progressItems ->
+                                        pluginFetchedAny.set(true)
+                                        synchronized(suggestionsList) {
+                                            val existingUrls = suggestionsList.map { it.providerUrl }.toSet()
+                                            val newItems = progressItems.filter { it.providerUrl !in existingUrls }
+                                            suggestionsList.addAll(newItems)
+                                        }
+                                        emitProgressiveSuggestions(suggestionsList, currentNovel)
+                                    },
+                                )
+                                if (searchOutcome is NovelFallbackOutcome.Success && searchOutcome.items.isNotEmpty()) {
+                                    pluginFetchedAny.set(true)
+                                    synchronized(suggestionsList) {
+                                        val existingUrls = suggestionsList.map { it.providerUrl }.toSet()
+                                        val newItems = searchOutcome.items.filter { it.providerUrl !in existingUrls }
+                                        suggestionsList.addAll(newItems)
+                                    }
+                                    emitProgressiveSuggestions(suggestionsList, currentNovel)
+                                }
+                            } catch (e: Exception) {
+                                logcat { "[NovelScreenModel] Native search suggestions failed: ${e.message}" }
+                            }
+                        }
+                    }
+                }
+
+                val finalCombined = synchronized(suggestionsList) {
+                    suggestionsList.distinctBy { it.providerId ?: it.providerUrl }
+                        .filter { item ->
+                            val isSelf = (currentNovel != null && item.providerUrl == currentNovel.url) ||
+                                (item.providerId?.endsWith(":${currentNovel?.url}") == true)
+                            val isFranchise = eu.kanade.tachiyomi.data.suggestions
+                                .SuggestionTitleResolver.isFranchiseDuplicate(
+                                    item.title,
+                                    seed.primaryTitle,
+                                )
+                            !isSelf && !isFranchise
+                        }
+                        .take(20)
+                }
+
+                updateSuccessState {
+                    val nextState = when {
+                        finalCombined.isEmpty() -> {
+                            val anyMatched = externalMatchedBase.get() || pluginFetchedAny.get()
+                            val message = if (anyMatched) {
+                                context.stringResource(MR.strings.suggestions_empty_state_novel)
+                            } else {
+                                context.stringResource(MR.strings.suggestions_no_match_novel)
+                            }
+                            SuggestionState.Empty(message)
+                        }
+                        else -> SuggestionState.Success(finalCombined)
+                    }
+                    it.copy(suggestions = nextState)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat { "NovelScreenModel suggestions fetch failed: ${e.message}" }
+                updateSuccessState { it.copy(suggestions = SuggestionState.Error(e.message ?: "Unknown error")) }
+            }
+        }
+    }
     private inline fun updateSuccessState(
         func: (State.Success) -> State.Success,
     ) {
@@ -2149,6 +2395,7 @@ class NovelScreenModel(
             val hasCompletedChapterRefresh: Boolean = false,
             val scrollIndex: Int = 0,
             val scrollOffset: Int = 0,
+            val suggestions: SuggestionState = SuggestionState.Idle,
         ) : State {
             val scanlatorFilterActive: Boolean
                 get() = excludedScanlators.intersect(availableScanlators).isNotEmpty()

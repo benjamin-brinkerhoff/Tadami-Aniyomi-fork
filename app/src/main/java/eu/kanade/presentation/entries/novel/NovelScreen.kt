@@ -164,6 +164,8 @@ fun NovelScreen(
     onMultiDownloadClicked: () -> Unit,
     onMultiDeleteClicked: () -> Unit,
     onSaveScrollPosition: (Int, Int) -> Unit = { _, _ -> },
+    onRetrySuggestions: () -> Unit = {},
+    onOpenSuggestions: () -> Unit = {},
 ) {
     val uiPreferences = Injekt.get<UiPreferences>()
     val theme by uiPreferences.appTheme().collectAsState()
@@ -243,6 +245,8 @@ fun NovelScreen(
             isAutoJumpToNextEnabled = autoJumpToNextEnabled,
             autoJumpToNextLabel = autoJumpToNextLabel,
             onToggleAutoJumpToNext = onToggleAutoJumpToNext,
+            onRetrySuggestions = onRetrySuggestions,
+            onOpenSuggestions = onOpenSuggestions,
         )
         return
     }

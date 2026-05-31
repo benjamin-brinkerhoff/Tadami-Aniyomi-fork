@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import eu.kanade.domain.entries.novel.model.normalizeNovelDescription
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.entries.TitleFastScrollOverlayAccumulator
 import eu.kanade.presentation.entries.components.AuroraEntryDropdownMenu
@@ -177,6 +178,8 @@ fun NovelScreenAuroraImpl(
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
     onClickEditInfo: (() -> Unit)? = null,
+    onRetrySuggestions: () -> Unit = {},
+    onOpenSuggestions: () -> Unit = {},
 ) {
     val novel = state.novel
     val globalSearchQuery = remember(novel.displayTitle) { normalizeAuroraGlobalSearchQuery(novel.displayTitle) }
@@ -232,11 +235,15 @@ fun NovelScreenAuroraImpl(
     val auroraAdaptiveSpec = rememberAuroraAdaptiveSpec()
     val contentMaxWidthDp = auroraAdaptiveSpec.entryMaxWidthDp
     val useTwoPaneLayout = shouldUseNovelAuroraTwoPane(auroraAdaptiveSpec.deviceClass)
-    val auroraTranslationPreferences = remember { Injekt.get<UiPreferences>() }
-    val auroraEntryTranslationEnabled by auroraTranslationPreferences
+    val uiPreferences = remember { Injekt.get<UiPreferences>() }
+    val sourcePreferences = remember { Injekt.get<SourcePreferences>() }
+    val entrySuggestionsEnabled by sourcePreferences.entrySuggestionsEnabled().collectAsState()
+    val entrySuggestionsExpandInline by uiPreferences.entrySuggestionsExpandInline().collectAsState()
+    val entrySuggestionsInOverflow by uiPreferences.entrySuggestionsInOverflow().collectAsState()
+    val auroraEntryTranslationEnabled by uiPreferences
         .auroraEntryTranslationEnabled()
         .collectAsState()
-    val auroraEntryTranslationSourceLanguages by auroraTranslationPreferences
+    val auroraEntryTranslationSourceLanguages by uiPreferences
         .auroraEntryTranslationSourceLanguages()
         .collectAsState()
     val auroraEntryTranslation = rememberAuroraEntryTranslation(
@@ -780,6 +787,15 @@ fun NovelScreenAuroraImpl(
                                         },
                                     )
                                 }
+                                if (entrySuggestionsEnabled && entrySuggestionsInOverflow) {
+                                    AuroraEntryDropdownMenuItem(
+                                        text = stringResource(MR.strings.pref_entry_suggestions),
+                                        onClick = {
+                                            onOpenSuggestions()
+                                            showMenu = false
+                                        },
+                                    )
+                                }
                                 if (isFromSource) {
                                     AuroraEntryDropdownMenuItem(
                                         text = stringResource(MR.strings.action_webview_refresh),
@@ -1028,6 +1044,43 @@ fun NovelScreenAuroraImpl(
                                 onExportEpubClicked = onOpenEpubExportDialog,
                                 modifier = Modifier.fillMaxWidth(),
                             )
+                        }
+                    }
+
+                    if (entrySuggestionsEnabled) {
+                        if (entrySuggestionsExpandInline) {
+                            item(key = "suggestions_row") {
+                                eu.kanade.presentation.entries.components.aurora.AuroraSuggestionsRow(
+                                    state = state.suggestions,
+                                    onSuggestionClick = { item -> onSearch(item.searchQuery, true) },
+                                    onOpenSuggestions = onOpenSuggestions,
+                                    onRetryClick = onRetrySuggestions,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .auroraCenteredMaxWidth(contentMaxWidthDp),
+                                )
+                            }
+                        } else if (!entrySuggestionsInOverflow) {
+                            item(key = "suggestions_button") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .auroraCenteredMaxWidth(contentMaxWidthDp)
+                                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White.copy(alpha = 0.08f))
+                                        .clickable { onOpenSuggestions() }
+                                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(MR.strings.suggestions_similar_titles),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                    )
+                                }
+                            }
                         }
                     }
 

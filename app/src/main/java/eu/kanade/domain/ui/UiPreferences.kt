@@ -143,6 +143,10 @@ class UiPreferences(
 
     fun debugBypassTreasuryLocks() = preferenceStore.getBoolean("debug_bypass_treasury_locks", false)
 
+    fun entrySuggestionsExpandInline() = preferenceStore.getBoolean("entry_suggestions_expand_inline", true)
+
+    fun entrySuggestionsInOverflow() = preferenceStore.getBoolean("entry_suggestions_in_overflow", false)
+
     companion object {
         const val DEFAULT_APP_UI_FONT_ID = ""
         const val DEFAULT_COVER_TITLE_FONT_ID = ""

@@ -1309,4 +1309,25 @@
     <string name="status_on_hiatus">On hiatus</string>
     <string name="status_unknown">Unknown</string>
     <string name="metadata_saved_successfully">Metadata saved successfully</string>
+    <string name="suggestions_similar_titles">Similar Titles</string>
+    <string name="action_open_suggestions">Open suggestions</string>
+    <string name="pref_entry_suggestions">Suggestions</string>
+    <string name="pref_entry_suggestions_summary">Show similar or recommended titles based on what you\'re reading or watching. Powered by AniList, MyAnimeList and MangaUpdates.</string>
+    <string name="pref_entry_suggestions_inline">Show inline row</string>
+    <string name="pref_entry_suggestions_inline_summary">Display suggestions as a horizontal carousel below the entry description. Tap a card to search globally.</string>
+    <string name="pref_entry_suggestions_overflow">Show in overflow menu</string>
+    <string name="pref_entry_suggestions_overflow_summary">Access suggestions from the ⋮ overflow menu on the entry screen. A dedicated screen shows all results.</string>
+    <string name="suggestions_empty_state">No suggestions found for this title.\nTry refreshing or check if the title is available on AniList or MangaUpdates.</string>
+    <string name="suggestions_disabled_state">Suggestions are disabled.\nEnable them in Settings → Browse → Suggestions.</string>
+    <string name="suggestions_provider_failure">Could not load suggestions from one or more providers. Tap Retry to try again.</string>
+    <string name="suggestions_no_safe_results">No safe suggestions found.\nThe title may not be available under any recognized alias on the configured providers.</string>
+    <string name="suggestions_empty_state_novel">No similar novels found</string>
+    <string name="suggestions_no_match_novel">Could not match this novel to a recommendation source</string>
+    <string name="suggestions_empty_related_novel">No related titles found on this source</string>
+    <string name="suggestions_empty_search_novel">No search matches found on this source</string>
+    <string name="suggestions_fallback_exhausted_novel">No suggestions available for this novel</string>
+    <string name="action_show_more">Show more</string>
+    <string name="pref_category_epub_import">EPUB Import</string>
+    <string name="pref_epub_import_add_to_library">Add imported EPUBs to library</string>
+    <string name="pref_epub_import_add_to_library_summary">Imported EPUB novels will automatically appear in the library. When disabled, they can be added manually from the local source browse.</string>
 </resources>

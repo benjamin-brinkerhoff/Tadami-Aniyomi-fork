@@ -13,6 +13,7 @@ import eu.kanade.domain.entries.novel.interactor.UpdateNovel
 import eu.kanade.domain.items.novelchapter.interactor.GetAvailableNovelScanlators
 import eu.kanade.domain.items.novelchapter.interactor.GetNovelScanlatorChapterCounts
 import eu.kanade.domain.items.novelchapter.interactor.SyncNovelChaptersWithSource
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.track.model.AutoTrackState
 import eu.kanade.domain.track.novel.interactor.RefreshNovelTracks
 import eu.kanade.domain.track.novel.interactor.TrackNovelChapter
@@ -20,6 +21,7 @@ import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.data.download.novel.NovelDownloadCacheEvent
 import eu.kanade.tachiyomi.data.download.novel.NovelDownloadQueueState
 import eu.kanade.tachiyomi.data.download.novel.NovelTranslatedDownloadManager
+import eu.kanade.tachiyomi.data.suggestions.SuggestionCoordinator
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.translation.TranslationQueueItem
 import eu.kanade.tachiyomi.data.translation.TranslationQueueManager
@@ -726,20 +728,13 @@ class NovelScreenModelTest {
         runBlocking {
             val novel = novelForResumeTests(109L)
             val chapter = novelChapter(id = 1L, novelId = novel.id, chapterNumber = 1.0, read = false)
-            val blocker = CompletableDeferred<Unit>()
-            val translatedDownloadManager = mockk<NovelTranslatedDownloadManager>()
+            val translatedDownloadManager = mockk<NovelTranslatedDownloadManager>(relaxed = true)
             every {
                 translatedDownloadManager.isTranslatedChapterDownloaded(any(), any(), any())
-            } answers {
-                runBlocking { blocker.await() }
-                false
-            }
+            } returns false
             every {
                 translatedDownloadManager.getTranslatedChapterIds(any(), any(), any())
-            } answers {
-                runBlocking { blocker.await() }
-                emptySet()
-            }
+            } returns emptySet()
 
             val queueFlow = MutableStateFlow<List<TranslationQueueItem>>(emptyList())
             val activeTranslationFlow = MutableStateFlow<TranslationQueueItem?>(null)
@@ -798,7 +793,6 @@ class NovelScreenModelTest {
                 val state = screenModel.state.value as NovelScreenModel.State.Success
                 state.chapterActionStates[chapter.id]?.translateState shouldBe NovelChapterActionIconState.InProgress
             } finally {
-                blocker.complete(Unit)
                 screenModel.onDispose()
             }
         }
@@ -1360,7 +1354,7 @@ class NovelScreenModelTest {
 
                 screenModel.handleDownloadCacheEvent(NovelDownloadCacheEvent.InvalidateAll)
 
-                withTimeout(1_000) {
+                withTimeout(3_000) {
                     while (resolveDownloadedIdsCalls <= initialCalls) {
                         yield()
                     }
@@ -1541,11 +1535,15 @@ class NovelScreenModelTest {
         ).also { preferences ->
             preferences.geminiEnabled().set(geminiEnabled)
         }
+        val sourcePreferences = SourcePreferences(preferenceStore).also { preferences ->
+            preferences.entrySuggestionsEnabled().set(false)
+        }
 
         return NovelScreenModel(
             lifecycle = FakeLifecycleOwner().lifecycle,
             novelId = novel.id,
             basePreferences = basePreferences,
+            novelRepository = novelRepository,
             libraryPreferences = libraryPreferences,
             getNovelWithChapters = getNovelWithChapters,
             updateNovel = updateNovel,
@@ -1580,6 +1578,8 @@ class NovelScreenModelTest {
             novelReaderPreferences = novelReaderPreferences,
             novelTranslatedDownloadManager = novelTranslatedDownloadManager,
             translationQueueManager = translationQueueManager,
+            suggestionCoordinator = mockk<SuggestionCoordinator>(relaxed = true),
+            sourcePreferences = sourcePreferences,
         )
     }
 

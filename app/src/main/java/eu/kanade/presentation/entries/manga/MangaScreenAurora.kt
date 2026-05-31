@@ -67,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.EntryDownloadDropdownMenu
 import eu.kanade.presentation.entries.DownloadAction
@@ -168,8 +169,15 @@ fun MangaScreenAuroraImpl(
     autoJumpToNextLabel: String,
     onToggleAutoJumpToNext: () -> Unit,
     onClickEditInfo: (() -> Unit)? = null,
+    onRetrySuggestions: () -> Unit = {},
+    onOpenSuggestions: () -> Unit = {},
 ) {
     val manga = state.manga
+    val sourcePreferences = remember { Injekt.get<SourcePreferences>() }
+    val uiPreferences = remember { Injekt.get<UiPreferences>() }
+    val entrySuggestionsEnabled by sourcePreferences.entrySuggestionsEnabled().collectAsState()
+    val entrySuggestionsExpandInline by uiPreferences.entrySuggestionsExpandInline().collectAsState()
+    val entrySuggestionsInOverflow by uiPreferences.entrySuggestionsInOverflow().collectAsState()
     val globalSearchQuery = remember(manga.displayTitle) { normalizeAuroraGlobalSearchQuery(manga.displayTitle) }
     val chapters = state.chapterListItems
     val selectedChapters = remember(chapters) {
@@ -187,7 +195,6 @@ fun MangaScreenAuroraImpl(
     }
     val contentMaxWidthDp = auroraAdaptiveSpec.entryMaxWidthDp
     val useTwoPaneLayout = shouldUseMangaAuroraTwoPane(auroraAdaptiveSpec.deviceClass)
-    val uiPreferences = remember { Injekt.get<UiPreferences>() }
     val metadataSource: MetadataSource = remember { uiPreferences.metadataSource().get() }
     val resolvedCover = remember(
         manga,
@@ -718,6 +725,43 @@ fun MangaScreenAuroraImpl(
                             }
                         }
 
+                        if (entrySuggestionsEnabled) {
+                            if (entrySuggestionsExpandInline) {
+                                item(key = "suggestions_row") {
+                                    eu.kanade.presentation.entries.components.aurora.AuroraSuggestionsRow(
+                                        state = state.suggestions,
+                                        onSuggestionClick = { item -> onSearch(item.searchQuery, true) },
+                                        onOpenSuggestions = onOpenSuggestions,
+                                        onRetryClick = onRetrySuggestions,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .auroraCenteredMaxWidth(contentMaxWidthDp),
+                                    )
+                                }
+                            } else if (!entrySuggestionsInOverflow) {
+                                item(key = "suggestions_button") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .auroraCenteredMaxWidth(contentMaxWidthDp)
+                                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White.copy(alpha = 0.08f))
+                                            .clickable { onOpenSuggestions() }
+                                            .padding(vertical = 12.dp, horizontal = 16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = stringResource(MR.strings.suggestions_similar_titles),
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 14.sp,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         // Chapters header
                         item(
                             key = MANGA_AURORA_CHAPTERS_HEADER_KEY,
@@ -998,6 +1042,7 @@ fun MangaScreenAuroraImpl(
                             hasNotes = onEditNotesClicked != null,
                             hasEditInfo = onClickEditInfo != null,
                             hasMigrate = onMigrateClicked != null,
+                            hasSuggestions = entrySuggestionsEnabled && entrySuggestionsInOverflow,
                         ).forEach { action ->
                             AuroraEntryDropdownMenuItem(
                                 text = when (action) {
@@ -1017,6 +1062,8 @@ fun MangaScreenAuroraImpl(
                                         stringResource(MR.strings.action_edit_info)
                                     AuroraMangaOverflowAction.Migrate ->
                                         stringResource(MR.strings.action_migrate)
+                                    AuroraMangaOverflowAction.Suggestions ->
+                                        stringResource(MR.strings.pref_entry_suggestions)
                                 },
                                 onClick = {
                                     when (action) {
@@ -1028,6 +1075,7 @@ fun MangaScreenAuroraImpl(
                                         AuroraMangaOverflowAction.Notes -> onEditNotesClicked!!()
                                         AuroraMangaOverflowAction.EditInfo -> onClickEditInfo!!()
                                         AuroraMangaOverflowAction.Migrate -> onMigrateClicked!!()
+                                        AuroraMangaOverflowAction.Suggestions -> onOpenSuggestions()
                                     }
                                     showMenu = false
                                 },
@@ -1136,6 +1184,7 @@ internal enum class AuroraMangaOverflowAction {
     Notes,
     EditInfo,
     Migrate,
+    Suggestions,
 }
 
 internal fun resolveMangaAuroraOverflowActions(
@@ -1145,6 +1194,7 @@ internal fun resolveMangaAuroraOverflowActions(
     hasNotes: Boolean,
     hasEditInfo: Boolean = false,
     hasMigrate: Boolean,
+    hasSuggestions: Boolean = false,
 ): List<AuroraMangaOverflowAction> {
     return buildList {
         add(AuroraMangaOverflowAction.Refresh)
@@ -1155,6 +1205,7 @@ internal fun resolveMangaAuroraOverflowActions(
         if (hasNotes) add(AuroraMangaOverflowAction.Notes)
         if (hasEditInfo) add(AuroraMangaOverflowAction.EditInfo)
         if (hasMigrate) add(AuroraMangaOverflowAction.Migrate)
+        if (hasSuggestions) add(AuroraMangaOverflowAction.Suggestions)
     }
 }
 

@@ -105,4 +105,10 @@ class SourcePreferencesTest {
         assertFalse(preferences.migrationHideNotFound().get())
         assertFalse(preferences.migrationOnlyNewChapters().get())
     }
+
+    @Test
+    fun `suggestions default is enabled`() {
+        val preferences = SourcePreferences(InMemoryPreferenceStore())
+        assertTrue(preferences.entrySuggestionsEnabled().get())
+    }
 }

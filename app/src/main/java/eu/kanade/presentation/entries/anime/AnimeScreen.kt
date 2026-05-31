@@ -207,6 +207,8 @@ fun AnimeScreen(
     onRetryMetadata: () -> Unit,
 
     onClickEditInfo: (() -> Unit)? = null,
+    onRetrySuggestions: () -> Unit = {},
+    onOpenSuggestions: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val uiPreferences = Injekt.get<eu.kanade.domain.ui.UiPreferences>()
@@ -279,6 +281,8 @@ fun AnimeScreen(
             autoJumpToNextLabel = autoJumpToNextLabel,
             onToggleAutoJumpToNext = onToggleAutoJumpToNext,
             onClickEditInfo = onClickEditInfo,
+            onRetrySuggestions = onRetrySuggestions,
+            onOpenSuggestions = onOpenSuggestions,
         )
         return
     }

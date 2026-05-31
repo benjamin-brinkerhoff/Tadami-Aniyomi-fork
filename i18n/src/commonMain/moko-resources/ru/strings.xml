@@ -1176,5 +1176,25 @@
     <string name="status_on_hiatus">Приостановлено</string>
     <string name="status_unknown">Неизвестно</string>
     <string name="metadata_saved_successfully">Метаданные успешно сохранены</string>
+    <string name="suggestions_similar_titles">Похожие произведения</string>
+    <string name="action_open_suggestions">Открыть рекомендации</string>
+    <string name="pref_entry_suggestions">Рекомендации</string>
+    <string name="pref_entry_suggestions_summary">Показывать похожие или рекомендованные тайтлы на экране информации</string>
+    <string name="pref_entry_suggestions_inline">Показывать строку рекомендаций</string>
+    <string name="pref_entry_suggestions_inline_summary">Отображать рекомендации в виде горизонтальной прокручиваемой строки</string>
+    <string name="pref_entry_suggestions_overflow">Показывать в меню действий</string>
+    <string name="pref_entry_suggestions_overflow_summary">Доступ к рекомендациям через выпадающее меню действий</string>
+    <string name="suggestions_empty_state">Рекомендации для этого тайтла не найдены.\nПопробуйте обновить или проверьте, есть ли тайтл на AniList или MangaUpdates.</string>
+    <string name="suggestions_disabled_state">Рекомендации отключены.\nВключите их в Настройках → Обзор → Рекомендации.</string>
+    <string name="suggestions_provider_failure">Не удалось загрузить рекомендации от одного или нескольких провайдеров. Нажмите «Повторить».</string>
+    <string name="suggestions_no_safe_results">Безопасные рекомендации не найдены.\nТайтл может быть недоступен под каким-либо известным псевдонимом у настроенных провайдеров.</string>
+    <string name="suggestions_empty_state_novel">Похожие новеллы не найдены</string>
+    <string name="suggestions_no_match_novel">Не удалось сопоставить эту новеллу с источником рекомендаций</string>
+    <string name="suggestions_empty_related_novel">На этом источнике не найдено похожих тайтлов</string>
+    <string name="suggestions_empty_search_novel">На этом источнике не найдено совпадений при поиске</string>
+    <string name="suggestions_fallback_exhausted_novel">Для этой новеллы нет доступных рекомендаций</string>
+    <string name="action_show_more">Показать больше</string>
+    <string name="pref_category_epub_import">Импорт EPUB</string>
+    <string name="pref_epub_import_add_to_library">Добавлять импортированные EPUB в библиотеку</string>
+    <string name="pref_epub_import_add_to_library_summary">Импортированные EPUB-новеллы сразу появятся в библиотеке. Если отключено, их можно добавить вручную из локального источника.</string>
 </resources>
-

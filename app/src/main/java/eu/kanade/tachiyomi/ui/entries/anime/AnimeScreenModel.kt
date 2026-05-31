@@ -25,6 +25,7 @@ import eu.kanade.domain.items.episode.interactor.SetSeenStatus
 import eu.kanade.domain.items.episode.interactor.SyncEpisodesWithSource
 import eu.kanade.domain.metadata.interactor.GetAnimeMetadata
 import eu.kanade.domain.metadata.model.MetadataLoadError
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.track.anime.interactor.AddAnimeTracks
 import eu.kanade.domain.track.anime.interactor.RefreshAnimeTracks
 import eu.kanade.domain.track.anime.interactor.TrackEpisode
@@ -34,6 +35,7 @@ import eu.kanade.presentation.entries.DownloadAction
 import eu.kanade.presentation.entries.anime.components.EpisodeDownloadAction
 import eu.kanade.presentation.util.TargetChapterCalculator
 import eu.kanade.presentation.util.formattedMessage
+import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.UnmeteredSource
 import eu.kanade.tachiyomi.animesource.model.FetchType
@@ -42,6 +44,14 @@ import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadCache
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
 import eu.kanade.tachiyomi.data.download.anime.model.AnimeDownload
+import eu.kanade.tachiyomi.data.suggestions.SuggestionCoordinator
+import eu.kanade.tachiyomi.data.suggestions.SuggestionItem
+import eu.kanade.tachiyomi.data.suggestions.SuggestionSeed
+import eu.kanade.tachiyomi.data.suggestions.SuggestionState
+import eu.kanade.tachiyomi.data.suggestions.SuggestionTitleResolver
+import eu.kanade.tachiyomi.data.suggestions.anime.AnimeFallbackOutcome
+import eu.kanade.tachiyomi.data.suggestions.anime.AnimeSearchFallbackEngine
+import eu.kanade.tachiyomi.data.suggestions.sources.SuggestionMediaType
 import eu.kanade.tachiyomi.data.track.EnhancedAnimeTracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.network.HttpException
@@ -59,8 +69,10 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
@@ -156,8 +168,12 @@ class AnimeScreenModel(
     internal val setAnimeViewerFlags: SetAnimeViewerFlags = Injekt.get(),
     private val preferenceStore: tachiyomi.core.common.preference.PreferenceStore = Injekt.get(),
     private val getAnimeMetadata: GetAnimeMetadata = Injekt.get(),
+    private val suggestionCoordinator: SuggestionCoordinator = Injekt.get(),
+    private val sourcePreferences: SourcePreferences = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<AnimeScreenModel.State>(State.Loading) {
+
+    private val searchFallbackEngine = AnimeSearchFallbackEngine()
 
     private val successState: State.Success?
         get() = state.value as? State.Success
@@ -309,6 +325,193 @@ class AnimeScreenModel(
     /**
      * Helper function to update the UI state only if it's currently in success state
      */
+    private fun buildSuggestionSeed(anime: Anime, metadata: ExternalMetadata?): SuggestionSeed {
+        val title = anime.title
+        // Collect all available title aliases from metadata:
+        // - searchQuery: the winning search query that MetadataResolver resolved
+        // - Any additional derived variants are handled inside SuggestionTitleResolver
+        val metadataTitles = buildList {
+            if (metadata != null &&
+                metadata.searchQuery.isNotBlank() &&
+                !metadata.searchQuery.startsWith("tracking:", ignoreCase = true)
+            ) {
+                add(metadata.searchQuery)
+            }
+        }
+        val candidates = eu.kanade.tachiyomi.data.suggestions.SuggestionTitleResolver.resolveCandidates(
+            title = title,
+            description = anime.description,
+            url = anime.url,
+            metadataAlternativeTitles = metadataTitles,
+        )
+        return SuggestionSeed(
+            mediaType = SuggestionMediaType.ANIME,
+            primaryTitle = title,
+            candidateTitles = candidates,
+            description = anime.description,
+            author = anime.author,
+            genres = anime.genre,
+        )
+    }
+
+    private fun Anime.toCatalogueSource(): AnimeCatalogueSource? =
+        Injekt.get<tachiyomi.domain.source.anime.service.AnimeSourceManager>().getOrStub(
+            source,
+        ) as? AnimeCatalogueSource
+
+    private var suggestionSeedUsed: SuggestionSeed? = null
+
+    fun getSuggestionSeed(): SuggestionSeed? = suggestionSeedUsed
+    private var suggestionsJob: Job? = null
+
+    fun retrySuggestions() {
+        val success = successState ?: return
+        eu.kanade.tachiyomi.data.suggestions.SuggestionCache.invalidateAll()
+        loadSuggestions(
+            buildSuggestionSeed(success.anime, success.animeMetadata),
+            anime = success.anime,
+            source = success.anime.toCatalogueSource(),
+            force = true,
+        )
+    }
+
+    private fun emitProgressiveSuggestions(list: List<SuggestionItem>, currentAnime: Anime?) {
+        val seed = suggestionSeedUsed ?: return
+        val sorted = synchronized(list) {
+            list.distinctBy { it.providerId ?: it.providerUrl }
+                .filter { item ->
+                    val isSelf = (currentAnime != null && item.providerUrl == currentAnime.url) ||
+                        (item.providerId?.endsWith(":${currentAnime?.url}") == true)
+                    val isFranchise = SuggestionTitleResolver.isFranchiseDuplicate(item.title, seed.primaryTitle)
+                    !isSelf && !isFranchise
+                }
+                .take(20)
+        }
+        if (sorted.isNotEmpty()) {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Success(sorted)) }
+        }
+    }
+
+    private fun loadSuggestions(
+        seed: SuggestionSeed,
+        anime: Anime? = null,
+        source: AnimeCatalogueSource? = null,
+        force: Boolean = false,
+    ) {
+        if (!sourcePreferences.entrySuggestionsEnabled().get()) {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Disabled) }
+            return
+        }
+        if (!force && suggestionSeedUsed == seed) {
+            return
+        }
+        suggestionSeedUsed = seed
+
+        val currentAnime = anime ?: successState?.anime
+        val currentSource = source ?: (
+            currentAnime?.let {
+                Injekt.get<tachiyomi.domain.source.anime.service.AnimeSourceManager>().getOrStub(it.source)
+            } as? AnimeCatalogueSource
+            )
+
+        suggestionsJob?.cancel()
+        suggestionsJob = screenModelScope.launchIO {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Loading) }
+            try {
+                val suggestionsList = java.util.Collections.synchronizedList(mutableListOf<SuggestionItem>())
+
+                coroutineScope {
+                    // Task 1: External Suggestions (AniList/etc)
+                    launch {
+                        try {
+                            val externalResult = suggestionCoordinator.fetchSuggestions(seed, limit = 40)
+                            if (externalResult.items.isNotEmpty()) {
+                                val externalFiltered = externalResult.items.filter { item ->
+                                    val isSelf = (currentAnime != null && item.providerUrl == currentAnime.url) ||
+                                        (item.providerId?.endsWith(":${currentAnime?.url}") == true)
+                                    val isFranchise = eu.kanade.tachiyomi.data.suggestions
+                                        .SuggestionTitleResolver.isFranchiseDuplicate(
+                                            item.title,
+                                            seed.primaryTitle,
+                                        )
+                                    !isSelf && !isFranchise
+                                }
+                                if (externalFiltered.isNotEmpty()) {
+                                    synchronized(suggestionsList) {
+                                        suggestionsList.addAll(externalFiltered)
+                                    }
+                                    emitProgressiveSuggestions(suggestionsList, currentAnime)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            logcat { "[AnimeScreenModel] External suggestions failed: ${e.message}" }
+                        }
+                    }
+
+                    // Task 2: Search Fallback suggestions
+                    if (currentAnime != null && currentSource != null) {
+                        launch {
+                            try {
+                                val outcome = searchFallbackEngine.fetchSearchFallback(
+                                    anime = currentAnime,
+                                    source = currentSource,
+                                    seed = seed,
+                                    maxResults = 40,
+                                    onProgress = { progressItems ->
+                                        synchronized(suggestionsList) {
+                                            val existingUrls = suggestionsList.map { it.providerUrl }.toSet()
+                                            val newItems = progressItems.filter { it.providerUrl !in existingUrls }
+                                            suggestionsList.addAll(newItems)
+                                        }
+                                        emitProgressiveSuggestions(suggestionsList, currentAnime)
+                                    },
+                                )
+                                if (outcome is AnimeFallbackOutcome.Success && outcome.items.isNotEmpty()) {
+                                    synchronized(suggestionsList) {
+                                        val existingUrls = suggestionsList.map { it.providerUrl }.toSet()
+                                        val newItems = outcome.items.filter { it.providerUrl !in existingUrls }
+                                        suggestionsList.addAll(newItems)
+                                    }
+                                    emitProgressiveSuggestions(suggestionsList, currentAnime)
+                                }
+                            } catch (e: Exception) {
+                                logcat { "[AnimeScreenModel] Native search fallback failed: ${e.message}" }
+                            }
+                        }
+                    }
+                }
+
+                val finalCombined = synchronized(suggestionsList) {
+                    suggestionsList.distinctBy { it.providerId ?: it.providerUrl }
+                        .filter { item ->
+                            val isSelf = (currentAnime != null && item.providerUrl == currentAnime.url) ||
+                                (item.providerId?.endsWith(":${currentAnime?.url}") == true)
+                            val isFranchise = eu.kanade.tachiyomi.data.suggestions
+                                .SuggestionTitleResolver.isFranchiseDuplicate(
+                                    item.title,
+                                    seed.primaryTitle,
+                                )
+                            !isSelf && !isFranchise
+                        }
+                        .take(20)
+                }
+
+                updateSuccessState {
+                    val nextState = when {
+                        finalCombined.isEmpty() -> SuggestionState.Empty()
+                        else -> SuggestionState.Success(finalCombined)
+                    }
+                    it.copy(suggestions = nextState)
+                }
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat { "AnimeScreenModel suggestions fetch failed: ${e.message}" }
+                updateSuccessState { it.copy(suggestions = SuggestionState.Error(e.message ?: "Unknown error")) }
+            }
+        }
+    }
+
     private inline fun updateSuccessState(func: (State.Success) -> State.Success) {
         mutableState.update {
             when (it) {
@@ -327,11 +530,24 @@ class AnimeScreenModel(
             ) { animeAndEpisodesAndSeasons, _, _ -> animeAndEpisodesAndSeasons }
                 .flowWithLifecycle(lifecycle)
                 .collectLatest { (anime, episodes, seasons) ->
+                    val previousAnime = successState?.anime
+                    val metadataChanged = previousAnime == null ||
+                        previousAnime.initialized != anime.initialized ||
+                        previousAnime.author != anime.author ||
+                        previousAnime.genre != anime.genre
+
                     updateSuccessState {
                         it.copy(
                             anime = anime,
                             episodes = episodes.toEpisodeListItems(anime),
                             seasons = seasons.toAnimeSeasonItems(),
+                        )
+                    }
+                    if (metadataChanged) {
+                        loadSuggestions(
+                            buildSuggestionSeed(anime, successState?.animeMetadata),
+                            anime = anime,
+                            source = anime.toCatalogueSource(),
                         )
                     }
                 }
@@ -385,6 +601,11 @@ class AnimeScreenModel(
                     dialog = null,
                     // Start with isMetadataLoading = true if metadata will be loaded
                     isMetadataLoading = willLoadMetadata,
+                    suggestions = if (sourcePreferences.entrySuggestionsEnabled().get()) {
+                        SuggestionState.Loading
+                    } else {
+                        SuggestionState.Disabled
+                    },
                 )
             }
             screenModelScope.launchIO {
@@ -393,6 +614,9 @@ class AnimeScreenModel(
                         updateSuccessState { it.copy(downloadedOnly = downloadedOnly) }
                     }
             }
+
+            // Fetch suggestions asynchronously
+            loadSuggestions(buildSuggestionSeed(anime, null), anime = anime, source = anime.toCatalogueSource())
             // Start observe tracking since it only needs animeId
             observeTrackers()
 
@@ -1821,6 +2045,11 @@ class AnimeScreenModel(
                     },
                 )
             }
+            loadSuggestions(
+                buildSuggestionSeed(currentState.anime, metadata),
+                anime = currentState.anime,
+                source = currentState.anime.toCatalogueSource(),
+            )
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e) { "Failed to load anime metadata for anime $animeId" }
 
@@ -1962,6 +2191,7 @@ class AnimeScreenModel(
             val metadataError: MetadataLoadError? = null,
             val scrollIndex: Int = 0,
             val scrollOffset: Int = 0,
+            val suggestions: SuggestionState = SuggestionState.Idle,
         ) : State {
 
             val processedSeasons by lazy {

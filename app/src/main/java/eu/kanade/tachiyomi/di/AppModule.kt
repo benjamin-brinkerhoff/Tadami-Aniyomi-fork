@@ -535,6 +535,14 @@ class AppModule(val app: Application) : InjektModule {
 
         addSingletonFactory { NetworkHelper(app, get()) }
         addSingletonFactory { JavaScriptEngine(app) }
+        addSingletonFactory {
+            eu.kanade.tachiyomi.ui.reader.novel.translation.GoogleTranslationService(get<NetworkHelper>().client)
+        }
+        addSingletonFactory { eu.kanade.tachiyomi.data.suggestions.SuggestionCoordinator() }
+        addSingletonFactory { eu.kanade.tachiyomi.data.suggestions.novel.NovelRelatedSuggestionCoordinator() }
+        addSingletonFactory { eu.kanade.tachiyomi.data.suggestions.novel.NovelSearchFallbackEngine() }
+        addSingletonFactory { eu.kanade.tachiyomi.data.suggestions.manga.MangaSearchFallbackEngine() }
+        addSingletonFactory { eu.kanade.tachiyomi.data.suggestions.anime.AnimeSearchFallbackEngine() }
 
         addSingletonFactory { NovelPluginIndexParser(get()) }
         addSingletonFactory<NovelPluginIndexFetcher> { NetworkNovelPluginIndexFetcher(get<NetworkHelper>().client) }

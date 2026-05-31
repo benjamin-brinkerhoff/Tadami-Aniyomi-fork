@@ -29,6 +29,7 @@ import eu.kanade.domain.items.chapter.interactor.SetReadStatus
 import eu.kanade.domain.items.chapter.interactor.SyncChaptersWithSource
 import eu.kanade.domain.metadata.interactor.GetMangaMetadata
 import eu.kanade.domain.metadata.model.MetadataLoadError
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.track.manga.interactor.AddMangaTracks
 import eu.kanade.domain.track.manga.interactor.RefreshMangaTracks
 import eu.kanade.domain.track.manga.interactor.TrackChapter
@@ -42,9 +43,18 @@ import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.data.download.manga.MangaDownloadCache
 import eu.kanade.tachiyomi.data.download.manga.MangaDownloadManager
 import eu.kanade.tachiyomi.data.download.manga.model.MangaDownload
+import eu.kanade.tachiyomi.data.suggestions.SuggestionCoordinator
+import eu.kanade.tachiyomi.data.suggestions.SuggestionItem
+import eu.kanade.tachiyomi.data.suggestions.SuggestionSeed
+import eu.kanade.tachiyomi.data.suggestions.SuggestionState
+import eu.kanade.tachiyomi.data.suggestions.SuggestionTitleResolver
+import eu.kanade.tachiyomi.data.suggestions.manga.MangaFallbackOutcome
+import eu.kanade.tachiyomi.data.suggestions.manga.MangaSearchFallbackEngine
+import eu.kanade.tachiyomi.data.suggestions.sources.SuggestionMediaType
 import eu.kanade.tachiyomi.data.track.EnhancedMangaTracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.network.HttpException
+import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.MangaSource
 import eu.kanade.tachiyomi.source.model.SManga
@@ -55,8 +65,10 @@ import eu.kanade.tachiyomi.util.removeCovers
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -140,8 +152,12 @@ class MangaScreenModel(
     private val filterChaptersForDownload: FilterChaptersForDownload = Injekt.get(),
     private val getMangaMetadata: GetMangaMetadata = Injekt.get(),
     private val sourceMangaRatingFetcher: SourceMangaRatingFetcher = Injekt.get(),
+    private val suggestionCoordinator: SuggestionCoordinator = Injekt.get(),
+    private val sourcePreferences: SourcePreferences = Injekt.get(),
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
+
+    private val searchFallbackEngine = MangaSearchFallbackEngine()
 
     private val successState: State.Success?
         get() = state.value as? State.Success
@@ -181,6 +197,189 @@ class MangaScreenModel(
     /**
      * Helper function to update the UI state only if it's currently in success state
      */
+    private fun buildSuggestionSeed(manga: Manga, metadata: ExternalMetadata?): SuggestionSeed {
+        val title = manga.title
+        val metadataTitles = if (metadata != null &&
+            metadata.searchQuery.isNotBlank() &&
+            !metadata.searchQuery.startsWith("tracking:", ignoreCase = true)
+        ) {
+            listOf(metadata.searchQuery)
+        } else {
+            emptyList()
+        }
+        val candidates = eu.kanade.tachiyomi.data.suggestions.SuggestionTitleResolver.resolveCandidates(
+            title = title,
+            description = manga.description,
+            url = manga.url,
+            metadataAlternativeTitles = metadataTitles,
+        )
+        return SuggestionSeed(
+            mediaType = SuggestionMediaType.MANGA,
+            primaryTitle = title,
+            candidateTitles = candidates,
+            description = manga.description,
+            author = manga.author,
+            genres = manga.genre,
+        )
+    }
+
+    private fun Manga.toCatalogueSource(): CatalogueSource? =
+        Injekt.get<tachiyomi.domain.source.manga.service.MangaSourceManager>().getOrStub(source) as? CatalogueSource
+
+    private var suggestionSeedUsed: SuggestionSeed? = null
+
+    fun getSuggestionSeed(): SuggestionSeed? = suggestionSeedUsed
+
+    fun retrySuggestions() {
+        val success = successState ?: return
+        eu.kanade.tachiyomi.data.suggestions.SuggestionCache.invalidateAll()
+        loadSuggestions(
+            buildSuggestionSeed(success.manga, success.mangaMetadata),
+            manga = success.manga,
+            source = success.manga.toCatalogueSource(),
+            force = true,
+        )
+    }
+
+    private fun emitProgressiveSuggestions(list: List<SuggestionItem>, currentManga: Manga?) {
+        val seed = suggestionSeedUsed ?: return
+        val sorted = synchronized(list) {
+            list.distinctBy { it.providerId ?: it.providerUrl }
+                .filter { item ->
+                    val isSelf = (currentManga != null && item.providerUrl == currentManga.url) ||
+                        (item.providerId?.endsWith(":${currentManga?.url}") == true)
+                    val isFranchise = SuggestionTitleResolver.isFranchiseDuplicate(item.title, seed.primaryTitle)
+                    !isSelf && !isFranchise
+                }
+                .take(20)
+        }
+        if (sorted.isNotEmpty()) {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Success(sorted)) }
+        }
+    }
+
+    private var suggestionsJob: Job? = null
+
+    private fun loadSuggestions(
+        seed: SuggestionSeed,
+        manga: Manga? = null,
+        source: CatalogueSource? = null,
+        force: Boolean = false,
+    ) {
+        if (!sourcePreferences.entrySuggestionsEnabled().get()) {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Disabled) }
+            return
+        }
+        if (!force && suggestionSeedUsed == seed) {
+            return
+        }
+        suggestionSeedUsed = seed
+
+        val currentManga = manga ?: successState?.manga
+        val currentSource = source ?: (
+            currentManga?.let {
+                Injekt.get<tachiyomi.domain.source.manga.service.MangaSourceManager>().getOrStub(it.source)
+            } as? CatalogueSource
+            )
+
+        suggestionsJob?.cancel()
+        suggestionsJob = screenModelScope.launchIO {
+            updateSuccessState { it.copy(suggestions = SuggestionState.Loading) }
+            try {
+                val suggestionsList = java.util.Collections.synchronizedList(mutableListOf<SuggestionItem>())
+
+                coroutineScope {
+                    // Task 1: External Suggestions (AniList/etc)
+                    launch {
+                        try {
+                            val externalResult = suggestionCoordinator.fetchSuggestions(seed, limit = 40)
+                            if (externalResult.items.isNotEmpty()) {
+                                val externalFiltered = externalResult.items.filter { item ->
+                                    val isSelf = (currentManga != null && item.providerUrl == currentManga.url) ||
+                                        (item.providerId?.endsWith(":${currentManga?.url}") == true)
+                                    val isFranchise = eu.kanade.tachiyomi.data.suggestions
+                                        .SuggestionTitleResolver.isFranchiseDuplicate(
+                                            item.title,
+                                            seed.primaryTitle,
+                                        )
+                                    !isSelf && !isFranchise
+                                }
+                                if (externalFiltered.isNotEmpty()) {
+                                    synchronized(suggestionsList) {
+                                        suggestionsList.addAll(externalFiltered)
+                                    }
+                                    emitProgressiveSuggestions(suggestionsList, currentManga)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            logcat { "[MangaScreenModel] External suggestions failed: ${e.message}" }
+                        }
+                    }
+
+                    // Task 2: Search Fallback suggestions
+                    if (currentManga != null && currentSource != null) {
+                        launch {
+                            try {
+                                val outcome = searchFallbackEngine.fetchSearchFallback(
+                                    manga = currentManga,
+                                    source = currentSource,
+                                    seed = seed,
+                                    maxResults = 40,
+                                    onProgress = { progressItems ->
+                                        synchronized(suggestionsList) {
+                                            val existingUrls = suggestionsList.map { it.providerUrl }.toSet()
+                                            val newItems = progressItems.filter { it.providerUrl !in existingUrls }
+                                            suggestionsList.addAll(newItems)
+                                        }
+                                        emitProgressiveSuggestions(suggestionsList, currentManga)
+                                    },
+                                )
+                                if (outcome is MangaFallbackOutcome.Success && outcome.items.isNotEmpty()) {
+                                    synchronized(suggestionsList) {
+                                        val existingUrls = suggestionsList.map { it.providerUrl }.toSet()
+                                        val newItems = outcome.items.filter { it.providerUrl !in existingUrls }
+                                        suggestionsList.addAll(newItems)
+                                    }
+                                    emitProgressiveSuggestions(suggestionsList, currentManga)
+                                }
+                            } catch (e: Exception) {
+                                logcat { "[MangaScreenModel] Native search fallback failed: ${e.message}" }
+                            }
+                        }
+                    }
+                }
+
+                val finalCombined = synchronized(suggestionsList) {
+                    suggestionsList.distinctBy { it.providerId ?: it.providerUrl }
+                        .filter { item ->
+                            val isSelf = (currentManga != null && item.providerUrl == currentManga.url) ||
+                                (item.providerId?.endsWith(":${currentManga?.url}") == true)
+                            val isFranchise = eu.kanade.tachiyomi.data.suggestions
+                                .SuggestionTitleResolver.isFranchiseDuplicate(
+                                    item.title,
+                                    seed.primaryTitle,
+                                )
+                            !isSelf && !isFranchise
+                        }
+                        .take(20)
+                }
+
+                updateSuccessState {
+                    val nextState = when {
+                        finalCombined.isEmpty() -> SuggestionState.Empty()
+                        else -> SuggestionState.Success(finalCombined)
+                    }
+                    it.copy(suggestions = nextState)
+                }
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logcat { "MangaScreenModel suggestions fetch failed: ${e.message}" }
+                updateSuccessState { it.copy(suggestions = SuggestionState.Error(e.message ?: "Unknown error")) }
+            }
+        }
+    }
+
     private inline fun updateSuccessState(func: (State.Success) -> State.Success) {
         mutableState.update {
             when (it) {
@@ -199,10 +398,23 @@ class MangaScreenModel(
             ) { mangaAndChapters, _, _ -> mangaAndChapters }
                 .flowWithLifecycle(lifecycle)
                 .collectLatest { (manga, chapters) ->
+                    val previousManga = successState?.manga
+                    val metadataChanged = previousManga == null ||
+                        previousManga.initialized != manga.initialized ||
+                        previousManga.author != manga.author ||
+                        previousManga.genre != manga.genre
+
                     updateSuccessState {
                         it.copy(
                             manga = manga,
                             chapters = chapters.toChapterListItems(manga),
+                        )
+                    }
+                    if (metadataChanged) {
+                        loadSuggestions(
+                            buildSuggestionSeed(manga, successState?.mangaMetadata),
+                            manga = manga,
+                            source = manga.toCatalogueSource(),
                         )
                     }
                 }
@@ -277,6 +489,11 @@ class MangaScreenModel(
                     isRefreshingData = needRefreshInfo || needRefreshChapter,
                     dialog = null,
                     isMetadataLoading = willLoadMetadata,
+                    suggestions = if (sourcePreferences.entrySuggestionsEnabled().get()) {
+                        SuggestionState.Loading
+                    } else {
+                        SuggestionState.Disabled
+                    },
                 )
             }
             screenModelScope.launchIO {
@@ -285,6 +502,9 @@ class MangaScreenModel(
                         updateSuccessState { it.copy(downloadedOnly = downloadedOnly) }
                     }
             }
+
+            // Fetch suggestions asynchronously
+            loadSuggestions(buildSuggestionSeed(manga, null), manga = manga, source = manga.toCatalogueSource())
 
             // Start observe tracking since it only needs mangaId
             observeTrackers()
@@ -454,6 +674,11 @@ class MangaScreenModel(
                     },
                 )
             }
+            loadSuggestions(
+                buildSuggestionSeed(currentState.manga, metadata),
+                manga = currentState.manga,
+                source = currentState.manga.toCatalogueSource(),
+            )
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e) { "Failed to load manga metadata for manga $mangaId" }
             val error = when {
@@ -1445,6 +1670,7 @@ class MangaScreenModel(
             val metadataError: MetadataLoadError? = null,
             val scrollIndex: Int = 0,
             val scrollOffset: Int = 0,
+            val suggestions: SuggestionState = SuggestionState.Idle,
         ) : State {
             val processedChapters by lazy {
                 chapters.applyFilters(manga).toList()

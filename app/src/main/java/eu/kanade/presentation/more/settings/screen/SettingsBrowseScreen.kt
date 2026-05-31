@@ -25,6 +25,7 @@ import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
+import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -41,6 +42,14 @@ object SettingsBrowseScreen : SearchableSettings {
 
         val sourcePreferences = remember { Injekt.get<SourcePreferences>() }
         val uiPreferences = remember { Injekt.get<UiPreferences>() }
+
+        val suggestionsEnabledPref = sourcePreferences.entrySuggestionsEnabled()
+        val suggestionsEnabled by suggestionsEnabledPref.collectAsState()
+
+        val suggestionsInlinePref = uiPreferences.entrySuggestionsExpandInline()
+        val suggestionsInline by suggestionsInlinePref.collectAsState()
+
+        val epubImportPref = sourcePreferences.importEpubAddToLibrary()
         val getMangaExtensionRepoCount = remember { Injekt.get<GetMangaExtensionRepoCount>() }
         val getAnimeExtensionRepoCount = remember { Injekt.get<GetAnimeExtensionRepoCount>() }
         val getNovelExtensionRepoCount = remember { Injekt.get<GetNovelExtensionRepoCount>() }
@@ -118,6 +127,38 @@ object SettingsBrowseScreen : SearchableSettings {
                     Preference.PreferenceItem.SwitchPreference(
                         preference = sourcePreferences.hideInLibraryFeedItems(),
                         title = stringResource(AYMR.strings.pref_feed_hide_in_library_items),
+                    ),
+                ),
+            ),
+            Preference.PreferenceGroup(
+                title = stringResource(MR.strings.pref_entry_suggestions),
+                preferenceItems = persistentListOf(
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = suggestionsEnabledPref,
+                        title = stringResource(MR.strings.pref_entry_suggestions),
+                        subtitle = stringResource(MR.strings.pref_entry_suggestions_summary),
+                    ),
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = suggestionsInlinePref,
+                        title = stringResource(MR.strings.pref_entry_suggestions_inline),
+                        subtitle = stringResource(MR.strings.pref_entry_suggestions_inline_summary),
+                        enabled = suggestionsEnabled,
+                    ),
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = uiPreferences.entrySuggestionsInOverflow(),
+                        title = stringResource(MR.strings.pref_entry_suggestions_overflow),
+                        subtitle = stringResource(MR.strings.pref_entry_suggestions_overflow_summary),
+                        enabled = suggestionsEnabled && !suggestionsInline,
+                    ),
+                ),
+            ),
+            Preference.PreferenceGroup(
+                title = stringResource(MR.strings.pref_category_epub_import),
+                preferenceItems = persistentListOf(
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = epubImportPref,
+                        title = stringResource(MR.strings.pref_epub_import_add_to_library),
+                        subtitle = stringResource(MR.strings.pref_epub_import_add_to_library_summary),
                     ),
                 ),
             ),

@@ -149,6 +149,8 @@ fun MangaScreen(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    onRetrySuggestions: () -> Unit = {},
+    onOpenSuggestions: () -> Unit = {},
 ) {
     val navigator = LocalNavigator.currentOrThrow
     val onSettingsClicked: (() -> Unit)? = {
@@ -213,6 +215,8 @@ fun MangaScreen(
             isAutoJumpToNextEnabled = autoJumpToNextEnabled,
             autoJumpToNextLabel = autoJumpToNextLabel,
             onToggleAutoJumpToNext = onToggleAutoJumpToNext,
+            onRetrySuggestions = onRetrySuggestions,
+            onOpenSuggestions = onOpenSuggestions,
         )
         return
     }

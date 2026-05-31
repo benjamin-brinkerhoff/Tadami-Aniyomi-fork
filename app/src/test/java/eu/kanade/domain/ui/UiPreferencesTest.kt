@@ -65,4 +65,12 @@ class UiPreferencesTest {
         mangaPref.get() shouldBe false
         novelPref.get() shouldBe true
     }
+
+    @Test
+    fun `suggestions UI defaults are correct`() {
+        val prefs = UiPreferences(InMemoryPreferenceStore())
+
+        prefs.entrySuggestionsExpandInline().get() shouldBe true
+        prefs.entrySuggestionsInOverflow().get() shouldBe false
+    }
 }

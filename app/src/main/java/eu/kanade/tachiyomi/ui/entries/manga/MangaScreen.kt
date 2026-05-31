@@ -210,6 +210,25 @@ class MangaScreen(
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
+            onRetrySuggestions = screenModel::retrySuggestions,
+            onOpenSuggestions = {
+                val seed = screenModel.getSuggestionSeed()
+                    ?: eu.kanade.tachiyomi.data.suggestions.SuggestionSeed(
+                        mediaType = eu.kanade.tachiyomi.data.suggestions.sources.SuggestionMediaType.MANGA,
+                        primaryTitle = successState.manga.title,
+                        candidateTitles = emptyList(),
+                        description = successState.manga.description,
+                        author = successState.manga.author,
+                        genres = successState.manga.genre,
+                    )
+                navigator.push(
+                    eu.kanade.tachiyomi.ui.entries.suggestions.EntrySuggestionsScreen(
+                        seed = seed,
+                        sourceId = successState.source.id,
+                        entryUrl = successState.manga.url,
+                    ),
+                )
+            },
         )
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }
