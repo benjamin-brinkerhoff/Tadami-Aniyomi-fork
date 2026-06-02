@@ -15,7 +15,6 @@ import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.components.SEARCH_DEBOUNCE_MILLIS
 import eu.kanade.presentation.library.novel.NovelLibraryItem
 import eu.kanade.tachiyomi.data.download.novel.NovelDownloadCache
-import eu.kanade.tachiyomi.data.download.novel.NovelDownloadCacheEvent
 import eu.kanade.tachiyomi.data.download.novel.NovelDownloadManager
 import eu.kanade.tachiyomi.data.download.novel.NovelDownloadQueueManager
 import eu.kanade.tachiyomi.data.download.novel.NovelTranslatedDownloadFormat
@@ -29,12 +28,11 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -92,13 +90,7 @@ class NovelLibraryScreenModel(
     val downloadCache: NovelDownloadCache = Injekt.get(),
     private val novelDownloadManager: NovelDownloadManager = NovelDownloadManager(),
     private val novelTranslatedDownloadManager: NovelTranslatedDownloadManager = NovelTranslatedDownloadManager(),
-    private val downloadCacheChanges: Flow<Unit> = downloadCache
-        .changes
-        .map { _: NovelDownloadCacheEvent -> Unit },
-    private val hasDownloadedChapters: (tachiyomi.domain.entries.novel.model.Novel) -> Boolean = {
-        downloadCache.hasAnyDownloadedChapter(it)
-    },
-    private val downloadedIdsDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val downloadedIdsFlow: StateFlow<Set<Long>> = downloadCache.downloadedIds,
     private val searchDebounceMillis: Long = SEARCH_DEBOUNCE_MILLIS,
 ) : StateScreenModel<NovelLibraryScreenModel.State>(
     State(
@@ -137,19 +129,20 @@ class NovelLibraryScreenModel(
                 },
                 flow3 = getFilterPreferencesFlow(),
                 flow4 = getSortPreferencesFlow(),
-                flow5 = downloadCacheChanges.conflate(),
+                flow5 = downloadedIdsFlow,
                 transform = {
                         query: String?,
                         novels: List<NovelLibraryItem>,
                         filterPrefs: FilterPreferences,
                         sortPrefs: SortPreferences,
-                        _: Unit,
+                        downloadedIds: Set<Long>,
                     ->
                     RecomputeInput(
                         query = query,
                         novels = novels,
                         filterPreferences = filterPrefs,
                         sortPreferences = sortPrefs,
+                        downloadedIds = downloadedIds,
                     )
                 },
             )
@@ -159,10 +152,14 @@ class NovelLibraryScreenModel(
                     } else {
                         input.filterPreferences.downloadedFilter
                     }
-                    val downloadedNovelIds = resolveDownloadedNovelIdsForFilter(
-                        novels = input.novels,
-                        shouldResolve = effectiveDownloadedFilter != TriState.DISABLED,
-                    )
+                    val downloadedNovelIds = if (effectiveDownloadedFilter != TriState.DISABLED) {
+                        val novelIdSet = input.novels.mapNotNullTo(HashSet()) {
+                            (it as? NovelLibraryItem.Single)?.libraryNovel?.novel?.id
+                        }
+                        input.downloadedIds.intersect(novelIdSet)
+                    } else {
+                        emptySet()
+                    }
                     val recomputed = RecomputedState(
                         items = filterItems(
                             novels = input.novels,
@@ -715,27 +712,6 @@ class NovelLibraryScreenModel(
         }
     }
 
-    private fun resolveDownloadedNovelIds(novels: List<NovelLibraryItem>): Set<Long> {
-        return novels.asSequence()
-            .mapNotNull { item ->
-                when (item) {
-                    is NovelLibraryItem.Single -> item.libraryNovel.novel.takeIf { hasDownloadedChapters(it) }?.id
-                    is NovelLibraryItem.Series -> null // To be supported later
-                }
-            }
-            .toSet()
-    }
-
-    private suspend fun resolveDownloadedNovelIdsForFilter(
-        novels: List<NovelLibraryItem>,
-        shouldResolve: Boolean,
-    ): Set<Long> {
-        if (!shouldResolve || novels.isEmpty()) return emptySet()
-        return withContext(downloadedIdsDispatcher) {
-            resolveDownloadedNovelIds(novels)
-        }
-    }
-
     private fun sortItems(
         items: List<NovelLibraryItem>,
         sort: NovelLibrarySort,
@@ -876,6 +852,7 @@ class NovelLibraryScreenModel(
         val novels: List<NovelLibraryItem>,
         val filterPreferences: FilterPreferences,
         val sortPreferences: SortPreferences,
+        val downloadedIds: Set<Long>,
     )
 
     private data class RecomputedState(

@@ -7,7 +7,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -76,6 +79,9 @@ class NovelDownloadCache(
     )
     val changes = _changes.asSharedFlow()
 
+    private val _downloadedIds = MutableStateFlow<Set<Long>>(emptySet())
+    val downloadedIds: StateFlow<Set<Long>> = _downloadedIds.asStateFlow()
+
     init {
         _changes.tryEmit(NovelDownloadCacheEvent.InvalidateAll)
 
@@ -104,6 +110,7 @@ class NovelDownloadCache(
                         logcat(LogPriority.DEBUG) {
                             "NovelDownloadCache: restored $restoredEntries entries from disk cache"
                         }
+                        rebuildDownloadedIds()
                     } else {
                         logcat(LogPriority.DEBUG) {
                             "NovelDownloadCache: skipped disk cache restore because fresher state was already loaded"
@@ -179,6 +186,7 @@ class NovelDownloadCache(
         } else {
             writeDiskCache()
         }
+        rebuildDownloadedIds()
         _changes.tryEmit(
             NovelDownloadCacheEvent.ChaptersChanged(
                 novelId = novel.id,
@@ -195,6 +203,7 @@ class NovelDownloadCache(
             cachedChapterIds.remove(novel.id)
         }
         persistDiskCache()
+        rebuildDownloadedIds()
         _changes.tryEmit(NovelDownloadCacheEvent.NovelRemoved(novel.id))
     }
 
@@ -207,6 +216,7 @@ class NovelDownloadCache(
         updateDiskCacheJob?.cancel()
         updateDiskCacheJob = null
         diskCacheFile.delete()
+        _downloadedIds.value = emptySet()
         _changes.tryEmit(NovelDownloadCacheEvent.InvalidateAll)
     }
 
@@ -232,9 +242,11 @@ class NovelDownloadCache(
         }
         if (updatedIds.isEmpty()) {
             persistDiskCache()
+            rebuildDownloadedIds()
             return
         }
         writeDiskCache()
+        rebuildDownloadedIds()
     }
 
     private var updateDiskCacheJob: Job? = null
@@ -290,5 +302,12 @@ class NovelDownloadCache(
                 "NovelDownloadCache: failed to write disk cache (${data.size} entries)"
             }
         }
+    }
+
+    private fun rebuildDownloadedIds() {
+        val ids = synchronized(cacheStateLock) {
+            cachedChapterIds.keys.toHashSet()
+        }
+        _downloadedIds.value = ids
     }
 }

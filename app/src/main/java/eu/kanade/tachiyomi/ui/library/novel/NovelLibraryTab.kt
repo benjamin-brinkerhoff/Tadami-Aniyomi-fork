@@ -134,16 +134,13 @@ data object NovelLibraryTab : Tab {
             }
         }
         val columns by columnPreference.collectAsStateWithLifecycle()
-        val downloadCacheSignal by downloadCache.changes.collectAsStateWithLifecycle(initialValue = Unit)
-        val downloadedNovelIds = remember(state.items, showDownloadBadge, downloadCacheSignal) {
-            if (!showDownloadBadge) return@remember emptySet()
-
-            state.items.asSequence()
-                .mapNotNull { item ->
-                    val novelItem = (item as? NovelLibraryItem.Single)?.libraryNovel?.novel ?: return@mapNotNull null
-                    item.id.takeIf { downloadCache.hasAnyDownloadedChapter(novelItem) }
-                }
-                .toSet()
+        val downloadedIds by downloadCache.downloadedIds.collectAsStateWithLifecycle()
+        val downloadedNovelIds = remember(state.items, showDownloadBadge, downloadedIds) {
+            if (!showDownloadBadge) return@remember emptySet<Long>()
+            val libraryNovelIds = state.items.mapNotNullTo(HashSet()) {
+                (it as? NovelLibraryItem.Single)?.libraryNovel?.novel?.id
+            }
+            downloadedIds.intersect(libraryNovelIds)
         }
         val sourceLanguageByNovelId = remember(state.items, showLanguageBadge) {
             if (!showLanguageBadge) return@remember emptyMap()
