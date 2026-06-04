@@ -24,6 +24,7 @@ import eu.kanade.presentation.more.MoreScreenAurora
 import eu.kanade.presentation.more.settings.screen.HelpScreen
 import eu.kanade.presentation.more.settings.screen.SettingsNovelReaderScreen
 import eu.kanade.presentation.more.settings.screen.SettingsReaderScreen
+import eu.kanade.presentation.more.settings.screen.SettingsTreasuryScreen
 import eu.kanade.presentation.more.settings.screen.about.AboutScreen
 import eu.kanade.presentation.util.Tab
 import eu.kanade.tachiyomi.data.download.anime.AnimeDownloadManager
@@ -102,6 +103,7 @@ data object MoreTab : Tab {
                 onDebugAppUpdatePreviewClick = { navigator.push(DebugAppUpdatePreviewScreen()) },
                 onStatsClick = { navigator.push(StatsTab) },
                 onAchievementsClick = { navigator.push(AchievementScreenVoyager) },
+                onTreasuryClick = { navigator.push(SettingsTreasuryScreen) },
             )
         } else {
             MoreScreen(

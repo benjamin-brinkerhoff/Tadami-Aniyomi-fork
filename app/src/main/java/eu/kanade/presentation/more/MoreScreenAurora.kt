@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Book
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.VideoSettings
@@ -81,6 +82,7 @@ fun MoreScreenAurora(
     onDebugAppUpdatePreviewClick: () -> Unit,
     onStatsClick: () -> Unit,
     onAchievementsClick: () -> Unit,
+    onTreasuryClick: () -> Unit,
     onHelpClick: () -> Unit,
 ) {
     val colors = AuroraTheme.colors
@@ -153,6 +155,13 @@ fun MoreScreenAurora(
                     title = stringResource(AYMR.strings.aurora_achievements),
                     icon = Icons.Filled.EmojiEvents,
                     onClick = onAchievementsClick,
+                )
+
+                AuroraSettingItem(
+                    title = stringResource(AYMR.strings.label_treasury),
+                    subtitle = stringResource(AYMR.strings.pref_treasury_summary),
+                    icon = Icons.Outlined.Inventory2,
+                    onClick = onTreasuryClick,
                 )
 
                 AuroraSettingItem(
