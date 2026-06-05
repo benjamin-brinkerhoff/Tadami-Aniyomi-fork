@@ -159,7 +159,6 @@ fun MoreScreenAurora(
 
                 AuroraSettingItem(
                     title = stringResource(AYMR.strings.label_treasury),
-                    subtitle = stringResource(AYMR.strings.pref_treasury_summary),
                     icon = Icons.Outlined.Inventory2,
                     onClick = onTreasuryClick,
                 )
