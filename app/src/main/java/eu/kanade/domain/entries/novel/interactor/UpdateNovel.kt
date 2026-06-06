@@ -1,10 +1,14 @@
 package eu.kanade.domain.entries.novel.interactor
 
+import eu.kanade.domain.entries.novel.model.hasCustomCover
 import eu.kanade.domain.entries.novel.model.normalizeNovelDescription
+import eu.kanade.tachiyomi.data.cache.NovelCoverCache
 import eu.kanade.tachiyomi.novelsource.model.SNovel
 import tachiyomi.domain.entries.novel.model.Novel
 import tachiyomi.domain.entries.novel.model.NovelUpdate
 import tachiyomi.domain.entries.novel.repository.NovelRepository
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.time.Instant
 
 class UpdateNovel(
@@ -50,6 +54,7 @@ class UpdateNovel(
         localNovel: Novel,
         remoteNovel: SNovel,
         manualFetch: Boolean,
+        coverCache: NovelCoverCache = Injekt.get(),
     ): Boolean {
         val remoteTitle = try {
             remoteNovel.title
@@ -64,11 +69,16 @@ class UpdateNovel(
             when {
                 remoteNovel.thumbnail_url.isNullOrEmpty() -> null
                 !shouldUpdateCover -> null
+                localNovel.hasCustomCover(coverCache) -> null
                 else -> Instant.now().toEpochMilli()
             }
 
         val thumbnailUrl = if (shouldUpdateCover) {
-            remoteNovel.thumbnail_url?.takeIf { it.isNotEmpty() }
+            if (localNovel.hasCustomCover(coverCache)) {
+                null
+            } else {
+                remoteNovel.thumbnail_url?.takeIf { it.isNotEmpty() }
+            }
         } else {
             null
         }

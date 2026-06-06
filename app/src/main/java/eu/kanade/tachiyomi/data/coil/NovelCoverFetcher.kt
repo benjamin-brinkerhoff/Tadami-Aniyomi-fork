@@ -42,6 +42,7 @@ class NovelCoverFetcher(
     private val options: Options,
     private val sourceSiteUrlLazy: Lazy<String?>,
     private val coverFileLazy: Lazy<File?>,
+    private val customCoverFileLazy: Lazy<File>,
     private val diskCacheKeyLazy: Lazy<String>,
     private val pluginHeadersProvider: suspend () -> Map<String, String>,
     private val callFactoryLazy: Lazy<Call.Factory>,
@@ -56,6 +57,14 @@ class NovelCoverFetcher(
     override suspend fun fetch(): FetchResult {
         val rawUrl = data.url?.takeIf { it.isNotBlank() }
             ?: throw IOException("No cover URL specified for novel ${data.novelId}")
+        val customCoverFile = customCoverFileLazy.value
+        if (customCoverFile.exists()) {
+            debugTitleCoverFlow(
+                scope = "novel-fetcher",
+                message = "custom-cover-hit file=${customCoverFile.name}",
+            )
+            return fileLoader(customCoverFile)
+        }
         debugTitleCoverFlow(
             scope = "novel-fetcher",
             message = "fetch url=${previewTitleCoverUrl(
@@ -330,6 +339,7 @@ class NovelCoverFetcher(
                 options = options,
                 sourceSiteUrlLazy = lazy { (sourceManager.get(data.sourceId) as? NovelSiteSource)?.siteUrl },
                 coverFileLazy = lazy { coverCache.getCoverFile(data.url).takeIf { data.isNovelFavorite } },
+                customCoverFileLazy = lazy { coverCache.getCustomCoverFile(data.novelId) },
                 diskCacheKeyLazy = lazy { imageLoader.components.key(data, options)!! },
                 pluginHeadersProvider = {
                     (sourceManager.get(data.sourceId) as? NovelImageRequestSource)

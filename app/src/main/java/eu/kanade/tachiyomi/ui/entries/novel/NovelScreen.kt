@@ -123,6 +123,7 @@ import kotlinx.coroutines.launch
 import logcat.logcat
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import tachiyomi.core.common.util.lang.launchIO
+import eu.kanade.domain.entries.novel.model.hasCustomCover
 import tachiyomi.domain.entries.novel.model.NovelUpdate
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
@@ -841,12 +842,12 @@ class NovelScreen(
                         if (it == null) return@rememberLauncherForActivityResult
                         sm.editCover(context, it)
                     }
-                    NovelCoverDialog(
-                        novel = coverNovel,
-                        snackbarHostState = sm.snackbarHostState,
-                        isCustomCover = remember(coverNovel) {
-                            coverNovel.thumbnailUrl?.let { sm.coverCache.getCoverFile(it)?.exists() } == true
-                        },
+                        NovelCoverDialog(
+                            novel = coverNovel,
+                            snackbarHostState = sm.snackbarHostState,
+                            isCustomCover = remember(coverNovel) {
+                                coverNovel.hasCustomCover(sm.coverCache)
+                            },
                         onShareClick = { sm.shareCover(context) },
                         onSaveClick = { sm.saveCover(context) },
                         onEditClick = {

@@ -76,7 +76,6 @@ class UpdateManga(
                 !shouldUpdateCover -> null
                 localManga.isLocal() -> Instant.now().toEpochMilli()
                 localManga.hasCustomCover(coverCache) -> {
-                    coverCache.deleteFromCache(localManga, false)
                     null
                 }
                 else -> {
