@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.EInkProfile
@@ -81,12 +82,13 @@ fun Modifier.auroraCardStyle(
     shape: Shape = AURORA_SETTINGS_CARD_SHAPE,
     applyShadow: Boolean = false,
     applyModifierBackgroundInDark: Boolean = false,
+    cornerRadius: Dp = AURORA_SETTINGS_CARD_CORNER_RADIUS,
 ): Modifier {
     return if (!colors.isDark && !colors.isEInk) {
         this
             .drawBehind {
-                val radius = AURORA_SETTINGS_CARD_CORNER_RADIUS.toPx()
-                val cornerRadius = CornerRadius(radius, radius)
+                val radiusPx = cornerRadius.toPx()
+                val cornerRadiusVal = CornerRadius(radiusPx, radiusPx)
 
                 val neutralOffsetY = 3.dp.toPx()
                 val warmOffsetY = 5.dp.toPx()
@@ -106,7 +108,7 @@ fun Modifier.auroraCardStyle(
                         width = size.width - neutralInset * 2,
                         height = size.height,
                     ),
-                    cornerRadius = cornerRadius,
+                    cornerRadius = cornerRadiusVal,
                 )
 
                 // Тёплый ореол под цвет темы.
@@ -121,7 +123,7 @@ fun Modifier.auroraCardStyle(
                         width = size.width - warmInset * 2,
                         height = size.height,
                     ),
-                    cornerRadius = cornerRadius,
+                    cornerRadius = cornerRadiusVal,
                 )
             }
             .background(

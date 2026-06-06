@@ -51,6 +51,7 @@ import eu.kanade.presentation.entries.components.aurora.resolveAuroraHeroPanelCo
 import eu.kanade.presentation.entries.components.aurora.resolveAuroraHeroSecondaryButtonPalette
 import eu.kanade.presentation.entries.components.aurora.resolveAuroraHeroTitleColor
 import eu.kanade.presentation.entries.translation.AuroraEntryTranslationState
+import eu.kanade.presentation.more.settings.auroraCardStyle
 import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.LocalCoverTitleFontFamily
 import tachiyomi.domain.entries.anime.model.Anime
@@ -124,7 +125,7 @@ fun AnimeHeroContent(
                 .then(
                     if (colors.isDark) {
                         Modifier
-                    } else {
+                    } else if (colors.isEInk) {
                         Modifier
                             .clip(heroPanelShape)
                             .background(resolveAuroraHeroPanelContainerColor(colors))
@@ -132,6 +133,14 @@ fun AnimeHeroContent(
                                 width = 1.dp,
                                 color = resolveAuroraHeroPanelBorderColor(colors),
                                 shape = heroPanelShape,
+                            )
+                            .padding(horizontal = 12.dp, vertical = 14.dp)
+                    } else {
+                        Modifier
+                            .auroraCardStyle(
+                                colors = colors,
+                                shape = heroPanelShape,
+                                cornerRadius = 24.dp,
                             )
                             .padding(horizontal = 12.dp, vertical = 14.dp)
                     },
