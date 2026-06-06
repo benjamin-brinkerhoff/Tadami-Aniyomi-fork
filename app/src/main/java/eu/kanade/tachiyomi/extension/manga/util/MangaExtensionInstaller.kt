@@ -313,23 +313,39 @@ internal class MangaExtensionInstaller(private val context: Context) {
             // Avoid events for downloads we didn't request
             if (id !in activeDownloads.values) return
 
-            val uri = downloadManager.getUriForDownloadedFile(id)
-
-            // Set next installation step
-            if (uri == null) {
-                logcat(LogPriority.ERROR) { "Couldn't locate downloaded APK" }
-                updateInstallStep(id, InstallStep.Error)
-                return
-            }
-
+            // Query download status and local URI directly.
+            // Note: getUriForDownloadedFile() is unreliable on MIUI/Xiaomi devices — it returns
+            // null even when the download succeeded. Using COLUMN_LOCAL_URI from the cursor is
+            // consistent across all Android versions and OEM ROMs.
             val query = DownloadManager.Query().setFilterById(id)
             downloadManager.query(query).use { cursor ->
-                if (cursor.moveToFirst()) {
+                if (!cursor.moveToFirst()) {
+                    logcat(LogPriority.ERROR) { "Download $id not found in DownloadManager" }
+                    updateInstallStep(id, InstallStep.Error)
+                    return
+                }
+
+                val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
                     val localUri = cursor.getString(
                         cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI),
-                    ).removePrefix(FILE_SCHEME)
-
-                    installApk(id, File(localUri).getUriCompat(context))
+                    )
+                    // On Android 10+ COLUMN_LOCAL_URI may return a content:// URI instead of
+                    // a file:// path, so we must not blindly strip the scheme and wrap in File.
+                    val uri = if (localUri.startsWith("content://")) {
+                        localUri.toUri()
+                    } else {
+                        File(localUri.removePrefix(FILE_SCHEME)).getUriCompat(context)
+                    }
+                    installApk(id, uri)
+                } else if (status == DownloadManager.STATUS_FAILED) {
+                    val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                    logcat(LogPriority.ERROR) { "Download failed for id=$id, reason=$reason" }
+                    updateInstallStep(id, InstallStep.Error)
+                } else {
+                    logcat(LogPriority.ERROR) { "Unexpected download status=$status for id=$id" }
+                    updateInstallStep(id, InstallStep.Error)
                 }
             }
         }
