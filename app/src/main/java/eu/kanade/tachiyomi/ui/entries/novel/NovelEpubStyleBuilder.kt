@@ -90,8 +90,9 @@ internal object NovelEpubStyleBuilder {
         }.trim().ifBlank { null }
     }
 
+    @Suppress("UNNECESSARY_SAFE_CALL", "USELESS_ELVIS")
     fun resolveThemeColors(settings: NovelReaderSettings): ThemeColors {
-        val theme = settings.theme
+        val theme = settings.theme ?: NovelReaderTheme.SYSTEM
         val resolvedBackground = settings.backgroundColor
             ?.takeIf { it.isNotBlank() }
             ?: when (theme) {
