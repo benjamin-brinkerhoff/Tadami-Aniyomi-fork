@@ -4838,11 +4838,11 @@ internal fun normalizeHtml(
 ): String {
     val css = customCss?.takeIf { it.isNotBlank() }
     val js = customJs?.takeIf { it.isNotBlank() }
-    val isDarkTheme = when (settings.theme) {
+    val theme = settings.theme ?: NovelReaderTheme.SYSTEM
+    val isDarkTheme = when (theme) {
         NovelReaderTheme.SYSTEM -> uy.kohesive.injekt.Injekt.get<android.app.Application>().isNightMode()
         NovelReaderTheme.DARK -> true
         NovelReaderTheme.LIGHT -> false
-        else -> uy.kohesive.injekt.Injekt.get<android.app.Application>().isNightMode()
     }
     val background = if (isDarkTheme) "#121212" else "#FFFFFF"
     val textColor = if (isDarkTheme) "#EDEDED" else "#1A1A1A"

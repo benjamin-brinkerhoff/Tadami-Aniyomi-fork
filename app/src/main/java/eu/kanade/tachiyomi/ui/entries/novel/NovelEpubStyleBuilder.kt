@@ -91,22 +91,21 @@ internal object NovelEpubStyleBuilder {
     }
 
     fun resolveThemeColors(settings: NovelReaderSettings): ThemeColors {
+        val theme = settings.theme ?: NovelReaderTheme.SYSTEM
         val resolvedBackground = settings.backgroundColor
             ?.takeIf { it.isNotBlank() }
-            ?: when (settings.theme) {
+            ?: when (theme) {
                 NovelReaderTheme.LIGHT -> "#FFFFFF"
                 NovelReaderTheme.DARK -> "#121212"
                 NovelReaderTheme.SYSTEM -> "#121212"
-                else -> "#121212"
             }
 
         val resolvedText = settings.textColor
             ?.takeIf { it.isNotBlank() }
-            ?: when (settings.theme) {
+            ?: when (theme) {
                 NovelReaderTheme.LIGHT -> "#212121"
                 NovelReaderTheme.DARK -> "#EAEAEA"
                 NovelReaderTheme.SYSTEM -> "#EAEAEA"
-                else -> "#EAEAEA"
             }
 
         return ThemeColors(
