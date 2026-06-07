@@ -784,25 +784,30 @@ private const val READER_BACKGROUND_CUSTOM_URL = "https://reader-background.loca
 private const val READER_FONT_USER_URL_PREFIX = "https://reader-font.local/user/"
 
 internal fun resolveReaderBackgroundSelection(
-    backgroundSource: NovelReaderBackgroundSource,
-    backgroundPresetId: String,
-    customBackgroundPath: String,
+    backgroundSource: NovelReaderBackgroundSource?,
+    backgroundPresetId: String?,
+    customBackgroundPath: String?,
     customBackgroundExists: Boolean,
-    customBackgroundId: String = "",
+    customBackgroundId: String? = "",
     customBackgroundItems: List<NovelReaderCustomBackgroundItem> = emptyList(),
 ): ReaderBackgroundSelection {
+    val source = backgroundSource ?: NovelReaderBackgroundSource.PRESET
+    val presetId = backgroundPresetId.orEmpty()
+    val path = customBackgroundPath.orEmpty()
+    val id = customBackgroundId.orEmpty()
+
     val fallbackPreset = novelReaderBackgroundPresets.first()
     val preset = novelReaderBackgroundPresets
-        .firstOrNull { it.id == backgroundPresetId }
+        .firstOrNull { it.id == presetId }
         ?: fallbackPreset
     val selectedCustomFromCatalog = customBackgroundItems.firstOrNull { item ->
-        item.id == customBackgroundId &&
+        item.id == id &&
             item.absolutePath.isNotBlank()
     }
-    val hasLegacyCustom = backgroundSource == NovelReaderBackgroundSource.CUSTOM &&
-        customBackgroundPath.isNotBlank() &&
+    val hasLegacyCustom = source == NovelReaderBackgroundSource.CUSTOM &&
+        path.isNotBlank() &&
         customBackgroundExists
-    return if (backgroundSource == NovelReaderBackgroundSource.CUSTOM && selectedCustomFromCatalog != null) {
+    return if (source == NovelReaderBackgroundSource.CUSTOM && selectedCustomFromCatalog != null) {
         ReaderBackgroundSelection(
             source = NovelReaderBackgroundSource.CUSTOM,
             preset = preset,
@@ -814,8 +819,8 @@ internal fun resolveReaderBackgroundSelection(
         ReaderBackgroundSelection(
             source = NovelReaderBackgroundSource.CUSTOM,
             preset = preset,
-            customId = customBackgroundId.ifBlank { customBackgroundPath },
-            customPath = customBackgroundPath,
+            customId = id.ifBlank { path },
+            customPath = path,
             customIsDarkHint = null,
         )
     } else {

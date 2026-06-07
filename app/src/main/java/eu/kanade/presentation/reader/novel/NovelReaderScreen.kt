@@ -186,17 +186,18 @@ internal fun resolveNovelReaderBackdropColor(
     settings: NovelReaderSettings,
     isSystemDark: Boolean,
 ): Color {
-    val themeFallback = when (settings.theme) {
+    val theme = settings.theme ?: NovelReaderTheme.SYSTEM
+    val themeFallback = when (theme) {
         NovelReaderTheme.SYSTEM -> if (isSystemDark) Color(0xFF121212) else Color.White
         NovelReaderTheme.LIGHT -> Color.White
         NovelReaderTheme.DARK -> Color(0xFF121212)
-        else -> Color.White
     }
     val themeBackground = parseReaderColor(settings.backgroundColor)
         .takeIf { settings.backgroundColor?.isNotBlank() == true }
         ?: themeFallback
 
-    return when (settings.appearanceMode) {
+    val appearanceMode = settings.appearanceMode ?: NovelReaderAppearanceMode.THEME
+    return when (appearanceMode) {
         NovelReaderAppearanceMode.THEME -> themeBackground
         NovelReaderAppearanceMode.BACKGROUND -> {
             resolveReaderBackgroundBackdropColor(
@@ -206,12 +207,11 @@ internal fun resolveNovelReaderBackdropColor(
                     customBackgroundId = settings.customBackgroundId,
                     customBackgroundItems = emptyList(),
                     customBackgroundPath = settings.customBackgroundPath,
-                    customBackgroundExists = settings.customBackgroundPath.isNotBlank() &&
-                        File(settings.customBackgroundPath).exists(),
+                    customBackgroundExists = settings.customBackgroundPath.orEmpty().isNotBlank() &&
+                        File(settings.customBackgroundPath.orEmpty()).exists(),
                 ),
             )
         }
-        else -> themeBackground
     }
 }
 
@@ -605,24 +605,25 @@ fun NovelReaderScreen(
         resolveReaderBackgroundIdentity(backgroundSelection)
     }
     val isEInkMode = AuroraTheme.colors.isEInk
-    val isBackgroundMode = state.readerSettings.appearanceMode == NovelReaderAppearanceMode.BACKGROUND
+    val appearanceMode = state.readerSettings.appearanceMode ?: NovelReaderAppearanceMode.THEME
+    val isBackgroundMode = appearanceMode == NovelReaderAppearanceMode.BACKGROUND
     val activeBackgroundTexture = if (isBackgroundMode || isEInkMode) {
         NovelReaderBackgroundTexture.NONE
     } else {
-        state.readerSettings.backgroundTexture
+        state.readerSettings.backgroundTexture ?: NovelReaderBackgroundTexture.NONE
     }
     val activeOledEdgeGradient = if (isBackgroundMode || isEInkMode) {
         false
     } else {
-        state.readerSettings.oledEdgeGradient
+        state.readerSettings.oledEdgeGradient == true
     }
+    val theme = state.readerSettings.theme ?: NovelReaderTheme.SYSTEM
     val isDarkTheme = when {
         isEInkMode -> AuroraTheme.colors.isDark
-        else -> when (state.readerSettings.theme) {
+        else -> when (theme) {
             NovelReaderTheme.SYSTEM -> MaterialTheme.colorScheme.background.luminance() < 0.5f
             NovelReaderTheme.DARK -> true
             NovelReaderTheme.LIGHT -> false
-            else -> MaterialTheme.colorScheme.background.luminance() < 0.5f
         }
     }
     val fallbackTextColor = if (isEInkMode) {
@@ -661,16 +662,17 @@ fun NovelReaderScreen(
         NovelReaderBackdropSession.update(textBackground)
     }
 
+    val backgroundSource = state.readerSettings.backgroundSource ?: NovelReaderBackgroundSource.PRESET
     LaunchedEffect(
         isBackgroundMode,
         isEInkMode,
-        state.readerSettings.backgroundSource,
+        backgroundSource,
         customBackgroundPath,
         customBackgroundExists,
     ) {
         if (isBackgroundMode &&
             !isEInkMode &&
-            state.readerSettings.backgroundSource == NovelReaderBackgroundSource.CUSTOM &&
+            backgroundSource == NovelReaderBackgroundSource.CUSTOM &&
             customBackgroundPath.isNotBlank() &&
             !customBackgroundExists
         ) {
