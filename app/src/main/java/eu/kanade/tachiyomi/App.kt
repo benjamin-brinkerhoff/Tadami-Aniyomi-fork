@@ -92,6 +92,7 @@ import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.util.system.ImageUtil
+import tachiyomi.core.common.util.system.logcat as systemLogcat
 import tachiyomi.data.achievement.loader.AchievementLoader
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.i18n.MR
@@ -152,11 +153,19 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             ),
         )
 
-        appUpdateFileManager.cleanupIfInstalledVersionReached(
-            isPreview = isPreviewBuildType,
-            installedCommitCount = BuildConfig.COMMIT_COUNT.toInt(),
-            installedVersionName = BuildConfig.VERSION_NAME,
-        )
+        Handler(Looper.getMainLooper()).post {
+            achievementScope.launch {
+                runCatching {
+                    appUpdateFileManager.cleanupIfInstalledVersionReached(
+                        isPreview = isPreviewBuildType,
+                        installedCommitCount = BuildConfig.COMMIT_COUNT.toInt(),
+                        installedVersionName = BuildConfig.VERSION_NAME,
+                    )
+                }.onFailure { error ->
+                    this@App.systemLogcat(LogPriority.ERROR, error) { "App update cleanup failed" }
+                }
+            }
+        }
 
         setupNotificationChannels()
 

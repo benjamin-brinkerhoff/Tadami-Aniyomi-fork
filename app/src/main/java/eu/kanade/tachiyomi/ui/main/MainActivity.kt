@@ -119,6 +119,7 @@ import eu.kanade.tachiyomi.util.system.openInBrowser
 import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.system.updaterEnabled
 import eu.kanade.tachiyomi.util.view.setComposeContent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -128,6 +129,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import logcat.LogPriority
 import mihon.core.migration.Migrator
 import tachiyomi.core.common.i18n.stringResource
@@ -186,13 +189,29 @@ class MainActivity : BaseActivity() {
         )
 
         // Await preference migrations without blocking the main thread.
-        // The splash screen will keep showing (ready = false) until this completes,
-        // giving migrations time to finish without triggering an ANR.
+        // Keep splash up until migrations are either complete or the startup timeout is reached.
+        // Always release the migrator so a failed migration cannot leave startup state stuck.
         val didMigration = mutableStateOf(false)
         val migrationReady = mutableStateOf(false)
         lifecycleScope.launch {
-            didMigration.value = Migrator.await()
-            Migrator.release()
+            val migrationStart = System.currentTimeMillis()
+            val result = runCatching {
+                withTimeout(MIGRATION_STARTUP_TIMEOUT) {
+                    Migrator.await()
+                }
+            }
+
+            didMigration.value = result.getOrDefault(false)
+            result.exceptionOrNull()?.let { error ->
+                logcat(LogPriority.ERROR, error) {
+                    "Preference migration failed or timed out after ${System.currentTimeMillis() - migrationStart}ms"
+                }
+            }
+
+            runCatching { Migrator.release() }
+                .onFailure { error ->
+                    logcat(LogPriority.ERROR, error) { "Failed to release preference migrator" }
+                }
             migrationReady.value = true
         }
 
@@ -205,8 +224,12 @@ class MainActivity : BaseActivity() {
         setComposeContent {
             val context = LocalContext.current
 
-            var incognito by remember { mutableStateOf(getMangaIncognitoState.await(null)) }
-            var incognitoAnime by remember { mutableStateOf(getAnimeIncognitoState.await(null)) }
+            var incognito by remember { mutableStateOf(false) }
+            var incognitoAnime by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                incognito = withContext(Dispatchers.IO) { getMangaIncognitoState.await(null) }
+                incognitoAnime = withContext(Dispatchers.IO) { getAnimeIncognitoState.await(null) }
+            }
             val downloadOnly by preferences.downloadedOnly().collectAsStateWithLifecycle()
             val indexing by downloadCache.isInitializing.collectAsStateWithLifecycle()
             val indexingAnime by animeDownloadCache.isInitializing.collectAsStateWithLifecycle()
@@ -433,7 +456,7 @@ class MainActivity : BaseActivity() {
         val startTime = System.currentTimeMillis()
         splashScreen?.setKeepOnScreenCondition {
             val elapsed = System.currentTimeMillis() - startTime
-            elapsed <= SPLASH_MIN_DURATION || !ready && elapsed <= SPLASH_MAX_DURATION
+            elapsed <= SPLASH_MIN_DURATION || (!ready || !migrationReady.value) && elapsed <= SPLASH_MAX_DURATION
         }
         setSplashScreenExitAnimation(splashScreen)
 
@@ -467,7 +490,7 @@ class MainActivity : BaseActivity() {
             requestedOrientation = orientation
             restoreOrientationAfterPlayerExit = null
         }
-        lifecycleScope.launch {
+        lifecycleScope.launchIO {
             val todayLevel = activityDataRepository
                 .getActivityData(days = 1)
                 .first()
@@ -533,26 +556,30 @@ class MainActivity : BaseActivity() {
         LaunchedEffect(Unit) {
             if (updaterEnabled) {
                 try {
-                    val appUpdatePreferences = Injekt.get<AppUpdatePreferences>()
-                    val interval = appUpdatePreferences.appUpdateInterval().get()
+                    val updateScreen = withContext(Dispatchers.IO) {
+                        val appUpdatePreferences = Injekt.get<AppUpdatePreferences>()
+                        val interval = appUpdatePreferences.appUpdateInterval().get()
 
-                    // Check on startup only if interval == -1 (on app start)
-                    if (interval == -1) {
-                        val result = AppUpdateChecker().checkForUpdate(context)
-                        if (result is GetApplicationRelease.Result.NewUpdate) {
-                            val updateScreen = NewUpdateScreen(
-                                versionName = result.release.version,
-                                releaseDate = result.release.releaseDate,
-                                changelogInfo = result.release.info,
-                                releaseLink = result.release.releaseLink,
-                                downloadLink = result.release.downloadLink,
-                            )
-                            navigator.push(updateScreen)
+                        val screen = if (interval == -1) {
+                            when (val result = AppUpdateChecker().checkForUpdate(context)) {
+                                is GetApplicationRelease.Result.NewUpdate -> NewUpdateScreen(
+                                    versionName = result.release.version,
+                                    releaseDate = result.release.releaseDate,
+                                    changelogInfo = result.release.info,
+                                    releaseLink = result.release.releaseLink,
+                                    downloadLink = result.release.downloadLink,
+                                )
+                                else -> null
+                            }
+                        } else {
+                            null
                         }
-                    }
 
-                    // Set up periodic check (will cancel if interval <= 0)
-                    AppUpdateJob.setupTask(context)
+                        // Set up periodic check (will cancel if interval <= 0)
+                        AppUpdateJob.setupTask(context)
+                        screen
+                    }
+                    updateScreen?.let(navigator::push)
                 } catch (e: Exception) {
                     logcat(LogPriority.ERROR, e)
                 }
@@ -561,14 +588,16 @@ class MainActivity : BaseActivity() {
 
         // Extensions updates
         LaunchedEffect(Unit) {
-            runCatching { AnimeExtensionApi().checkForUpdatesIfDue(context) }
-                .onFailure { error ->
-                    logcat(LogPriority.WARN, error) { "Anime extension update check failed" }
-                }
-            runCatching { MangaExtensionApi().checkForUpdatesIfDue(context) }
-                .onFailure { error ->
-                    logcat(LogPriority.WARN, error) { "Manga extension update check failed" }
-                }
+            withContext(Dispatchers.IO) {
+                runCatching { AnimeExtensionApi().checkForUpdatesIfDue(context) }
+                    .onFailure { error ->
+                        logcat(LogPriority.WARN, error) { "Anime extension update check failed" }
+                    }
+                runCatching { MangaExtensionApi().checkForUpdatesIfDue(context) }
+                    .onFailure { error ->
+                        logcat(LogPriority.WARN, error) { "Manga extension update check failed" }
+                    }
+            }
         }
     }
 
@@ -679,9 +708,11 @@ class MainActivity : BaseActivity() {
                 if (!query.isNullOrEmpty()) {
                     navigator.popUntilRoot()
 
-                    val screenType = intent.getStringExtra(INTENT_SEARCH_TYPE).orEmpty()
-                        .ifBlank { "ANIME" }
-                        .let(DeepLinkScreenType::valueOf)
+                    val screenType = runCatching {
+                        intent.getStringExtra(INTENT_SEARCH_TYPE).orEmpty()
+                            .ifBlank { "ANIME" }
+                            .let(DeepLinkScreenType::valueOf)
+                    }.getOrDefault(DeepLinkScreenType.ANIME)
 
                     when (screenType) {
                         DeepLinkScreenType.MANGA -> {
@@ -747,7 +778,7 @@ class MainActivity : BaseActivity() {
                         navigator.push(AnimeExtensionReposScreen(repoUrl))
                     }
                 } // Deep link to add extension repo
-                else if (intent.scheme == "tachiyomi" && intent.data?.host == "add-repo") {
+                else if (intent.scheme in setOf("tachiyomi", "tadami") && intent.data?.host == "add-repo") {
                     intent.data?.getQueryParameter("url")?.let { repoUrl ->
                         navigator.popUntilRoot()
                         navigator.push(MangaExtensionReposScreen(repoUrl))
@@ -891,3 +922,4 @@ internal fun resolveMainActivityWindowBackgroundArgb(
 private const val SPLASH_MIN_DURATION = 500 // ms
 private const val SPLASH_MAX_DURATION = 5000 // ms
 private const val SPLASH_EXIT_ANIM_DURATION = 400L // ms
+private const val MIGRATION_STARTUP_TIMEOUT = 15_000L // ms
