@@ -93,7 +93,6 @@ class NovelCoverFetcher(
         val uniFile = UniFile.fromUri(options.context, urlString.toUri())
             ?: throw IOException("Unable to resolve image uri: $urlString")
         val inputStream = uniFile.openInputStream()
-            ?: throw IOException("Unable to open image uri: $urlString")
         val tempFile = inputStream.source().buffer()
         return SourceFetchResult(
             source = ImageSource(source = tempFile, fileSystem = FileSystem.SYSTEM),

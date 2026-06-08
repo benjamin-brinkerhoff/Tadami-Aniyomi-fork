@@ -119,13 +119,13 @@ class CrybabyRule(
     ): RuleResult {
         val genres = when (event) {
             is AchievementEvent.MangaCompleted -> {
-                mangaRepository.getMangaById(event.mangaId)?.genre
+                mangaRepository.getMangaById(event.mangaId).genre
             }
             is AchievementEvent.AnimeCompleted -> {
-                animeRepository.getAnimeById(event.animeId)?.genre
+                animeRepository.getAnimeById(event.animeId).genre
             }
             is AchievementEvent.NovelCompleted -> {
-                novelRepository.getNovelById(event.novelId)?.genre
+                novelRepository.getNovelById(event.novelId).genre
             }
             else -> null
         }
@@ -208,13 +208,13 @@ class DekuRule(
     ): RuleResult {
         val genres = when (event) {
             is AchievementEvent.MangaCompleted -> {
-                mangaRepository.getMangaById(event.mangaId)?.genre
+                mangaRepository.getMangaById(event.mangaId).genre
             }
             is AchievementEvent.AnimeCompleted -> {
-                animeRepository.getAnimeById(event.animeId)?.genre
+                animeRepository.getAnimeById(event.animeId).genre
             }
             is AchievementEvent.NovelCompleted -> {
-                novelRepository.getNovelById(event.novelId)?.genre
+                novelRepository.getNovelById(event.novelId).genre
             }
             else -> null
         }
@@ -270,13 +270,13 @@ class ErenRule(
     ): RuleResult {
         val genres = when (event) {
             is AchievementEvent.MangaCompleted -> {
-                mangaRepository.getMangaById(event.mangaId)?.genre
+                mangaRepository.getMangaById(event.mangaId).genre
             }
             is AchievementEvent.AnimeCompleted -> {
-                animeRepository.getAnimeById(event.animeId)?.genre
+                animeRepository.getAnimeById(event.animeId).genre
             }
             is AchievementEvent.NovelCompleted -> {
-                novelRepository.getNovelById(event.novelId)?.genre
+                novelRepository.getNovelById(event.novelId).genre
             }
             else -> null
         }
@@ -329,13 +329,13 @@ class LelouchRule(
     ): RuleResult {
         val genres = when (event) {
             is AchievementEvent.MangaCompleted -> {
-                mangaRepository.getMangaById(event.mangaId)?.genre
+                mangaRepository.getMangaById(event.mangaId).genre
             }
             is AchievementEvent.AnimeCompleted -> {
-                animeRepository.getAnimeById(event.animeId)?.genre
+                animeRepository.getAnimeById(event.animeId).genre
             }
             is AchievementEvent.NovelCompleted -> {
-                novelRepository.getNovelById(event.novelId)?.genre
+                novelRepository.getNovelById(event.novelId).genre
             }
             else -> null
         }

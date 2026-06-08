@@ -56,7 +56,6 @@ internal fun NovelReaderSettings.translationCacheModelId(): String {
         NovelTranslationProvider.MISTRAL -> mistralModel.trim()
         NovelTranslationProvider.NVIDIA -> nvidiaModel.trim()
         NovelTranslationProvider.OLLAMA_CLOUD -> ollamaCloudModel.trim()
-        else -> geminiModel.normalizeGeminiModelId()
     }
 }
 
