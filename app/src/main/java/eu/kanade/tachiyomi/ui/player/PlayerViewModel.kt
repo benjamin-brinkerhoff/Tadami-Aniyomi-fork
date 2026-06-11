@@ -1884,9 +1884,14 @@ class PlayerViewModel @JvmOverloads constructor(
     }
 
     private suspend fun updateEpisodeProgressOnComplete(currentEp: Episode) {
+        if (currentEp.seen) return
+
         currentEp.seen = true
 
-        // Emit EpisodeWatched event for achievement tracking
+        // Emit EpisodeWatched event for achievement tracking only once, when the episode
+        // actually transitions from unseen to seen. This method is called every second after
+        // the configured completion threshold, so recording unconditionally here inflates the
+        // "episodes watched" stats on the achievements screen.
         val animeId = currentAnime.value?.id ?: 0L
         eventBus.tryEmit(
             AchievementEvent.EpisodeWatched(
