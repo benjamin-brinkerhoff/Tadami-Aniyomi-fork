@@ -1,6 +1,8 @@
 package eu.kanade.presentation.library.novel
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.entries.components.ItemCover
+import kotlinx.collections.immutable.persistentListOf
 import eu.kanade.presentation.library.components.LibraryTabs
 import eu.kanade.presentation.novel.sourceAwareNovelCoverModel
 import kotlinx.coroutines.delay
@@ -48,6 +51,7 @@ import tachiyomi.presentation.core.components.BadgeGroup
 import tachiyomi.presentation.core.components.material.PullRefresh
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.screens.EmptyScreen
+import tachiyomi.presentation.core.screens.EmptyScreenAction
 import tachiyomi.presentation.core.util.plus
 import kotlin.time.Duration.Companion.seconds
 
@@ -60,6 +64,7 @@ fun NovelLibraryContent(
     currentPage: () -> Int,
     hasActiveFilters: Boolean,
     showPageTabs: Boolean,
+    onClearFilters: () -> Unit,
     onChangeCurrentPage: (Int) -> Unit,
     onCategoryLongSelected: ((Int) -> Unit)? = null,
     onNovelClicked: (NovelLibraryItem) -> Unit,
@@ -146,6 +151,17 @@ fun NovelLibraryContent(
                         modifier = Modifier
                             .padding(contentPadding + PaddingValues(bottom = contentPadding.calculateBottomPadding()))
                             .fillMaxSize(),
+                        actions = if (hasActiveFilters && searchQuery.isNullOrEmpty()) {
+                            persistentListOf(
+                                EmptyScreenAction(
+                                    stringRes = MR.strings.action_reset,
+                                    icon = Icons.Default.Refresh,
+                                    onClick = onClearFilters,
+                                ),
+                            )
+                        } else {
+                            null
+                        },
                     )
                     return@HorizontalPager
                 }

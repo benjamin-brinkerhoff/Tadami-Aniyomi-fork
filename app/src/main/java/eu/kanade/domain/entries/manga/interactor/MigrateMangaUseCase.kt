@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.MangaSource
 import eu.kanade.tachiyomi.source.model.SChapter
 import tachiyomi.domain.category.manga.interactor.GetMangaCategories
 import tachiyomi.domain.category.manga.interactor.SetMangaCategories
+import tachiyomi.domain.entries.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.entries.manga.model.Manga
 import tachiyomi.domain.entries.manga.model.MangaUpdate
 import tachiyomi.domain.items.chapter.interactor.GetChaptersByMangaId
@@ -27,6 +28,7 @@ class MigrateMangaUseCase(
     private val sourceManager: MangaSourceManager = Injekt.get(),
     private val downloadManager: MangaDownloadManager = Injekt.get(),
     private val updateManga: UpdateManga = Injekt.get(),
+    private val networkToLocalManga: NetworkToLocalManga = Injekt.get(),
     private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
     private val syncChaptersWithSource: SyncChaptersWithSource = Injekt.get(),
     private val updateChapter: UpdateChapter = Injekt.get(),
@@ -50,14 +52,16 @@ class MigrateMangaUseCase(
     ) {
         val source = sourceManager.get(newManga.source) ?: return
         val prevSource = sourceManager.get(oldManga.source)
+        val localNewManga = networkToLocalManga.await(newManga)
+        if (oldManga.id == localNewManga.id) return
 
-        val chapters = source.getChapterList(newManga.toSManga())
+        val chapters = source.getChapterList(localNewManga.toSManga())
 
         migrateMangaInternal(
             oldSource = prevSource,
             newSource = source,
             oldManga = oldManga,
-            newManga = newManga,
+            newManga = localNewManga,
             sourceChapters = chapters,
             replace = replace,
             flags = flags,
@@ -146,10 +150,6 @@ class MigrateMangaUseCase(
             downloadManager.deleteManga(oldManga, oldSource)
         }
 
-        if (replace) {
-            updateManga.awaitUpdateFavorite(oldManga.id, favorite = false)
-        }
-
         if (migrateCustomCover && oldManga.hasCustomCover(coverCache)) {
             coverCache.setCustomCoverToCache(
                 newManga,
@@ -166,5 +166,9 @@ class MigrateMangaUseCase(
                 dateAdded = if (replace) oldManga.dateAdded else Instant.now().toEpochMilli(),
             ),
         )
+
+        if (replace) {
+            updateManga.awaitUpdateFavorite(oldManga.id, favorite = false)
+        }
     }
 }

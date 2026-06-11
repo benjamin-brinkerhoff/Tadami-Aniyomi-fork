@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import tachiyomi.domain.category.manga.interactor.GetMangaCategories
 import tachiyomi.domain.category.manga.interactor.SetMangaCategories
+import tachiyomi.domain.entries.manga.interactor.NetworkToLocalManga
 import tachiyomi.domain.entries.manga.model.Manga
 import tachiyomi.domain.entries.manga.model.MangaUpdate
 import tachiyomi.domain.items.chapter.interactor.GetChaptersByMangaId
@@ -226,6 +227,63 @@ class MigrateMangaUseCaseTest {
         verify(exactly = 0) { downloadManager.deleteManga(any(), any()) }
     }
 
+
+    @Test
+    fun `network manga target is localized before replacing old favorite`() = runTest {
+        val sourceManager = mockk<MangaSourceManager>()
+        val downloadManager = mockk<MangaDownloadManager>(relaxed = true)
+        val updateManga = mockk<UpdateManga>(relaxed = true)
+        val networkToLocalManga = mockk<NetworkToLocalManga>()
+        val getChaptersByMangaId = mockk<GetChaptersByMangaId>(relaxed = true)
+        val syncChaptersWithSource = mockk<SyncChaptersWithSource>()
+        val updateChapter = mockk<UpdateChapter>(relaxed = true)
+        val getCategories = mockk<GetMangaCategories>(relaxed = true)
+        val setMangaCategories = mockk<SetMangaCategories>(relaxed = true)
+        val getTracks = mockk<GetMangaTracks>(relaxed = true)
+        val insertTrack = mockk<InsertMangaTrack>(relaxed = true)
+        val coverCache = mockk<MangaCoverCache>(relaxed = true)
+        val trackerManager = mockk<TrackerManager>()
+        val source = mockk<MangaSource>()
+        val oldManga = manga(1L, 10L)
+        val networkNewManga = manga(0L, 20L).copy(favorite = false, url = "/target")
+        val localNewManga = networkNewManga.copy(id = 2L)
+        val updateSlot = slot<MangaUpdate>()
+
+        every { sourceManager.get(any()) } returns source
+        every { trackerManager.trackers } returns emptyList()
+        coEvery { networkToLocalManga.await(networkNewManga) } returns localNewManga
+        coEvery { source.getChapterList(any()) } returns emptyList()
+        coEvery { syncChaptersWithSource.await(any(), localNewManga, source) } returns emptyList()
+        coEvery { updateManga.await(capture(updateSlot)) } returns true
+
+        val interactor = migrateUseCase(
+            sourceManager = sourceManager,
+            downloadManager = downloadManager,
+            updateManga = updateManga,
+            getChaptersByMangaId = getChaptersByMangaId,
+            syncChaptersWithSource = syncChaptersWithSource,
+            updateChapter = updateChapter,
+            getCategories = getCategories,
+            setMangaCategories = setMangaCategories,
+            getTracks = getTracks,
+            insertTrack = insertTrack,
+            coverCache = coverCache,
+            trackerManager = trackerManager,
+            networkToLocalManga = networkToLocalManga,
+        )
+
+        interactor.migrateManga(
+            oldManga = oldManga,
+            newManga = networkNewManga,
+            replace = true,
+            flags = 0,
+        )
+
+        assertEquals(localNewManga.id, updateSlot.captured.id)
+        assertEquals(true, updateSlot.captured.favorite)
+        coVerify(exactly = 1) { updateManga.awaitUpdateFavorite(oldManga.id, favorite = false) }
+    }
+
     private fun migrateUseCase(
         sourceManager: MangaSourceManager,
         downloadManager: MangaDownloadManager,
@@ -239,10 +297,14 @@ class MigrateMangaUseCaseTest {
         insertTrack: InsertMangaTrack,
         coverCache: MangaCoverCache,
         trackerManager: TrackerManager,
+        networkToLocalManga: NetworkToLocalManga = mockk<NetworkToLocalManga>().also {
+            coEvery { it.await(any()) } answers { firstArg() }
+        },
     ) = MigrateMangaUseCase(
         sourceManager = sourceManager,
         downloadManager = downloadManager,
         updateManga = updateManga,
+        networkToLocalManga = networkToLocalManga,
         getChaptersByMangaId = getChaptersByMangaId,
         syncChaptersWithSource = syncChaptersWithSource,
         updateChapter = updateChapter,

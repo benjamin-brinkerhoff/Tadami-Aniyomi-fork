@@ -221,6 +221,34 @@ class NovelLibraryScreenModel(
             }
             .launchIn(screenModelScope)
 
+
+        getFilterPreferencesFlow()
+            .onEach { filterPrefs ->
+                mutableState.update { state ->
+                    state.copy(
+                        downloadedOnly = filterPrefs.downloadedOnly,
+                        downloadedFilter = filterPrefs.downloadedFilter,
+                        unreadFilter = filterPrefs.unreadFilter,
+                        startedFilter = filterPrefs.startedFilter,
+                        bookmarkedFilter = filterPrefs.bookmarkedFilter,
+                        completedFilter = filterPrefs.completedFilter,
+                        filterIntervalCustom = filterPrefs.filterIntervalCustom,
+                    )
+                }
+            }
+            .launchIn(screenModelScope)
+
+        getSortPreferencesFlow()
+            .onEach { sortPrefs ->
+                mutableState.update { state ->
+                    state.copy(
+                        sort = sortPrefs.sortMode,
+                        randomSortSeed = sortPrefs.randomSortSeed,
+                    )
+                }
+            }
+            .launchIn(screenModelScope)
+
         getFilterPreferencesFlow()
             .map { filterPrefs ->
                 filterPrefs.downloadedOnly ||
@@ -592,6 +620,16 @@ class NovelLibraryScreenModel(
         )
         clearSelection()
         return added
+    }
+
+    fun resetFilters() {
+        basePreferences.downloadedOnly().set(false)
+        libraryPreferences.filterDownloadedNovel().set(TriState.DISABLED)
+        libraryPreferences.filterUnreadNovel().set(TriState.DISABLED)
+        libraryPreferences.filterStartedNovel().set(TriState.DISABLED)
+        libraryPreferences.filterBookmarkedNovel().set(TriState.DISABLED)
+        libraryPreferences.filterCompletedNovel().set(TriState.DISABLED)
+        libraryPreferences.filterIntervalCustom().set(TriState.DISABLED)
     }
 
     fun toggleDownloadedFilter() {
