@@ -103,6 +103,7 @@ class NovelJsRuntime(
 
     interface NativeApi {
         fun fetch(url: String, optionsJson: String?): String
+        fun fetchBinary(url: String, optionsJson: String?): String
         fun fetchProto(url: String, configJson: String, optionsJson: String?): String
         fun storageGet(key: String): String?
         fun storageSet(key: String, value: String)
@@ -929,6 +930,7 @@ class NovelJsModuleRegistry(
             }
             headers.get = function(name) { return this[name] != null ? this[name] : this[String(name).toLowerCase()] || null; };
             headers.has = function(name) { return this[name] != null || String(name).toLowerCase() in this; };
+            var cachedArrayBuffer = null;
             return {
               ok: response.status >= 200 && response.status < 300,
               status: response.status,
@@ -936,7 +938,15 @@ class NovelJsModuleRegistry(
               headers: headers,
               text: function() { return Promise.resolve(response.body || ""); },
               json: function() { return Promise.resolve(response.body ? JSON.parse(response.body) : null); },
-              arrayBuffer: function() { return Promise.resolve(decodeBase64ToArrayBuffer(response.bodyBase64 || "")); }
+              arrayBuffer: function() {
+                if (cachedArrayBuffer != null) return Promise.resolve(cachedArrayBuffer);
+                var bodyBase64 = response.bodyBase64;
+                if (!bodyBase64 && response.__requestUrl) {
+                  bodyBase64 = __native.fetchBinary(response.__requestUrl, response.__requestOptionsPayload || null);
+                }
+                cachedArrayBuffer = decodeBase64ToArrayBuffer(bodyBase64 || "");
+                return Promise.resolve(cachedArrayBuffer);
+              }
             };
           }
           function normalizeInit(init) {
@@ -1021,9 +1031,12 @@ class NovelJsModuleRegistry(
           function fetchApi(url, options) {
             var input = normalizeFetchInput(url, options);
             if (input.url == null) throw new Error("fetchApi requires a URL");
+            var requestUrl = String(input.url);
             var payload = JSON.stringify(normalizeInit(input.options));
-            var raw = __native.fetch(String(input.url), payload);
+            var raw = __native.fetch(requestUrl, payload);
             var response = JSON.parse(raw);
+            response.__requestUrl = requestUrl;
+            response.__requestOptionsPayload = payload;
             if (response.status === 0) {
               throw new Error("Network request failed: " + (response.body || "unknown error"));
             }

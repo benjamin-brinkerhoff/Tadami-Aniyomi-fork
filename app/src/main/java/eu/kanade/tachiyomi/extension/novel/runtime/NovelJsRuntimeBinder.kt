@@ -36,6 +36,17 @@ fun bindNativeApi(
     nativeObject.registerJavaMethod(
         object : JavaCallback {
             override fun invoke(receiver: V8Object, parameters: V8Array): Any? {
+                val url = parameters.stringArg(0)
+                compatibilityLogger.logOperation("fetchBinary", "network", "url=$url")
+                return nativeApi.fetchBinary(url, parameters.stringArgOrNull(1))
+            }
+        },
+        "fetchBinary",
+    )
+
+    nativeObject.registerJavaMethod(
+        object : JavaCallback {
+            override fun invoke(receiver: V8Object, parameters: V8Array): Any? {
                 return nativeApi.fetchProto(
                     parameters.stringArg(0),
                     parameters.stringArg(1),

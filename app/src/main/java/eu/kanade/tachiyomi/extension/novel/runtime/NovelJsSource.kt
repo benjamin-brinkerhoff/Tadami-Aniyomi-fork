@@ -131,8 +131,11 @@ class NovelJsSource internal constructor(
     private var cachedImageRequestHeaders: Map<String, String>? = null
     private var capabilities: NovelPluginCapabilities? = null
     private var settingsSchema: List<PluginSettingDefinition> = emptyList()
-    private var cachedParseNovelUrl: String? = null
-    private var cachedParseNovelResult: ParsedPluginNovel? = null
+    private val parseNovelCache = object : LinkedHashMap<String, ParsedPluginNovel>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ParsedPluginNovel>?): Boolean {
+            return size > PARSE_NOVEL_CACHE_MAX_ENTRIES
+        }
+    }
     private var settingsDiscoveryAttempted = false
     private var cachedHasSettings = false
 
@@ -774,6 +777,7 @@ class NovelJsSource internal constructor(
                 runtime = null
                 cachedFiltersPayload = null
                 cachedImageRequestHeaders = null
+                parseNovelCache.clear()
                 settingsSchema = emptyList()
                 settingsBridge.clearSettingsSchema()
                 capabilities = null
@@ -891,11 +895,11 @@ class NovelJsSource internal constructor(
      * Must be called inside [mutex.withLock].
      */
     private fun fetchParseNovelLocked(runtime: NovelJsRuntime, url: String): ParsedPluginNovel? {
-        if (cachedParseNovelUrl == url) {
+        parseNovelCache[url]?.let { cached ->
             logcat(LogPriority.DEBUG) {
                 "Novel parseNovel cache hit plugin=${plugin.id} url=$url"
             }
-            return cachedParseNovelResult
+            return cached
         }
         val payload = callPluginWithTimeout(runtime, "parseNovel", PARSE_NOVEL_TIMEOUT_MS, toJsString(url))
         logcat(LogPriority.DEBUG) {
@@ -909,8 +913,9 @@ class NovelJsSource internal constructor(
                 "chapters=${parsed?.chapters?.size ?: 0} " +
                 "totalPages=${parsed?.totalPages?.toString() ?: "null"}"
         }
-        cachedParseNovelUrl = url
-        cachedParseNovelResult = parsed
+        if (parsed != null) {
+            parseNovelCache[url] = parsed
+        }
         return parsed
     }
 
@@ -986,7 +991,7 @@ class NovelJsSource internal constructor(
             val done = runtime.evaluate("globalThis.__d_$token") as? Boolean ?: false
             if (done) break
             cycles++
-            if (cycles < maxCycles) {
+            if (cycles < maxCycles && cycles >= FAST_POLL_SPIN_CYCLES) {
                 Thread.sleep(10L)
             }
         }
@@ -1868,6 +1873,8 @@ class NovelJsSource internal constructor(
         private const val LOG_TAG = "NovelJsSource"
         private const val FETCH_IMAGE_RUNTIME_TIMEOUT_MS = 15_000L
         private const val PARSE_NOVEL_TIMEOUT_MS = 30_000L
+        private const val PARSE_NOVEL_CACHE_MAX_ENTRIES = 24
+        private const val FAST_POLL_SPIN_CYCLES = 8
         private const val JAOMIX_PARSE_PAGE_MAX_ATTEMPTS = 9
     }
 
