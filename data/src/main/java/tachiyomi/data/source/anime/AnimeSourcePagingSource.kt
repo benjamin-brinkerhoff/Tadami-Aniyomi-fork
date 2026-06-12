@@ -40,21 +40,33 @@ abstract class AnimeSourcePagingSource(
     override suspend fun load(params: LoadParams<Long>): LoadResult<Long, SAnime> {
         val page = params.key ?: 1
 
-        val animesPage = try {
+        return try {
             withIOContext {
-                requestNextPage(page.toInt())
-                    .takeIf { it.animes.isNotEmpty() }
-                    ?: throw NoEpisodesException()
+                val animesPage = requestNextPage(page.toInt())
+                when {
+                    animesPage.animes.isNotEmpty() -> {
+                        LoadResult.Page(
+                            data = animesPage.animes,
+                            prevKey = null,
+                            nextKey = if (animesPage.hasNextPage) page + 1 else null,
+                        )
+                    }
+                    page == 1L -> throw NoEpisodesException()
+                    else -> {
+                        // Some sources incorrectly report that another page exists,
+                        // then return an empty trailing page. Treat that as the end
+                        // of pagination instead of surfacing a false "no results" error.
+                        LoadResult.Page(
+                            data = emptyList(),
+                            prevKey = null,
+                            nextKey = null,
+                        )
+                    }
+                }
             }
         } catch (e: Exception) {
-            return LoadResult.Error(e)
+            LoadResult.Error(e)
         }
-
-        return LoadResult.Page(
-            data = animesPage.animes,
-            prevKey = null,
-            nextKey = if (animesPage.hasNextPage) page + 1 else null,
-        )
     }
 
     override fun getRefreshKey(state: PagingState<Long, SAnime>): Long? {

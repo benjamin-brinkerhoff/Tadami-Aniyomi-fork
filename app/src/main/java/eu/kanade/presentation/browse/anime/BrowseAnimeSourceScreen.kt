@@ -24,6 +24,7 @@ import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import kotlinx.collections.immutable.persistentListOf
 import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.domain.items.episode.model.NoEpisodesException
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.library.model.LibraryDisplayMode
 import tachiyomi.domain.source.anime.model.StubAnimeSource
@@ -54,8 +55,11 @@ fun BrowseAnimeSourceContent(
 ) {
     val context = LocalContext.current
 
+    val appendErrorState = animeList.loadState.append
+        .takeIf { it is LoadState.Error }
+        ?.takeUnless { animeList.itemCount > 0 && (it as LoadState.Error).error is NoEpisodesException }
     val errorState = animeList.loadState.refresh.takeIf { it is LoadState.Error }
-        ?: animeList.loadState.append.takeIf { it is LoadState.Error }
+        ?: appendErrorState
 
     val getErrorMessage: (LoadState.Error) -> String = { state ->
         state.error.formattedMessage(context)

@@ -62,8 +62,9 @@ abstract class NovelSourcePagingSource(
                     }
                     page == 1L -> throw NoChaptersException()
                     else -> {
-                        // Some sources may return an empty trailing page while data already exists.
-                        // Treat this as end-of-pagination instead of an append error.
+                        // Some sources incorrectly report that another page exists,
+                        // then return an empty trailing page. Treat that as the end
+                        // of pagination instead of surfacing a false "no results" error.
                         LoadResult.Page(
                             data = emptyList(),
                             prevKey = null,
