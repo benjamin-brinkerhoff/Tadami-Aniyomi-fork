@@ -5,6 +5,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.OneTimeWorkRequestBuilder
@@ -230,8 +231,15 @@ class AnimeLibraryUpdateJob(private val context: Context, workerParams: WorkerPa
      */
     private suspend fun addAnimeToQueue(categoryId: Long) {
         val libraryAnime = getLibraryAnime.await()
+        val targetEntryIds = inputData.getLongArray(KEY_ENTRY_IDS)
+            ?.takeIf { it.isNotEmpty() }
+            ?.toSet()
 
-        val listToUpdate = if (categoryId != -999L) {
+        val listToUpdate = if (targetEntryIds != null) {
+            libraryAnime
+                .filter { it.anime.id in targetEntryIds }
+                .distinctBy { it.anime.id }
+        } else if (categoryId != -999L) {
             filterByCategoryId(libraryAnime, categoryId)
         } else {
             val categoriesToUpdate = libraryPreferences.animeUpdateCategories().get().map { it.toLong() }
@@ -253,7 +261,7 @@ class AnimeLibraryUpdateJob(private val context: Context, workerParams: WorkerPa
                 .distinctBy { it.anime.id }
         }
 
-        val includeSeasons = libraryPreferences.updateSeasonOnLibraryUpdate().get()
+        val includeSeasons = targetEntryIds == null && libraryPreferences.updateSeasonOnLibraryUpdate().get()
         val lastToUpdateWithSeasons = listToUpdate.flatMap { libAnime ->
             when (libAnime.anime.fetchType) {
                 FetchType.Seasons -> {
@@ -566,6 +574,7 @@ class AnimeLibraryUpdateJob(private val context: Context, workerParams: WorkerPa
          * Key for category to update.
          */
         private const val KEY_CATEGORY = "animeCategory"
+        private const val KEY_ENTRY_IDS = "entryIds"
 
         fun cancelAllWorks(context: Context) {
             context.workManager.cancelAllWorkByTag(TAG)
@@ -581,15 +590,30 @@ class AnimeLibraryUpdateJob(private val context: Context, workerParams: WorkerPa
             context: Context,
             category: Category? = null,
         ): Boolean {
+            val inputData = category
+                ?.let { workDataOf(KEY_CATEGORY to it.id) }
+                ?: workDataOf()
+            return enqueueManualUpdate(context, inputData)
+        }
+
+        fun startNow(
+            context: Context,
+            entryIds: LongArray,
+        ): Boolean {
+            if (entryIds.isEmpty()) return false
+            return enqueueManualUpdate(context, workDataOf(KEY_ENTRY_IDS to entryIds))
+        }
+
+        private fun enqueueManualUpdate(
+            context: Context,
+            inputData: Data,
+        ): Boolean {
             val wm = context.workManager
             if (wm.isRunning(TAG)) {
                 // Already running either as a scheduled or manual job
                 return false
             }
 
-            val inputData = category
-                ?.let { workDataOf(KEY_CATEGORY to it.id) }
-                ?: workDataOf()
             val request = OneTimeWorkRequestBuilder<AnimeLibraryUpdateJob>()
                 .addTag(TAG)
                 .addTag(WORK_NAME_MANUAL)

@@ -1,6 +1,9 @@
 package eu.kanade.presentation.libraryUpdateError
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,13 +29,15 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FlipToBack
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.SwapCalls
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -47,10 +54,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -79,6 +88,7 @@ import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorItem
 import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorScreenState
 import eu.kanade.tachiyomi.ui.libraryUpdateError.LibraryUpdateErrorUiModel
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.launch
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.components.ListGroupHeader
@@ -96,9 +106,11 @@ import uy.kohesive.injekt.api.get
 fun LibraryUpdateErrorScreen(
     state: LibraryUpdateErrorScreenState,
     onTabSelected: (LibraryUpdateErrorMedia) -> Unit,
+    onRetryVisibleErrors: () -> Unit,
     onClick: (LibraryUpdateErrorItem) -> Unit,
     onSelectAll: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    onMigrateSelected: (() -> Unit)?,
     onErrorsDelete: () -> Unit,
     onErrorDelete: (Long) -> Unit,
     onErrorSelected: (LibraryUpdateErrorItem, Boolean) -> Unit,
@@ -106,20 +118,25 @@ fun LibraryUpdateErrorScreen(
 ) {
     val uiStyle = rememberResolvedSettingsUiStyle()
     val pagerState = rememberPagerState(
-        initialPage = LibraryUpdateErrorMedia.entries.indexOf(state.selectedMedia).coerceAtLeast(0),
-    ) { LibraryUpdateErrorMedia.entries.size }
+        initialPage = libraryUpdateErrorMediaDisplayIndexOf(state.selectedMedia).coerceAtLeast(0),
+    ) { libraryUpdateErrorMediaDisplayOrder.size }
 
-    // Sync from state.selectedMedia to pagerState
-    LaunchedEffect(state.selectedMedia) {
-        val page = LibraryUpdateErrorMedia.entries.indexOf(state.selectedMedia).coerceAtLeast(0)
-        if (pagerState.currentPage != page) {
-            pagerState.animateScrollToPage(page)
+    val scope = rememberCoroutineScope()
+    val onDisplayTabSelected: (LibraryUpdateErrorMedia) -> Unit = { media ->
+        val page = libraryUpdateErrorMediaDisplayIndexOf(media)
+        if (page >= 0 && pagerState.currentPage != page) {
+            scope.launch { pagerState.scrollToPage(page) }
+        }
+        if (state.selectedMedia != media) {
+            onTabSelected(media)
         }
     }
 
-    // Sync from pagerState.currentPage to state.selectedMedia
+    // Sync from pagerState.currentPage to state.selectedMedia.
+    // Do not drive the pager from state here: tab clicks already move the pager directly,
+    // and bidirectional animated syncing makes quick tab switching race with swipe settling.
     LaunchedEffect(pagerState.currentPage) {
-        val media = LibraryUpdateErrorMedia.entries[pagerState.currentPage]
+        val media = libraryUpdateErrorMediaDisplayOrder[pagerState.currentPage]
         if (state.selectedMedia != media) {
             onTabSelected(media)
         }
@@ -141,49 +158,31 @@ fun LibraryUpdateErrorScreen(
                 topBar = { scrollBehavior ->
                     AppBar(
                         title = stringResource(AYMR.strings.label_library_update_errors),
-                        navigateUp = navigateUp,
+                        navigateUp = onBackPressed,
                         actions = {
                             if (state.visibleItems.isNotEmpty()) {
                                 AppBarActions(
                                     persistentListOf(
                                         AppBar.Action(
-                                            title = stringResource(MR.strings.action_select_all),
-                                            icon = Icons.Outlined.SelectAll,
-                                            onClick = { onSelectAll(true) },
-                                        ),
-                                        AppBar.Action(
-                                            title = stringResource(AYMR.strings.action_clear_update_errors),
-                                            icon = Icons.Outlined.DeleteOutline,
-                                            onClick = onErrorsDelete,
+                                            title = stringResource(MR.strings.action_update_library),
+                                            icon = Icons.Outlined.Refresh,
+                                            onClick = onRetryVisibleErrors,
                                         ),
                                     ),
                                 )
                             }
                         },
-                        actionModeCounter = state.selected.size,
-                        onCancelActionMode = { onSelectAll(false) },
-                        actionModeActions = {
-                            AppBarActions(
-                                persistentListOf(
-                                    AppBar.Action(
-                                        title = stringResource(MR.strings.action_delete),
-                                        icon = Icons.Outlined.DeleteOutline,
-                                        onClick = onErrorsDelete,
-                                    ),
-                                    AppBar.Action(
-                                        title = stringResource(MR.strings.action_select_all),
-                                        icon = Icons.Outlined.SelectAll,
-                                        onClick = { onSelectAll(true) },
-                                    ),
-                                    AppBar.Action(
-                                        title = stringResource(MR.strings.action_select_inverse),
-                                        icon = Icons.Outlined.FlipToBack,
-                                        onClick = onInvertSelection,
-                                    ),
-                                ),
-                            )
-                        },
                         scrollBehavior = scrollBehavior,
+                    )
+                },
+                bottomBar = {
+                    LibraryUpdateErrorSelectionBottomBar(
+                        visible = state.selectionMode,
+                        selectedCount = state.selected.size,
+                        onSelectAll = { onSelectAll(true) },
+                        onInvertSelection = onInvertSelection,
+                        onMigrateSelected = onMigrateSelected,
+                        onDelete = onErrorsDelete,
                     )
                 },
             ) { contentPadding ->
@@ -192,7 +191,7 @@ fun LibraryUpdateErrorScreen(
                     contentPadding = contentPadding,
                     uiStyle = uiStyle,
                     pagerState = pagerState,
-                    onTabSelected = onTabSelected,
+                    onTabSelected = onDisplayTabSelected,
                     onClick = onClick,
                     onErrorDelete = onErrorDelete,
                     onErrorSelected = onErrorSelected,
@@ -211,11 +210,19 @@ fun LibraryUpdateErrorScreen(
                         AuroraLibraryUpdateErrorTopBar(
                             state = state,
                             onBackPressed = onBackPressed,
-                            onSelectAll = onSelectAll,
-                            onErrorsDelete = onErrorsDelete,
-                            onInvertSelection = onInvertSelection,
+                            onRetryVisibleErrors = onRetryVisibleErrors,
                         )
                     }
+                },
+                bottomBar = {
+                    LibraryUpdateErrorSelectionBottomBar(
+                        visible = state.selectionMode,
+                        selectedCount = state.selected.size,
+                        onSelectAll = { onSelectAll(true) },
+                        onInvertSelection = onInvertSelection,
+                        onMigrateSelected = onMigrateSelected,
+                        onDelete = onErrorsDelete,
+                    )
                 },
             ) { contentPadding ->
                 SettingsAuroraBackground(modifier = Modifier.fillMaxSize()) {
@@ -230,7 +237,7 @@ fun LibraryUpdateErrorScreen(
                             ),
                             uiStyle = uiStyle,
                             pagerState = pagerState,
-                            onTabSelected = onTabSelected,
+                            onTabSelected = onDisplayTabSelected,
                             onClick = onClick,
                             onErrorDelete = onErrorDelete,
                             onErrorSelected = onErrorSelected,
@@ -246,67 +253,23 @@ fun LibraryUpdateErrorScreen(
 private fun AuroraLibraryUpdateErrorTopBar(
     state: LibraryUpdateErrorScreenState,
     onBackPressed: () -> Unit,
-    onSelectAll: (Boolean) -> Unit,
-    onErrorsDelete: () -> Unit,
-    onInvertSelection: () -> Unit,
+    onRetryVisibleErrors: () -> Unit,
 ) {
-    val title = if (state.selectionMode) {
-        state.selected.size.toString()
-    } else {
-        stringResource(AYMR.strings.label_library_update_errors)
-    }
-
-    val icon = if (state.selectionMode) {
-        Icons.Outlined.Close
-    } else {
-        Icons.AutoMirrored.Filled.ArrowBack
-    }
-
-    val contentDescription = if (state.selectionMode) {
-        stringResource(MR.strings.action_cancel)
-    } else {
-        stringResource(MR.strings.action_bar_up_description)
-    }
+    val title = stringResource(AYMR.strings.label_library_update_errors)
+    val icon = Icons.AutoMirrored.Filled.ArrowBack
+    val contentDescription = stringResource(MR.strings.action_bar_up_description)
 
     val actions = @Composable {
-        if (state.selectionMode) {
+        if (state.visibleItems.isNotEmpty()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 AuroraTopBarIconButton(
-                    onClick = onErrorsDelete,
-                    icon = Icons.Outlined.DeleteOutline,
-                    contentDescription = stringResource(MR.strings.action_delete),
+                    onClick = onRetryVisibleErrors,
+                    icon = Icons.Outlined.Refresh,
+                    contentDescription = stringResource(MR.strings.action_update_library),
                 )
-                AuroraTopBarIconButton(
-                    onClick = { onSelectAll(true) },
-                    icon = Icons.Outlined.SelectAll,
-                    contentDescription = stringResource(MR.strings.action_select_all),
-                )
-                AuroraTopBarIconButton(
-                    onClick = onInvertSelection,
-                    icon = Icons.Outlined.FlipToBack,
-                    contentDescription = stringResource(MR.strings.action_select_inverse),
-                )
-            }
-        } else {
-            if (state.visibleItems.isNotEmpty()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    AuroraTopBarIconButton(
-                        onClick = { onSelectAll(true) },
-                        icon = Icons.Outlined.SelectAll,
-                        contentDescription = stringResource(MR.strings.action_select_all),
-                    )
-                    AuroraTopBarIconButton(
-                        onClick = onErrorsDelete,
-                        icon = Icons.Outlined.DeleteOutline,
-                        contentDescription = stringResource(AYMR.strings.action_clear_update_errors),
-                    )
-                }
             }
         }
     }
@@ -336,6 +299,106 @@ private fun AuroraLibraryUpdateErrorTopBar(
 }
 
 @Composable
+private fun LibraryUpdateErrorSelectionBottomBar(
+    visible: Boolean,
+    selectedCount: Int,
+    onSelectAll: () -> Unit,
+    onInvertSelection: () -> Unit,
+    onMigrateSelected: (() -> Unit)?,
+    onDelete: () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandVertically(expandFrom = Alignment.Bottom),
+        exit = shrinkVertically(shrinkTowards = Alignment.Bottom),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large.copy(
+                bottomEnd = ZeroCornerSize,
+                bottomStart = ZeroCornerSize,
+            ),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    text = selectedCount.toString(),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    LibraryUpdateErrorBottomAction(
+                        title = stringResource(MR.strings.action_select_all),
+                        icon = Icons.Outlined.SelectAll,
+                        onClick = onSelectAll,
+                        modifier = Modifier.weight(1f),
+                    )
+                    LibraryUpdateErrorBottomAction(
+                        title = stringResource(MR.strings.action_select_inverse),
+                        icon = Icons.Outlined.FlipToBack,
+                        onClick = onInvertSelection,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (onMigrateSelected != null) {
+                        LibraryUpdateErrorBottomAction(
+                            title = stringResource(MR.strings.action_migrate),
+                            icon = Icons.Outlined.SwapCalls,
+                            onClick = onMigrateSelected,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    LibraryUpdateErrorBottomAction(
+                        title = stringResource(MR.strings.action_delete),
+                        icon = Icons.Outlined.DeleteOutline,
+                        onClick = onDelete,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryUpdateErrorBottomAction(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .combinedClickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            modifier = Modifier.size(24.dp),
+        )
+        Text(
+            text = title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+@Composable
 private fun LibraryUpdateErrorContent(
     state: LibraryUpdateErrorScreenState,
     contentPadding: PaddingValues,
@@ -359,8 +422,8 @@ private fun LibraryUpdateErrorContent(
             ),
     ) {
         LibraryUpdateErrorTabs(
-            selected = state.selectedMedia,
-            counts = LibraryUpdateErrorMedia.entries.associateWith { state.count(it) },
+            selected = libraryUpdateErrorMediaDisplayOrder[pagerState.currentPage],
+            counts = libraryUpdateErrorMediaDisplayOrder.associateWith { state.count(it) },
             onTabSelected = onTabSelected,
             uiStyle = uiStyle,
         )
@@ -375,7 +438,7 @@ private fun LibraryUpdateErrorContent(
                 .fillMaxWidth()
                 .weight(1f),
         ) { page ->
-            val media = LibraryUpdateErrorMedia.entries[page]
+            val media = libraryUpdateErrorMediaDisplayOrder[page]
             val itemsForMedia = remember(state.items, media) {
                 state.items.filter { it.record.media == media }
             }
@@ -462,13 +525,13 @@ private fun LibraryUpdateErrorTabs(
         val tabs = remember(counts) {
             persistentListOf(
                 TabContent(
-                    titleRes = AYMR.strings.library_update_error_tab_manga,
-                    badgeNumber = counts[LibraryUpdateErrorMedia.Manga],
+                    titleRes = AYMR.strings.library_update_error_tab_anime,
+                    badgeNumber = counts[LibraryUpdateErrorMedia.Anime],
                     content = { _, _ -> },
                 ),
                 TabContent(
-                    titleRes = AYMR.strings.library_update_error_tab_anime,
-                    badgeNumber = counts[LibraryUpdateErrorMedia.Anime],
+                    titleRes = AYMR.strings.library_update_error_tab_manga,
+                    badgeNumber = counts[LibraryUpdateErrorMedia.Manga],
                     content = { _, _ -> },
                 ),
                 TabContent(
@@ -480,13 +543,13 @@ private fun LibraryUpdateErrorTabs(
         }
         AuroraTabRow(
             tabs = tabs,
-            selectedIndex = LibraryUpdateErrorMedia.entries.indexOf(selected),
-            onTabSelected = { index -> onTabSelected(LibraryUpdateErrorMedia.entries[index]) },
+            selectedIndex = libraryUpdateErrorMediaDisplayIndexOf(selected),
+            onTabSelected = { index -> onTabSelected(libraryUpdateErrorMediaDisplayOrder[index]) },
             scrollable = false,
         )
     } else {
-        PrimaryScrollableTabRow(selectedTabIndex = LibraryUpdateErrorMedia.entries.indexOf(selected)) {
-            LibraryUpdateErrorMedia.entries.forEach { media ->
+        PrimaryScrollableTabRow(selectedTabIndex = libraryUpdateErrorMediaDisplayIndexOf(selected)) {
+            libraryUpdateErrorMediaDisplayOrder.forEach { media ->
                 Tab(
                     selected = media == selected,
                     onClick = { onTabSelected(media) },
@@ -640,3 +703,13 @@ private fun LibraryUpdateErrorMedia.title(): String {
 }
 
 private fun Int?.orEmpty(): Int = this ?: 0
+
+private val libraryUpdateErrorMediaDisplayOrder = listOf(
+    LibraryUpdateErrorMedia.Anime,
+    LibraryUpdateErrorMedia.Manga,
+    LibraryUpdateErrorMedia.Novel,
+)
+
+private fun libraryUpdateErrorMediaDisplayIndexOf(media: LibraryUpdateErrorMedia): Int {
+    return libraryUpdateErrorMediaDisplayOrder.indexOf(media)
+}

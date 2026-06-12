@@ -5,6 +5,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.OneTimeWorkRequestBuilder
@@ -221,7 +222,15 @@ class NovelLibraryUpdateJob(
 
     private suspend fun addNovelToQueue(categoryId: Long) {
         val libraryNovels = getLibraryNovel.await()
-        val listToUpdate = if (categoryId != -999L) {
+        val targetEntryIds = inputData.getLongArray(KEY_ENTRY_IDS)
+            ?.takeIf { it.isNotEmpty() }
+            ?.toSet()
+
+        val listToUpdate = if (targetEntryIds != null) {
+            libraryNovels
+                .filter { it.novel.id in targetEntryIds }
+                .distinctBy { it.novel.id }
+        } else if (categoryId != -999L) {
             filterByCategoryId(libraryNovels, categoryId)
         } else {
             val categoriesToUpdate = libraryPreferences.novelUpdateCategories().get().map { it.toLong() }
@@ -515,6 +524,7 @@ class NovelLibraryUpdateJob(
         private const val WORK_NAME_AUTO = "NovelLibraryUpdate-auto"
         private const val WORK_NAME_MANUAL = "NovelLibraryUpdate-manual"
         private const val KEY_CATEGORY = "category"
+        private const val KEY_ENTRY_IDS = "entryIds"
         private const val GRACE_PERIOD_DAYS = 1L
         private const val ERROR_LOG_HELP_URL = "https://t.me/TadamiSupport"
 
@@ -527,14 +537,23 @@ class NovelLibraryUpdateJob(
         }
 
         fun startNow(context: Context, categoryId: Long? = null): Boolean {
+            val inputData = categoryId
+                ?.let { workDataOf(KEY_CATEGORY to it) }
+                ?: workDataOf()
+            return enqueueManualUpdate(context, inputData)
+        }
+
+        fun startNow(context: Context, entryIds: LongArray): Boolean {
+            if (entryIds.isEmpty()) return false
+            return enqueueManualUpdate(context, workDataOf(KEY_ENTRY_IDS to entryIds))
+        }
+
+        private fun enqueueManualUpdate(context: Context, inputData: Data): Boolean {
             val wm = context.workManager
             if (wm.isRunning(TAG)) {
                 return false
             }
 
-            val inputData = categoryId
-                ?.let { workDataOf(KEY_CATEGORY to it) }
-                ?: workDataOf()
             val request = OneTimeWorkRequestBuilder<NovelLibraryUpdateJob>()
                 .addTag(TAG)
                 .addTag(WORK_NAME_MANUAL)

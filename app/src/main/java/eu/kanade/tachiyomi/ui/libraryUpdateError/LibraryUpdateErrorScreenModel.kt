@@ -1,15 +1,21 @@
 package eu.kanade.tachiyomi.ui.libraryUpdateError
 
+import android.app.Application
 import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.core.util.addOrRemove
+import eu.kanade.tachiyomi.data.library.anime.AnimeLibraryUpdateJob
+import eu.kanade.tachiyomi.data.library.manga.MangaLibraryUpdateJob
+import eu.kanade.tachiyomi.data.library.novel.NovelLibraryUpdateJob
 import eu.kanade.tachiyomi.data.library.updateerror.LibraryUpdateErrorMedia
 import eu.kanade.tachiyomi.data.library.updateerror.LibraryUpdateErrorRecord
 import eu.kanade.tachiyomi.data.library.updateerror.LibraryUpdateErrorStore
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import tachiyomi.core.common.util.lang.launchIO
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 class LibraryUpdateErrorScreenModel : StateScreenModel<LibraryUpdateErrorScreenState>(LibraryUpdateErrorScreenState()) {
 
@@ -83,6 +89,24 @@ class LibraryUpdateErrorScreenModel : StateScreenModel<LibraryUpdateErrorScreenS
                     }
                 },
             )
+        }
+    }
+
+
+    fun retryVisibleErrors() {
+        val visibleItems = state.value.visibleItems
+        if (visibleItems.isEmpty()) return
+
+        val context = Injekt.get<Application>()
+        val entryIds = visibleItems
+            .map { it.record.entryId }
+            .distinct()
+            .toLongArray()
+
+        when (state.value.selectedMedia) {
+            LibraryUpdateErrorMedia.Manga -> MangaLibraryUpdateJob.startNow(context, entryIds)
+            LibraryUpdateErrorMedia.Anime -> AnimeLibraryUpdateJob.startNow(context, entryIds)
+            LibraryUpdateErrorMedia.Novel -> NovelLibraryUpdateJob.startNow(context, entryIds)
         }
     }
 
