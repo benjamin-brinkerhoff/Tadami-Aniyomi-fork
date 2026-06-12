@@ -73,6 +73,8 @@ import eu.kanade.presentation.library.components.LazyLibraryGrid
 import eu.kanade.presentation.library.components.PinnedBadge
 import eu.kanade.presentation.library.components.PinnedSectionHeader
 import eu.kanade.presentation.library.components.UnviewedBadge
+import eu.kanade.presentation.library.components.containsAtLeastMatches
+import eu.kanade.presentation.library.components.idsToHashSet
 import eu.kanade.presentation.library.components.resolveGlowContourCornerIndicatorState
 import eu.kanade.presentation.library.components.resolveGlowContourLibraryTextSpec
 import eu.kanade.presentation.library.novel.components.SeriesStackedCoverCard
@@ -165,25 +167,35 @@ fun NovelLibraryAuroraContent(
     val downloadedNovelIds = remember(items, showDownloadBadge, downloadCacheSignal) {
         if (!showDownloadBadge) return@remember emptySet()
 
-        items.asSequence()
-            .mapNotNull { item ->
-                val novel = item.coverNovel ?: return@mapNotNull null
-                item.id.takeIf { downloadCache.hasAnyDownloadedChapter(novel) }
+        buildSet(capacity = items.size) {
+            items.forEach { item ->
+                val novel = item.coverNovel ?: return@forEach
+                if (downloadCache.hasAnyDownloadedChapter(novel)) {
+                    add(item.id)
+                }
             }
-            .toSet()
+        }
     }
-    val sourceLanguageByNovelId = remember(items, showLanguageBadge) {
+    val sourceLanguageByNovelId = remember(items, showLanguageBadge, sourceManager) {
         if (!showLanguageBadge) return@remember emptyMap()
 
-        items.mapNotNull { item ->
-            val source = item.coverNovel?.source ?: return@mapNotNull null
-            item.id to sourceManager.getOrStub(source).lang
-        }.toMap()
+        val languageBySourceId = HashMap<Long, String>()
+        buildMap(capacity = items.size) {
+            items.forEach { item ->
+                val sourceId = item.coverNovel?.source ?: return@forEach
+                put(
+                    item.id,
+                    languageBySourceId.getOrPut(sourceId) {
+                        sourceManager.getOrStub(sourceId).lang
+                    },
+                )
+            }
+        }
     }
     val isSearchActive = searchQuery != null
-    val showPinnedSection = remember(items) { items.count { it.pinned } > 1 }
+    val showPinnedSection = remember(items) { items.containsAtLeastMatches(requiredCount = 2) { it.pinned } }
     val isSelectionMode = selection.isNotEmpty() && onToggleSelection != null
-    val selectedIds = remember(selection) { selection.map { it.id }.toHashSet() }
+    val selectedIds = remember(selection) { selection.idsToHashSet { it.id } }
     val onClickNovelItem: (NovelLibraryItem) -> Unit = { libraryItem ->
         if (isSelectionMode) {
             onToggleSelection(libraryItem)
@@ -302,7 +314,11 @@ fun NovelLibraryAuroraContent(
                     }
                 }
 
-                listItems(items, key = { it.id }) { item ->
+                listItems(
+                    items = items,
+                    key = { it.id },
+                    contentType = { "novel_library_aurora_list_item" },
+                ) { item ->
                     val badgeState = resolveNovelLibraryBadgeState(
                         item = item,
                         showDownloadBadge = showDownloadBadge,
@@ -384,7 +400,19 @@ fun NovelLibraryAuroraContent(
                     }
                 }
 
-                gridItems(items, key = { it.id }) { item ->
+                gridItems(
+                    items = items,
+                    key = { it.id },
+                    contentType = {
+                        when {
+                            displaySpec.useCompactGridEntryStyle && !useGlowContourCards -> {
+                                "novel_library_compact_grid_item"
+                            }
+                            displaySpec.showMetadata -> "novel_library_aurora_comfortable_grid_item"
+                            else -> "novel_library_aurora_cover_only_grid_item"
+                        }
+                    },
+                ) { item ->
                     val badgeState = resolveNovelLibraryBadgeState(
                         item = item,
                         showDownloadBadge = showDownloadBadge,
