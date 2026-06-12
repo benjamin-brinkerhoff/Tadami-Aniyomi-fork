@@ -13,12 +13,33 @@ data class MihonBackup(
     @ProtoNumber(101) var backupSources: List<BackupSource> = emptyList(),
     @ProtoNumber(104) var backupPreferences: List<BackupPreference> = emptyList(),
     @ProtoNumber(105) var backupSourcePreferences: List<BackupSourcePreferences> = emptyList(),
-    @ProtoNumber(106) val backupExtensions: List<BackupExtension> = emptyList(),
+    @ProtoNumber(106) var backupExtensionRepo: List<BackupExtensionRepos> = emptyList(),
 ) {
     fun toTadamiBackup(
         mangaSourceManager: MangaSourceManager,
         novelSourceManager: NovelSourceManager,
         animeSourceManager: AnimeSourceManager,
+    ): Backup {
+        return toTadamiBackup(
+            mangaSourceClassifier = { sourceId ->
+                mangaSourceManager.get(sourceId) != null ||
+                    mangaSourceManager.getStubSources().any { it.id == sourceId }
+            },
+            novelSourceClassifier = { sourceId ->
+                novelSourceManager.get(sourceId) != null ||
+                    novelSourceManager.getStubSources().any { it.id == sourceId }
+            },
+            animeSourceClassifier = { sourceId ->
+                animeSourceManager.get(sourceId) != null ||
+                    animeSourceManager.getStubSources().any { it.id == sourceId }
+            },
+        )
+    }
+
+    internal fun toTadamiBackup(
+        mangaSourceClassifier: (Long) -> Boolean,
+        novelSourceClassifier: (Long) -> Boolean,
+        animeSourceClassifier: (Long) -> Boolean,
     ): Backup {
         val mangas = mutableListOf<BackupManga>()
         val novels = mutableListOf<BackupNovel>()
@@ -26,16 +47,11 @@ data class MihonBackup(
 
         backupManga.forEach { entry ->
             val sourceId = entry.source
-            if (novelSourceManager.get(sourceId) != null ||
-                novelSourceManager.getStubSources().any { it.id == sourceId }
-            ) {
-                novels.add(entry.toBackupNovel())
-            } else if (animeSourceManager.get(sourceId) != null ||
-                animeSourceManager.getStubSources().any { it.id == sourceId }
-            ) {
-                animes.add(entry.toBackupAnime())
-            } else {
-                mangas.add(entry)
+            when {
+                novelSourceClassifier(sourceId) -> novels.add(entry.toBackupNovel())
+                animeSourceClassifier(sourceId) -> animes.add(entry.toBackupAnime())
+                mangaSourceClassifier(sourceId) -> mangas.add(entry)
+                else -> mangas.add(entry)
             }
         }
 
@@ -45,13 +61,13 @@ data class MihonBackup(
             backupSources = backupSources,
             backupPreferences = backupPreferences,
             backupSourcePreferences = backupSourcePreferences,
-            backupMangaExtensionRepo = emptyList(),
+            backupMangaExtensionRepo = backupExtensionRepo,
 
             isLegacy = false,
             backupAnime = animes,
             backupAnimeCategories = if (animes.isNotEmpty()) backupCategories else emptyList(),
             backupAnimeSources = animes.map { BackupAnimeSource(name = "", sourceId = it.source) },
-            backupExtensions = backupExtensions,
+            backupExtensions = emptyList(),
             backupAnimeExtensionRepo = emptyList(),
             backupCustomButton = emptyList(),
             backupNovelExtensionRepo = emptyList(),
@@ -60,6 +76,17 @@ data class MihonBackup(
             backupNovelSources = novels.map { BackupSource(name = "", sourceId = it.source) },
         )
     }
+}
+
+internal fun Backup.toMihonBackup(): MihonBackup {
+    return MihonBackup(
+        backupManga = backupManga + backupNovel.map { it.toBackupManga() },
+        backupCategories = backupCategories,
+        backupSources = backupSources,
+        backupPreferences = backupPreferences,
+        backupSourcePreferences = backupSourcePreferences,
+        backupExtensionRepo = backupMangaExtensionRepo,
+    )
 }
 
 fun BackupManga.toBackupNovel(): BackupNovel {
@@ -79,6 +106,33 @@ fun BackupManga.toBackupNovel(): BackupNovel {
         favorite = this.favorite,
         chapterFlags = this.chapterFlags,
         viewerFlags = this.viewer_flags ?: this.viewer,
+        history = this.history,
+        updateStrategy = this.updateStrategy,
+        lastModifiedAt = this.lastModifiedAt,
+        favoriteModifiedAt = this.favoriteModifiedAt,
+        excludedScanlators = this.excludedScanlators,
+        version = this.version,
+    )
+}
+
+fun BackupNovel.toBackupManga(): BackupManga {
+    return BackupManga(
+        source = this.source,
+        url = this.url,
+        title = this.title,
+        artist = null,
+        author = this.author,
+        description = this.description,
+        notes = this.notes.orEmpty(),
+        genre = this.genre,
+        status = this.status,
+        thumbnailUrl = this.thumbnailUrl,
+        dateAdded = this.dateAdded,
+        chapters = this.chapters,
+        categories = this.categories,
+        favorite = this.favorite,
+        chapterFlags = this.chapterFlags,
+        viewer_flags = this.viewerFlags,
         history = this.history,
         updateStrategy = this.updateStrategy,
         lastModifiedAt = this.lastModifiedAt,
