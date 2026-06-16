@@ -37,6 +37,7 @@ import eu.kanade.presentation.theme.AuroraTheme
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import kotlin.math.pow
 
 @Composable
 fun AuroraBackground(
@@ -437,8 +438,7 @@ private fun AuroraSpecialBackgroundCanvas(
     Canvas(modifier = Modifier.fillMaxSize()) {
         if (styleKey == "neon_orbit" ||
             styleKey == "trinity_constellation" ||
-            styleKey == "deep_space_archive" ||
-            styleKey == "shadow_realm"
+            styleKey == "deep_space_archive"
         ) {
             FLOATING_STARS.forEach { star ->
                 val alpha =
@@ -775,100 +775,308 @@ private fun AuroraSpecialBackgroundCanvas(
                 }
             }
             "shadow_realm" -> {
-                val center = Offset(size.width * 0.5f, size.height * 0.42f)
+                val center = Offset(size.width * 0.5f, size.height * 0.50f)
+                val minDim = size.minDimension
 
-                // 1. Abyss/Warp background distortion (expanding and contracting)
-                val warpRadius = size.maxDimension * (0.6f + 0.08f * kotlin.math.sin(elapsedSeconds * 0.8f))
-                drawRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            colors.gradientPurple.copy(alpha = 0.16f * pulse),
-                            colors.accent.copy(alpha = 0.05f),
-                            Color.Transparent,
-                        ),
-                        center = center,
-                        radius = warpRadius,
-                    ),
-                )
+                // PRESET_V4 selected in the HTML prototype:
+                // { hole=0.71, disk=1.74, lens=1.08, thick=0.29, bright=0.83,
+                //   ring=0.73, particles=44, particleSpeed=0.06, stars=0.9, pull=0.57, speed=0.88 }
+                val holeRadius = minDim * 0.112f
+                val diskRadius = minDim * 0.285f
+                val lensHeight = holeRadius * 1.18f * 1.35f
+                val diskThickness = holeRadius * 0.34f
+                val diskBrightness = 0.96f
+                val ringStrength = 0.92f
+                val particleCount = 52
+                val particleSpeed = 0.06f
+                val starDensity = 1.85f
+                val gravityPull = 0.57f
+                val realmSpeed = 0.88f
+                val time = if (animate) elapsedSeconds else 0f
 
-                // 2. Logarithmic spirals wrapping into the center
-                val numSpirals = 3
-                val startAngle = orbitSpin * 0.3f
-                repeat(numSpirals) { spiralIdx ->
-                    val angleOffset = spiralIdx * (2f * Math.PI.toFloat() / numSpirals)
-                    var prevX = 0f
-                    var prevY = 0f
-                    val numSegments = 32
-                    repeat(numSegments) { step ->
-                        val t = step.toFloat() / (numSegments - 1)
-                        val r = size.minDimension * 0.52f * Math.pow(t.toDouble(), 1.5).toFloat()
-                        val theta = startAngle + angleOffset + t * 4f * Math.PI.toFloat()
-                        val px = center.x + r * kotlin.math.cos(theta)
-                        val py = center.y + r * kotlin.math.sin(theta)
+                val voidBlack = Color.Black
+                val photonWhite = Color(0xFFEAFDFF)
+                val ghostLight = colors.glowEffect
+                val shadowViolet = colors.gradientPurple
+                val realmAccent = colors.accent
 
-                        if (step > 0) {
-                            val alphaFactor = (4f * t * (1f - t)).coerceIn(0f, 1f)
-                            val spiralColor = colors.accent.copy(alpha = 0.08f * alphaFactor)
-                            drawLine(
-                                color = spiralColor,
-                                start = Offset(prevX, prevY),
-                                end = Offset(px, py),
-                                strokeWidth = (1f + (1f - t) * 1.5f).dp.toPx(),
-                            )
-                        }
-                        prevX = px
-                        prevY = py
+                fun srHash(seed: Float): Float {
+                    return kotlin.math.abs(
+                        kotlin.math.sin(seed * 127.1f + 311.7f) * 43758.5453f,
+                    ) % 1f
+                }
+
+                fun srMix(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+                fun shadowRealmColor(t: Float, alpha: Float): Color {
+                    return when {
+                        t < 0.18f -> photonWhite.copy(alpha = alpha)
+                        t < 0.52f -> ghostLight.copy(alpha = alpha)
+                        t < 0.78f -> shadowViolet.copy(alpha = alpha)
+                        else -> realmAccent.copy(alpha = alpha)
                     }
                 }
 
-                // 3. Swirling dark particles spiraling inward
-                val numSwirlingParticles = 12
-                repeat(numSwirlingParticles) { i ->
-                    val t = floatMod(i * 0.083f - elapsedSeconds * 0.04f, 1.0f)
-                    val r = size.minDimension * 0.52f * Math.pow(t.toDouble(), 1.5).toFloat()
-                    val theta = startAngle + (i * 1.7f) + t * 4f * Math.PI.toFloat()
-                    val px = center.x + r * kotlin.math.cos(theta)
-                    val py = center.y + r * kotlin.math.sin(theta)
-
-                    val alpha = 0.18f * kotlin.math.sin(t * Math.PI.toFloat()).coerceIn(0f, 1f)
-                    val radius = (1f + (1f - t) * 1.6f).dp.toPx()
-
-                    drawCircle(
-                        color = colors.glowEffect.copy(alpha = alpha),
-                        radius = radius,
-                        center = Offset(px, py),
-                    )
+                fun makeLensPath(radius: Float, height: Float, sign: Float): Path {
+                    return Path().apply {
+                        moveTo(center.x - radius, center.y)
+                        cubicTo(
+                            center.x - radius * 0.62f,
+                            center.y + sign * height * 0.95f,
+                            center.x - radius * 0.34f,
+                            center.y + sign * height * 1.12f,
+                            center.x,
+                            center.y + sign * height * 1.08f,
+                        )
+                        cubicTo(
+                            center.x + radius * 0.34f,
+                            center.y + sign * height * 1.12f,
+                            center.x + radius * 0.62f,
+                            center.y + sign * height * 0.95f,
+                            center.x + radius,
+                            center.y,
+                        )
+                    }
                 }
 
-                // 4. Rare and smooth radial shockwaves/ripples
-                val ripplePeriod = 4.5f
-                val rippleTime = elapsedSeconds % ripplePeriod
-                val rippleProgress = rippleTime / ripplePeriod
-                if (rippleProgress < 0.6f) {
-                    val visibility = kotlin.math.sin((rippleProgress / 0.6f) * Math.PI.toFloat())
-                    val rippleRadius = size.minDimension * 0.6f * rippleProgress
-                    drawCircle(
-                        color = colors.gradientPurple.copy(alpha = 0.04f * visibility),
-                        radius = rippleRadius,
-                        center = center,
-                        style = Stroke(width = (1.5f + (1f - rippleProgress) * 2f).dp.toPx()),
-                    )
-                }
-
-                // 5. Vector-based glowing singularity core in the center of the vortex
-                val singularityRadius = size.minDimension * 0.05f * pulse
+                // 1) Shadow Realm void glow: nearly black, with a faint violet/cyan gravitational aura.
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.glowEffect.copy(alpha = 0.28f * pulse),
-                            colors.gradientPurple.copy(alpha = 0.12f),
+                            ghostLight.copy(alpha = 0.18f * pulse),
+                            shadowViolet.copy(alpha = 0.085f),
+                            realmAccent.copy(alpha = 0.040f),
                             Color.Transparent,
                         ),
                         center = center,
-                        radius = singularityRadius * 2.8f,
+                        radius = holeRadius * 5.2f,
                     ),
-                    radius = singularityRadius * 2.8f,
+                    radius = holeRadius * 5.2f,
                     center = center,
+                )
+
+                // 2) Background stars: 2D orbital swirl around the hole, opposite to local particles.
+                val backgroundStarCount = (42 * starDensity).toInt().coerceAtLeast(24)
+                repeat(backgroundStarCount) { i ->
+                    val seed = i + 1f
+                    val baseRadius = minDim * srMix(0.18f, 0.78f, kotlin.math.sqrt(srHash(seed * 1.91f)))
+                    val theta0 = srHash(seed * 3.17f) * 2f * Math.PI.toFloat()
+                    val near = (holeRadius * 3.6f / (baseRadius + 1f)).coerceIn(0f, 1f)
+                    val omega = (0.025f + near * 0.18f) * realmSpeed * gravityPull
+                    val theta = theta0 + time * omega
+                    val breathe = 1f - gravityPull * near * 0.08f *
+                        (0.6f + 0.4f * kotlin.math.sin(time * 0.6f + seed))
+                    val x = center.x + kotlin.math.cos(theta) * baseRadius * breathe * (1f + near * 0.18f * gravityPull)
+                    val y = center.y + kotlin.math.sin(theta) * baseRadius * breathe * (1f + near * 0.18f * gravityPull)
+                    val starAlpha = (0.08f + 0.16f * srHash(seed * 5.4f)) * (0.75f + near * 0.65f)
+                    val starColor = when {
+                        i % 11 == 0 -> realmAccent.copy(alpha = starAlpha * 0.65f)
+                        i % 5 == 0 -> shadowViolet.copy(alpha = starAlpha * 0.8f)
+                        else -> ghostLight.copy(alpha = starAlpha)
+                    }
+
+                    withTransform({ rotate(theta * 57.29578f + 90f, Offset(x, y)) }) {
+                        drawOval(
+                            color = starColor,
+                            topLeft = Offset(x - (0.9f + near * 2.2f).dp.toPx(), y - 0.45f.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(
+                                width = (2.3f + near * 5.2f).dp.toPx(),
+                                height = 1.05f.dp.toPx(),
+                            ),
+                        )
+                    }
+                }
+
+                // 3) Continuous lensed upper and lower arcs. No segmented rings.
+                val upperArcBrush = Brush.linearGradient(
+                    colors = listOf(
+                        realmAccent.copy(alpha = 0.02f),
+                        shadowViolet.copy(alpha = 0.12f * diskBrightness),
+                        ghostLight.copy(alpha = 0.24f * diskBrightness),
+                        photonWhite.copy(alpha = 0.34f * diskBrightness),
+                        ghostLight.copy(alpha = 0.22f * diskBrightness),
+                        shadowViolet.copy(alpha = 0.12f * diskBrightness),
+                        realmAccent.copy(alpha = 0.03f),
+                    ),
+                    start = Offset(center.x - diskRadius, center.y - lensHeight),
+                    end = Offset(center.x + diskRadius, center.y - lensHeight),
+                )
+                val lowerArcBrush = Brush.linearGradient(
+                    colors = listOf(
+                        realmAccent.copy(alpha = 0.015f),
+                        shadowViolet.copy(alpha = 0.055f * diskBrightness),
+                        ghostLight.copy(alpha = 0.12f * diskBrightness),
+                        shadowViolet.copy(alpha = 0.06f * diskBrightness),
+                        realmAccent.copy(alpha = 0.018f),
+                    ),
+                    start = Offset(center.x - diskRadius * 0.78f, center.y + lensHeight * 0.45f),
+                    end = Offset(center.x + diskRadius * 0.78f, center.y + lensHeight * 0.45f),
+                )
+
+                repeat(8) { layer ->
+                    val t = layer / 7f
+                    val radius = diskRadius * srMix(0.58f, 1.02f, t)
+                    val height = lensHeight * srMix(0.46f, 1.02f, t)
+                    val strokeWidth = diskThickness * srMix(5.2f, 0.9f, t)
+                    val alpha = diskBrightness * srMix(0.13f, 0.045f, t)
+                    drawPath(
+                        path = makeLensPath(radius, height, -1f),
+                        brush = upperArcBrush,
+                        alpha = alpha,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                    )
+                }
+
+                repeat(5) { layer ->
+                    val t = layer / 4f
+                    val radius = diskRadius * srMix(0.48f, 0.78f, t)
+                    val height = lensHeight * srMix(0.22f, 0.50f, t)
+                    val strokeWidth = diskThickness * srMix(3.4f, 0.8f, t)
+                    val alpha = diskBrightness * srMix(0.07f, 0.025f, t)
+                    drawPath(
+                        path = makeLensPath(radius, height, 1f),
+                        brush = lowerArcBrush,
+                        alpha = alpha,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                    )
+                }
+
+                // 4) Thin continuous accretion plane through the center.
+                repeat(18) { i ->
+                    val yNorm = i / 17f - 0.5f
+                    val alphaShape = (1f - kotlin.math.abs(yNorm) / 0.9f).coerceIn(0f, 1f)
+                    if (alphaShape > 0f) {
+                        val y = center.y + yNorm * diskThickness * 1.55f
+                        val halfWidth = diskRadius * srMix(1.15f, 1.9f, alphaShape.pow(0.25f))
+                        val diskBrush = Brush.linearGradient(
+                            colors = listOf(
+                                realmAccent.copy(alpha = 0f),
+                                realmAccent.copy(alpha = 0.05f * diskBrightness * alphaShape),
+                                ghostLight.copy(alpha = 0.15f * diskBrightness * alphaShape),
+                                photonWhite.copy(alpha = 0.42f * diskBrightness * alphaShape),
+                                ghostLight.copy(alpha = 0.16f * diskBrightness * alphaShape),
+                                realmAccent.copy(alpha = 0.05f * diskBrightness * alphaShape),
+                                realmAccent.copy(alpha = 0f),
+                            ),
+                            start = Offset(center.x - halfWidth, y),
+                            end = Offset(center.x + halfWidth, y),
+                        )
+                        val wobble = kotlin.math.sin(i * 0.7f + time * realmSpeed * 0.9f) * 0.55f.dp.toPx()
+                        drawLine(
+                            brush = diskBrush,
+                            start = Offset(center.x - halfWidth, y + wobble),
+                            end = Offset(center.x + halfWidth, y - wobble),
+                            strokeWidth = (0.7f + 1.5f * alphaShape).dp.toPx(),
+                            cap = StrokeCap.Round,
+                        )
+                    }
+                }
+
+                // 5) Local particles: true 2D dots orbiting the photon ring, opposite to background stars.
+                repeat(particleCount) { i ->
+                    val seed = i + 1f
+                    val band = srHash(seed * 9.1f)
+                    val orbitRadius = holeRadius * srMix(1.18f, 2.05f, band.pow(0.85f))
+                    val near = (1f - (orbitRadius - holeRadius * 1.18f) / (holeRadius * 0.95f)).coerceIn(0f, 1f)
+                    val omega = (0.85f + near * 2.7f) * particleSpeed * gravityPull
+                    val theta = srHash(seed * 3.7f) * 2f * Math.PI.toFloat() - time * omega
+                    val x = center.x + orbitRadius * kotlin.math.cos(theta)
+                    val y = center.y + orbitRadius * kotlin.math.sin(theta)
+                    if (kotlin.math.hypot(x - center.x, y - center.y) > holeRadius * 1.08f) {
+                        val depth = 0.72f + 0.28f * kotlin.math.sin(theta)
+                        val alpha = (0.20f + 0.42f * near) * gravityPull * depth
+                        val particleColor = when {
+                            i % 9 == 0 -> realmAccent.copy(alpha = alpha * 0.72f)
+                            i % 4 == 0 -> shadowViolet.copy(alpha = alpha * 0.82f)
+                            else -> ghostLight.copy(alpha = alpha)
+                        }
+                        val dotRadius = (0.65f + near * 0.75f + srHash(seed * 5.3f) * 0.55f).dp.toPx()
+                        drawCircle(
+                            color = particleColor.copy(alpha = particleColor.alpha * 0.28f),
+                            radius = dotRadius * 2.6f,
+                            center = Offset(x, y),
+                        )
+                        drawCircle(
+                            color = particleColor,
+                            radius = dotRadius,
+                            center = Offset(x, y),
+                        )
+                        drawCircle(
+                            color = photonWhite.copy(alpha = alpha * 0.35f),
+                            radius = dotRadius * 0.38f,
+                            center = Offset(x, y),
+                        )
+                    }
+                }
+
+                // 6) Event horizon: real black center with soft shadow edge.
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            voidBlack,
+                            voidBlack,
+                            voidBlack.copy(alpha = 0.92f),
+                            Color.Transparent,
+                        ),
+                        center = Offset(center.x - holeRadius * 0.18f, center.y - holeRadius * 0.08f),
+                        radius = holeRadius * 1.34f,
+                    ),
+                    radius = holeRadius * 1.34f,
+                    center = center,
+                )
+                drawCircle(
+                    color = voidBlack,
+                    radius = holeRadius * 0.91f,
+                    center = center,
+                )
+
+                // 7) Continuous photon ring + secondary rim.
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            photonWhite.copy(alpha = 0.34f * ringStrength * pulse),
+                            ghostLight.copy(alpha = 0.22f * ringStrength),
+                            shadowViolet.copy(alpha = 0.10f * ringStrength),
+                            Color.Transparent,
+                        ),
+                        center = center,
+                        radius = holeRadius * 1.36f,
+                    ),
+                    radius = holeRadius * 1.36f,
+                    center = center,
+                )
+                drawCircle(
+                    color = photonWhite.copy(alpha = 0.55f * ringStrength * pulse),
+                    radius = holeRadius * 1.045f,
+                    center = center,
+                    style = Stroke(width = 1.25f.dp.toPx()),
+                )
+                drawCircle(
+                    color = ghostLight.copy(alpha = 0.26f * ringStrength),
+                    radius = holeRadius * 1.17f,
+                    center = center,
+                    style = Stroke(width = 0.85f.dp.toPx()),
+                )
+
+                // 8) A very thin front disk glint, so the disk reads as passing across the horizon.
+                val frontHalfWidth = diskRadius * 1.75f
+                drawLine(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            ghostLight.copy(alpha = 0.06f * diskBrightness),
+                            photonWhite.copy(alpha = 0.13f * diskBrightness),
+                            ghostLight.copy(alpha = 0.06f * diskBrightness),
+                            Color.Transparent,
+                        ),
+                        start = Offset(center.x - frontHalfWidth, center.y),
+                        end = Offset(center.x + frontHalfWidth, center.y),
+                    ),
+                    start = Offset(center.x - frontHalfWidth, center.y),
+                    end = Offset(center.x + frontHalfWidth, center.y),
+                    strokeWidth = 1.dp.toPx(),
+                    cap = StrokeCap.Round,
                 )
             }
             "neon_orbit" -> {
