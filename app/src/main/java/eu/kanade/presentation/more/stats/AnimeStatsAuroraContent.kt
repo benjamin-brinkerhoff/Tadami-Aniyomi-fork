@@ -460,8 +460,11 @@ private fun ConcentricProgressRings(
         animationTriggered = true
     }
 
+    // ponytail: increased size to 88.dp and added end padding to shift left for visual balance
     Box(
-        modifier = modifier.size(72.dp),
+        modifier = modifier
+            .padding(end = 12.dp)
+            .size(88.dp),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -502,13 +505,13 @@ private fun ConcentricProgressRings(
             Text(
                 text = "${(animatedWatched * 100).toInt()}%",
                 color = colors.textPrimary,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = label.lowercase(),
                 color = colors.textSecondary,
-                fontSize = 8.sp,
+                fontSize = 9.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
