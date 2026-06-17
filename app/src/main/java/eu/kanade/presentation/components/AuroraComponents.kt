@@ -440,17 +440,6 @@ private fun AuroraSpecialBackgroundCanvas(
     }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
-        if (styleKey == "neon_orbit") {
-            FLOATING_STARS.forEach { star ->
-                val alpha =
-                    0.04f + 0.06f * kotlin.math.abs(kotlin.math.sin(elapsedSeconds * star.pulseSpeed + star.phase))
-                drawCircle(
-                    color = Color.White.copy(alpha = alpha),
-                    radius = star.size.dp.toPx(),
-                    center = Offset(star.xFraction * size.width, star.yFraction * size.height),
-                )
-            }
-        }
 
         when (styleKey) {
             "petal_storm" -> {
@@ -1169,7 +1158,10 @@ private fun AuroraSpecialBackgroundCanvas(
                 val realmSpeed = 0.88f
                 val time = if (animate) elapsedSeconds else 0f
 
-                val voidBlack = Color.Black
+                val voidBlack = if (colors.isDark) Color.Black else Color(0xFF251E35)
+                val horizonCoreAlpha = if (colors.isDark) 1f else 0.34f
+                val horizonEdgeAlpha = if (colors.isDark) 0.92f else 0.18f
+                val lightThemeRealmBoost = if (colors.isDark) 1f else 1.55f
                 val photonWhite = Color(0xFFEAFDFF)
                 val ghostLight = colors.glowEffect
                 val shadowViolet = colors.gradientPurple
@@ -1218,9 +1210,9 @@ private fun AuroraSpecialBackgroundCanvas(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            ghostLight.copy(alpha = 0.18f * pulse),
-                            shadowViolet.copy(alpha = 0.085f),
-                            realmAccent.copy(alpha = 0.040f),
+                            ghostLight.copy(alpha = 0.18f * pulse * lightThemeRealmBoost),
+                            shadowViolet.copy(alpha = 0.085f * lightThemeRealmBoost),
+                            realmAccent.copy(alpha = 0.040f * lightThemeRealmBoost),
                             Color.Transparent,
                         ),
                         center = center,
@@ -1388,9 +1380,9 @@ private fun AuroraSpecialBackgroundCanvas(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            voidBlack,
-                            voidBlack,
-                            voidBlack.copy(alpha = 0.92f),
+                            voidBlack.copy(alpha = horizonCoreAlpha),
+                            voidBlack.copy(alpha = horizonCoreAlpha),
+                            voidBlack.copy(alpha = horizonEdgeAlpha),
                             Color.Transparent,
                         ),
                         center = Offset(center.x - holeRadius * 0.18f, center.y - holeRadius * 0.08f),
@@ -1400,7 +1392,7 @@ private fun AuroraSpecialBackgroundCanvas(
                     center = center,
                 )
                 drawCircle(
-                    color = voidBlack,
+                    color = voidBlack.copy(alpha = horizonCoreAlpha),
                     radius = holeRadius * 0.91f,
                     center = center,
                 )
@@ -1410,9 +1402,9 @@ private fun AuroraSpecialBackgroundCanvas(
                     brush = Brush.radialGradient(
                         colors = listOf(
                             Color.Transparent,
-                            photonWhite.copy(alpha = 0.34f * ringStrength * pulse),
-                            ghostLight.copy(alpha = 0.22f * ringStrength),
-                            shadowViolet.copy(alpha = 0.10f * ringStrength),
+                            photonWhite.copy(alpha = 0.34f * ringStrength * pulse * lightThemeRealmBoost),
+                            ghostLight.copy(alpha = 0.22f * ringStrength * lightThemeRealmBoost),
+                            shadowViolet.copy(alpha = 0.10f * ringStrength * lightThemeRealmBoost),
                             Color.Transparent,
                         ),
                         center = center,
@@ -1422,13 +1414,13 @@ private fun AuroraSpecialBackgroundCanvas(
                     center = center,
                 )
                 drawCircle(
-                    color = photonWhite.copy(alpha = 0.55f * ringStrength * pulse),
+                    color = photonWhite.copy(alpha = 0.55f * ringStrength * pulse * lightThemeRealmBoost),
                     radius = holeRadius * 1.045f,
                     center = center,
                     style = Stroke(width = 1.25f.dp.toPx()),
                 )
                 drawCircle(
-                    color = ghostLight.copy(alpha = 0.26f * ringStrength),
+                    color = ghostLight.copy(alpha = 0.26f * ringStrength * lightThemeRealmBoost),
                     radius = holeRadius * 1.17f,
                     center = center,
                     style = Stroke(width = 0.85f.dp.toPx()),
@@ -1455,220 +1447,341 @@ private fun AuroraSpecialBackgroundCanvas(
                 )
             }
             "neon_orbit" -> {
-                val ringColors = listOf(
-                    Color(0xFF49E6FF),
-                    Color(0xFF9B8CFF),
-                    colors.accent,
+                val center = Offset(size.width * 0.5f, size.height * 0.5f)
+                val minDim = size.minDimension
+                val time = if (animate) elapsedSeconds else 0f
+
+                // NEON_DYSON_V1 preset from the approved HTML prototype.
+                val ringsCount = 8
+                val sphereScale = 0.90f
+                val spinSpeed = 0.11f
+                val packetDensity = 0.19f
+                val dataSpeed = 0.53f * 0.35f // 65% slower packet motion.
+                val cameraPreset = 0.45f
+                val coreSize = 0.93f
+                val coreGlow = if (colors.isDark) 0.62f else 0.50f
+                val glowStrength = if (colors.isDark) 0.55f else 0.74f
+                val accentStrength = 0.57f
+                val themeLineBoost = if (colors.isDark) 1f else 2.05f
+                val themePacketBoost = if (colors.isDark) 1f else 1.45f
+                val themeCoreInkAlpha = if (colors.isDark) 0.78f else 0.22f
+
+                val cyan = Color(0xFF49E6FF)
+                val purple = Color(0xFF9B8CFF)
+                val gold = Color(0xFFFFD36E)
+                val pink = Color(0xFFFF5BD0)
+                val white = Color(0xFFEAFDFF)
+                val accentColor = colors.accent
+
+                data class NeonVec3(val x: Float, val y: Float, val z: Float)
+                data class NeonProjected(val x: Float, val y: Float, val p: Float)
+                data class NeonRingSpec(
+                    val pitchBase: Float,
+                    val yawBase: Float,
+                    val rollBase: Float,
+                    val spinPitch: Float,
+                    val spinYaw: Float,
+                    val radiusFraction: Float,
+                    val color: Color,
+                    val seed: Float,
                 )
+                data class NeonSegment(
+                    val p1: NeonVec3,
+                    val p2: NeonVec3,
+                    val z: Float,
+                    val color: Color,
+                    val packet: Boolean,
+                    val alphaMod: Float,
+                    val widthMod: Float,
+                )
+                data class NeonPacket(
+                    val point: NeonVec3,
+                    val color: Color,
+                    val z: Float,
+                    val sizeMod: Float,
+                )
+
+                fun neonHash(seed: Float): Float {
+                    return kotlin.math.abs(kotlin.math.sin(seed * 127.1f + 311.7f) * 43758.5453f) % 1f
+                }
+
+                fun neonBlend(a: Color, b: Color, t: Float): Color {
+                    val clamped = t.coerceIn(0f, 1f)
+                    val inv = 1f - clamped
+                    return Color(
+                        red = a.red * inv + b.red * clamped,
+                        green = a.green * inv + b.green * clamped,
+                        blue = a.blue * inv + b.blue * clamped,
+                        alpha = a.alpha * inv + b.alpha * clamped,
+                    )
+                }
+
+                fun neonRotateX(point: NeonVec3, angle: Float): NeonVec3 {
+                    val c = kotlin.math.cos(angle)
+                    val s2 = kotlin.math.sin(angle)
+                    return NeonVec3(point.x, point.y * c - point.z * s2, point.y * s2 + point.z * c)
+                }
+
+                fun neonRotateY(point: NeonVec3, angle: Float): NeonVec3 {
+                    val c = kotlin.math.cos(angle)
+                    val s2 = kotlin.math.sin(angle)
+                    return NeonVec3(point.x * c - point.z * s2, point.y, point.x * s2 + point.z * c)
+                }
+
+                fun neonRotateZ(point: NeonVec3, angle: Float): NeonVec3 {
+                    val c = kotlin.math.cos(angle)
+                    val s2 = kotlin.math.sin(angle)
+                    return NeonVec3(point.x * c - point.y * s2, point.x * s2 + point.y * c, point.z)
+                }
+
+                fun neonOrient(point: NeonVec3, pitch: Float, yaw: Float, roll: Float): NeonVec3 {
+                    return neonRotateY(neonRotateX(neonRotateZ(point, roll), pitch), yaw)
+                }
+
+                val scale = minDim * 0.40f * sphereScale
+                val camDist = cameraPreset * 3f + 1f
+
+                fun neonProject(point: NeonVec3): NeonProjected {
+                    val cameraScale = camDist * scale
+                    val cz = (point.z + cameraScale).coerceAtLeast(0.01f)
+                    val persp = cameraScale / cz
+                    return NeonProjected(
+                        x = center.x + point.x * persp,
+                        y = center.y - point.y * persp,
+                        p = persp,
+                    )
+                }
+
+                fun neonRingColor(seed: Float): Color {
+                    val colorSeed = neonHash(seed * 7f)
+                    val base = when {
+                        colorSeed > 0.90f -> pink
+                        colorSeed > 0.75f -> gold
+                        colorSeed > 0.40f -> purple
+                        else -> cyan
+                    }
+                    return when (base) {
+                        gold -> neonBlend(gold, accentColor, accentStrength * 0.42f)
+                        pink -> neonBlend(pink, accentColor, accentStrength * 0.24f)
+                        else -> base
+                    }
+                }
+
+                fun neonPacketColor(seed: Float): Color {
+                    val orbitIndex = (seed / 17.3f).toInt() % 4
+                    return when (orbitIndex) {
+                        0 -> neonBlend(accentColor, white, 0.14f)
+                        1 -> neonBlend(cyan, accentColor, 0.10f)
+                        2 -> neonBlend(purple, white, 0.08f)
+                        else -> neonBlend(gold, accentColor, 0.16f)
+                    }
+                }
+
+                val rings = List(ringsCount) { i ->
+                    val seed = i * 17.3f
+                    NeonRingSpec(
+                        pitchBase = neonHash(seed) * Math.PI.toFloat() * 2f,
+                        yawBase = neonHash(seed * 2f) * Math.PI.toFloat() * 2f,
+                        rollBase = neonHash(seed * 3f) * Math.PI.toFloat() * 2f,
+                        spinPitch = (neonHash(seed * 5f) - 0.5f) * 1.5f,
+                        spinYaw = (neonHash(seed * 6f) - 0.5f) * 1.5f,
+                        radiusFraction = 0.60f + neonHash(seed * 4f) * 0.60f,
+                        color = neonRingColor(seed),
+                        seed = seed,
+                    )
+                }
 
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF9B8CFF).copy(alpha = 0.02f * pulse), Color.Transparent),
-                        center = Offset(size.width * 0.85f, size.height * 0.15f),
-                        radius = size.minDimension * 0.8f,
+                        colors = listOf(
+                            purple.copy(alpha = 0.05f * glowStrength * themeLineBoost),
+                            cyan.copy(alpha = 0.02f * glowStrength * themeLineBoost),
+                            Color.Transparent,
+                        ),
+                        center = center,
+                        radius = scale * 1.20f,
                     ),
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(colors.accent.copy(alpha = 0.02f * pulse), Color.Transparent),
-                        center = Offset(size.width * 0.15f, size.height * 0.85f),
-                        radius = size.minDimension * 0.8f,
-                    ),
+                    radius = scale * 1.20f,
+                    center = center,
                 )
 
-                val center = Offset(size.width * 0.5f, size.height * 0.45f)
-                val strokeEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
+                val segments = mutableListOf<NeonSegment>()
+                val packets = mutableListOf<NeonPacket>()
+                val steps = 144
+                rings.forEach { ring ->
+                    val ringTime = time * spinSpeed
+                    val pitchNow = ring.pitchBase + ringTime * ring.spinPitch
+                    val yawNow = ring.yawBase + ringTime * ring.spinYaw
+                    val rollNow = ring.rollBase
+                    val ringRadius = ring.radiusFraction * scale
 
-                for (i in 0..2) {
-                    val baseRadius = size.minDimension * (0.20f + i * 0.09f)
+                    val points = List(steps) { j ->
+                        val theta = (j / steps.toFloat()) * Math.PI.toFloat() * 2f
+                        neonOrient(
+                            NeonVec3(kotlin.math.cos(theta) * ringRadius, kotlin.math.sin(theta) * ringRadius, 0f),
+                            pitchNow,
+                            yawNow,
+                            rollNow,
+                        )
+                    }
+
+                    repeat(steps) { j ->
+                        val a = points[j]
+                        val b = points[(j + 1) % steps]
+                        segments.add(
+                            NeonSegment(
+                                p1 = a,
+                                p2 = b,
+                                z = (a.z + b.z) * 0.5f,
+                                color = ring.color,
+                                packet = false,
+                                alphaMod = 1f,
+                                widthMod = 1f,
+                            ),
+                        )
+                    }
+
+                    val packetCount = (packetDensity * 15f * ring.radiusFraction).toInt().coerceAtLeast(1)
+                    repeat(packetCount) { k ->
+                        val pSeed = ring.seed + k * 11.1f
+                        var packetSpeed = (0.5f + neonHash(pSeed) * 1.5f) * dataSpeed
+                        if (neonHash(pSeed * 2f) > 0.5f) packetSpeed *= -1f
+                        var currentTheta = (neonHash(pSeed * 3f) * Math.PI.toFloat() * 2f + time * packetSpeed) % (Math.PI.toFloat() * 2f)
+                        if (currentTheta < 0f) currentTheta += Math.PI.toFloat() * 2f
+                        val packetPoint = neonOrient(
+                            NeonVec3(kotlin.math.cos(currentTheta) * ringRadius, kotlin.math.sin(currentTheta) * ringRadius, 0f),
+                            pitchNow,
+                            yawNow,
+                            rollNow,
+                        )
+                        packets.add(
+                            NeonPacket(
+                                point = packetPoint,
+                                color = neonPacketColor(ring.seed),
+                                z = packetPoint.z,
+                                sizeMod = 0.82f + neonHash(pSeed * 4f) * 0.36f,
+                            ),
+                        )
+                    }
+                }
+                segments.sortBy { it.z }
+                packets.sortBy { it.z }
+
+                fun drawNeonSegment(segment: NeonSegment) {
+                    val p1 = neonProject(segment.p1)
+                    val p2 = neonProject(segment.p2)
+                    val pMid = (p1.p + p2.p) * 0.5f
+                    val width = pMid * segment.widthMod
+                    val depthAlpha = ((pMid - 0.3f) * 1.2f).coerceIn(0.05f, 1f)
+                    val alpha = depthAlpha * glowStrength * segment.alphaMod * 0.12f * themeLineBoost
+                    if (alpha < 0.01f) return
+                    drawLine(
+                        color = segment.color.copy(alpha = alpha.coerceIn(0f, 1f)),
+                        start = Offset(p1.x, p1.y),
+                        end = Offset(p2.x, p2.y),
+                        strokeWidth = width.dp.toPx(),
+                        cap = StrokeCap.Butt,
+                    )
+                }
+
+                fun drawNeonPacket(packet: NeonPacket) {
+                    val p = neonProject(packet.point)
+                    val depthAlpha = ((p.p - 0.3f) * 1.2f).coerceIn(0.08f, 1f)
+                    val alpha = (depthAlpha * glowStrength * 0.78f * themePacketBoost).coerceIn(0f, 1f)
+                    if (alpha < 0.01f) return
+
+                    val radius = (p.p * 2.35f * packet.sizeMod).dp.toPx()
+                    val centerPoint = Offset(p.x, p.y)
 
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.025f),
-                        radius = baseRadius,
-                        style = Stroke(width = 1.dp.toPx(), pathEffect = strokeEffect),
+                        color = packet.color.copy(alpha = alpha * 0.16f),
+                        radius = radius * 2.8f,
+                        center = centerPoint,
                     )
-
-                    val colorsList = listOf(
-                        ringColors[i].copy(alpha = 0.12f),
-                        ringColors[i].copy(alpha = 0.04f),
-                        ringColors[i].copy(alpha = 0.005f),
-                        Color.Transparent,
-                        Color.Transparent,
-                        ringColors[i].copy(alpha = 0.04f),
-                        ringColors[i].copy(alpha = 0.12f),
+                    drawCircle(
+                        color = packet.color.copy(alpha = alpha * 0.58f),
+                        radius = radius * 1.15f,
+                        center = centerPoint,
                     )
-                    val sweepBrush = Brush.sweepGradient(colors = colorsList, center = center)
-                    val rotationDir = if (i % 2 == 0) 1f else -1f
+                    drawCircle(
+                        color = white.copy(alpha = alpha * 0.52f),
+                        radius = radius * 0.42f,
+                        center = centerPoint,
+                    )
+                }
 
-                    withTransform({
-                        rotate(orbitSpin * (1f + i * 0.25f) * rotationDir * 1.5f, pivot = center)
-                    }) {
+                segments.forEach { if (it.z >= 0f) drawNeonSegment(it) }
+                packets.forEach { if (it.z >= 0f) drawNeonPacket(it) }
+
+                val coreRadius = coreSize * minDim * 0.07f
+                val reactorGlow = coreGlow * glowStrength
+                if (coreRadius > 0.5f) {
+                    // Soft reactor bloom underlay so the center reads as glowing.
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                white.copy(alpha = 0.42f * reactorGlow),
+                                gold.copy(alpha = 0.26f * reactorGlow),
+                                accentColor.copy(alpha = 0.12f * reactorGlow),
+                                Color.Transparent,
+                            ),
+                            center = center,
+                            radius = coreRadius * 2.7f,
+                        ),
+                        radius = coreRadius * 2.7f,
+                        center = center,
+                    )
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                gold.copy(alpha = 0.10f * reactorGlow),
+                                pink.copy(alpha = 0.07f * reactorGlow * accentStrength),
+                                cyan.copy(alpha = 0.035f * reactorGlow),
+                                Color.Transparent,
+                            ),
+                            center = center,
+                            radius = coreRadius * 5.2f,
+                        ),
+                        radius = coreRadius * 5.2f,
+                        center = center,
+                    )
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                white.copy(alpha = 0.55f * reactorGlow),
+                                gold.copy(alpha = 0.36f * reactorGlow),
+                                neonBlend(pink, accentColor, accentStrength * 0.35f).copy(alpha = 0.16f * reactorGlow),
+                                Color(0xFF2A2140).copy(alpha = themeCoreInkAlpha),
+                                cyan.copy(alpha = 0.22f * reactorGlow),
+                            ),
+                            center = center,
+                            radius = coreRadius * 1.25f,
+                        ),
+                        radius = coreRadius * 1.25f,
+                        center = center,
+                    )
+                    withTransform({ rotate(time * 10.3f, pivot = center) }) {
                         drawCircle(
-                            brush = sweepBrush,
-                            radius = baseRadius,
-                            style = Stroke(width = 2.2.dp.toPx()),
+                            color = white.copy(alpha = 0.16f * reactorGlow),
+                            radius = coreRadius * 1.75f,
+                            center = center,
+                            style = Stroke(width = 0.8f.dp.toPx()),
+                        )
+                    }
+                    withTransform({ rotate(-time * 17.8f, pivot = center) }) {
+                        drawCircle(
+                            color = cyan.copy(alpha = 0.12f * reactorGlow),
+                            radius = coreRadius * 1.15f,
+                            center = center,
+                            style = Stroke(width = 0.7f.dp.toPx()),
                         )
                     }
                 }
 
-                val r0 = size.minDimension * 0.20f
-                val r1 = size.minDimension * 0.29f
-                val r2 = size.minDimension * 0.38f
-
-                val angle0 = Math.toRadians(orbitSpin * 0.8 + 0.0)
-                val p0 = Offset(
-                    center.x + kotlin.math.cos(angle0).toFloat() * r0,
-                    center.y + kotlin.math.sin(angle0).toFloat() * r0,
-                )
-
-                val angle1 = Math.toRadians(-orbitSpin * 0.5 + 60.0)
-                val p1 = Offset(
-                    center.x + kotlin.math.cos(angle1).toFloat() * r1,
-                    center.y + kotlin.math.sin(angle1).toFloat() * r1,
-                )
-
-                val angle2 = Math.toRadians(orbitSpin * 0.4 + 120.0)
-                val p2 = Offset(
-                    center.x + kotlin.math.cos(angle2).toFloat() * r2,
-                    center.y + kotlin.math.sin(angle2).toFloat() * r2,
-                )
-
-                val angle3 = Math.toRadians(orbitSpin * 0.7 + 180.0)
-                val p3 = Offset(
-                    center.x + kotlin.math.cos(angle3).toFloat() * r1,
-                    center.y + kotlin.math.sin(angle3).toFloat() * r1,
-                )
-
-                val angle4 = Math.toRadians(-orbitSpin * 0.6 + 240.0)
-                val p4 = Offset(
-                    center.x + kotlin.math.cos(angle4).toFloat() * r2,
-                    center.y + kotlin.math.sin(angle4).toFloat() * r2,
-                )
-
-                val angle5 = Math.toRadians(-orbitSpin * 0.9 + 300.0)
-                val p5 = Offset(
-                    center.x + kotlin.math.cos(angle5).toFloat() * r0,
-                    center.y + kotlin.math.sin(angle5).toFloat() * r0,
-                )
-
-                val nodes = listOf(p0, p1, p2, p3, p4, p5)
-                val nodeColors = listOf(
-                    Color(0xFF49E6FF),
-                    Color(0xFF9B8CFF),
-                    colors.accent,
-                    Color(0xFF9B8CFF),
-                    colors.accent,
-                    Color(0xFF49E6FF),
-                )
-                val nodeSizes = listOf(4.5f, 5.5f, 6.5f, 5.0f, 6.0f, 4.0f)
-
-                val maxDist = size.minDimension * 0.35f
-                for (j in 0 until nodes.size) {
-                    for (k in j + 1 until nodes.size) {
-                        val dx = nodes[j].x - nodes[k].x
-                        val dy = nodes[j].y - nodes[k].y
-                        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                        if (dist < maxDist) {
-                            val alpha = (1f - dist / maxDist) * 0.06f * pulse
-                            drawLine(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(nodeColors[j], nodeColors[k]),
-                                    start = nodes[j],
-                                    end = nodes[k],
-                                ),
-                                start = nodes[j],
-                                end = nodes[k],
-                                strokeWidth = 1.dp.toPx(),
-                                alpha = alpha,
-                            )
-                        }
-                    }
-                }
-
-                for (j in 0 until nodes.size) {
-                    drawCircle(
-                        color = nodeColors[j].copy(alpha = 0.15f * pulse),
-                        radius = (nodeSizes[j] * 1.8f).dp.toPx(),
-                        center = nodes[j],
-                    )
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.35f),
-                        radius = nodeSizes[j].dp.toPx(),
-                        center = nodes[j],
-                    )
-                }
-
-                fun drawComet(
-                    progress: Float,
-                    start: Offset,
-                    end: Offset,
-                    color: Color,
-                ) {
-                    val visibility = when {
-                        progress < 0.08f -> progress / 0.08f
-                        progress < 0.15f -> 1f - ((progress - 0.08f) / 0.07f)
-                        else -> 0f
-                    }
-                    if (visibility <= 0f) return
-
-                    val head = Offset(
-                        x = start.x + ((end.x - start.x) * progress),
-                        y = start.y + ((end.y - start.y) * progress),
-                    )
-                    val tailLength = size.minDimension * (0.16f + (0.04f * progress))
-                    val tailDirection = Offset(
-                        x = -(end.x - start.x),
-                        y = -(end.y - start.y),
-                    )
-                    val magnitude = kotlin.math.sqrt(
-                        (tailDirection.x * tailDirection.x) + (tailDirection.y * tailDirection.y),
-                    ).coerceAtLeast(1f)
-                    val tailUnit = Offset(
-                        x = tailDirection.x / magnitude,
-                        y = tailDirection.y / magnitude,
-                    )
-                    val tail = Offset(
-                        x = head.x + (tailUnit.x * tailLength),
-                        y = head.y + (tailUnit.y * tailLength),
-                    )
-
-                    drawLine(
-                        color = color.copy(alpha = 0.02f + (0.04f * visibility)),
-                        start = tail,
-                        end = head,
-                        strokeWidth = 1.8f,
-                        cap = StrokeCap.Round,
-                    )
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.02f * visibility),
-                        start = Offset(
-                            x = tail.x + (tailUnit.x * tailLength * 0.22f),
-                            y = tail.y + (tailUnit.y * tailLength * 0.22f),
-                        ),
-                        end = head,
-                        strokeWidth = 1f,
-                        cap = StrokeCap.Round,
-                    )
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.04f * visibility),
-                        radius = 2.5f,
-                        center = head,
-                    )
-                }
-
-                drawComet(
-                    progress = cometProgressOne,
-                    start = Offset(-size.width * 0.12f, size.height * 0.18f),
-                    end = Offset(size.width * 1.08f, size.height * 0.76f),
-                    color = Color(0xFFBDFBFF),
-                )
-                drawComet(
-                    progress = cometProgressTwo,
-                    start = Offset(-size.width * 0.08f, size.height * 0.82f),
-                    end = Offset(size.width * 1.1f, size.height * 0.14f),
-                    color = Color(0xFF9B8CFF),
-                )
+                segments.forEach { if (it.z < 0f) drawNeonSegment(it) }
+                packets.forEach { if (it.z < 0f) drawNeonPacket(it) }
             }
+
         }
     }
 }
