@@ -40,6 +40,17 @@
 # WorkManager/Room use reflection for the generated database implementation in release builds.
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
 
+# Extension loading is a dynamic ClassLoader seam. Keep loaders non-optimized so
+# release builds don't diverge from debug through R8 lambda merging/specialization
+# around reflective source instantiation and fallback class loaders.
+-keep class eu.kanade.tachiyomi.extension.manga.util.MangaExtensionLoader { *; }
+-keep class eu.kanade.tachiyomi.extension.manga.util.MangaExtensionLoader$* { *; }
+-keep class eu.kanade.tachiyomi.extension.anime.util.AnimeExtensionLoader { *; }
+-keep class eu.kanade.tachiyomi.extension.anime.util.AnimeExtensionLoader$* { *; }
+-keep class eu.kanade.tachiyomi.extension.novel.kotlin.KotlinNovelExtensionSupport { *; }
+-keep class eu.kanade.tachiyomi.extension.novel.kotlin.KotlinNovelExtensionSupport$* { *; }
+-keep class eu.kanade.tachiyomi.util.system.ChildFirstPathClassLoader { *; }
+
 # From extensions-lib
 -keep,allowoptimization class eu.kanade.tachiyomi.network.interceptor.RateLimitInterceptorKt { public protected *; }
 -keep,allowoptimization class eu.kanade.tachiyomi.network.interceptor.SpecificHostRateLimitInterceptorKt { public protected *; }

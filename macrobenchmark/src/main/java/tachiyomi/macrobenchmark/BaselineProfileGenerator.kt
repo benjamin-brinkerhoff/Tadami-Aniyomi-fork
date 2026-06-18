@@ -5,6 +5,8 @@ import androidx.test.uiautomator.By
 import org.junit.Rule
 import org.junit.Test
 
+private const val TARGET_PACKAGE = "com.tadami.aurora.benchmark"
+
 class BaselineProfileGenerator {
 
     @get:Rule
@@ -12,7 +14,7 @@ class BaselineProfileGenerator {
 
     @Test
     fun generate() = baselineProfileRule.collect(
-        packageName = "xyz.jmir.tachiyomi.mi.benchmark",
+        packageName = TARGET_PACKAGE,
         profileBlock = {
             pressHome()
             startActivityAndWait()

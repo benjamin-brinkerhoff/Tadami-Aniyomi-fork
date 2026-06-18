@@ -26,6 +26,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+private const val TARGET_PACKAGE = "com.tadami.aurora.benchmark"
+
 /**
  * Run this benchmark from Studio to see startup measurements, and captured system traces
  * for investigating your app's performance from a cold state.
@@ -75,7 +77,7 @@ abstract class AbstractStartupBenchmark(private val startupMode: StartupMode) {
     fun startupFullCompilation() = startup(CompilationMode.Full())
 
     private fun startup(compilationMode: CompilationMode) = benchmarkRule.measureRepeated(
-        packageName = "xyz.jmir.tachiyomi.mibenchmark",
+        packageName = TARGET_PACKAGE,
         metrics = listOf(StartupTimingMetric()),
         compilationMode = compilationMode,
         iterations = 10,
