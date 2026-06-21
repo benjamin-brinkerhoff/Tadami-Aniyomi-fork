@@ -344,7 +344,7 @@ internal fun HeroSection(
                 },
                 modifier = Modifier.height(52.dp),
                 isHome = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = CircleShape,
                 contentPadding = if (ctaMode == HomeHeroCtaMode.Classic) {
                     PaddingValues(start = 22.dp, end = 24.dp, top = 8.dp, bottom = 8.dp)
                 } else {
@@ -477,7 +477,7 @@ internal fun QuickSourceButton(sourceName: String?, onClick: () -> Unit) {
     val appHaptics = LocalAppHaptics.current
     val auroraAdaptiveSpec = rememberAuroraAdaptiveSpec()
     val contentMaxWidthDp = auroraAdaptiveSpec.updatesMaxWidthDp ?: auroraAdaptiveSpec.entryMaxWidthDp
-    val sourceButtonShape = RoundedCornerShape(20.dp)
+    val sourceButtonShape = CircleShape
     val isLightTheme = !colors.isDark && !colors.isEInk
     val tabContainerColor = resolveAuroraTabContainerColor(colors)
     val sourceBorderBrush = remember(colors) { auroraMenuRimLightBrush(colors) }
@@ -491,7 +491,7 @@ internal fun QuickSourceButton(sourceName: String?, onClick: () -> Unit) {
                 if (isLightTheme) {
                     Modifier
                         .drawBehind {
-                            val radius = 20.dp.toPx()
+                            val radius = size.height / 2f
                             val cornerRadius = CornerRadius(radius, radius)
 
                             val neutralOffsetY = 3.dp.toPx()
