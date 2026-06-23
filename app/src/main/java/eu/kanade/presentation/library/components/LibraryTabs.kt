@@ -39,7 +39,10 @@ internal fun LibraryTabs(
             categories.forEachIndexed { index, category ->
                 Tab(
                     selected = currentPageIndex == index,
-                    onClick = {},
+                    onClick = {
+                        appHaptics.tap()
+                        onTabItemClick(index)
+                    },
                     modifier = Modifier.combinedClickable(
                         onClick = {
                             appHaptics.tap()

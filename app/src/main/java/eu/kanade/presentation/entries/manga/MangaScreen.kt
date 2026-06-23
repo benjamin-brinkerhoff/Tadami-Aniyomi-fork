@@ -5,9 +5,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
@@ -23,10 +27,12 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -40,19 +46,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastAll
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastMap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.components.relativeDateTimeText
 import eu.kanade.presentation.entries.DownloadAction
 import eu.kanade.presentation.entries.EntryScreenItem
@@ -317,6 +327,9 @@ fun MangaScreen(
             isAutoJumpToNextEnabled = autoJumpToNextEnabled,
             autoJumpToNextLabel = autoJumpToNextLabel,
             onToggleAutoJumpToNext = onToggleAutoJumpToNext,
+            onSuggestionClick = onSuggestionClick,
+            onRetrySuggestions = onRetrySuggestions,
+            onOpenSuggestions = onOpenSuggestions,
         )
     }
 }
@@ -703,8 +716,17 @@ fun MangaScreenLargeImpl(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+
+    onSuggestionClick: (eu.kanade.tachiyomi.data.suggestions.SuggestionItem) -> Unit,
+    onRetrySuggestions: () -> Unit,
+    onOpenSuggestions: () -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
+    val uiPreferences = remember { Injekt.get<eu.kanade.domain.ui.UiPreferences>() }
+    val sourcePreferences = remember { Injekt.get<SourcePreferences>() }
+    val entrySuggestionsEnabled by sourcePreferences.entrySuggestionsEnabled().collectAsStateWithLifecycle()
+    val entrySuggestionsExpandInline by uiPreferences.entrySuggestionsExpandInline().collectAsStateWithLifecycle()
+    val entrySuggestionsInOverflow by uiPreferences.entrySuggestionsInOverflow().collectAsStateWithLifecycle()
     val density = LocalDensity.current
 
     val (chapters, listItem, isAnySelected) = remember(state) {
@@ -870,6 +892,44 @@ fun MangaScreenLargeImpl(
                             onTagSearch = onTagSearch,
                             onCopyTagToClipboard = onCopyTagToClipboard,
                         )
+                        if (entrySuggestionsEnabled) {
+                            if (entrySuggestionsExpandInline) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                eu.kanade.presentation.entries.components.aurora.AuroraSuggestionsRow(
+                                    state = state.suggestions,
+                                    onSuggestionClick = onSuggestionClick,
+                                    onOpenSuggestions = onOpenSuggestions,
+                                    onRetryClick = onRetrySuggestions,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else if (!entrySuggestionsInOverflow) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                                        .background(
+                                            brush = Brush.linearGradient(
+                                                colors = listOf(
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                                ),
+                                            ),
+                                            shape = RoundedCornerShape(12.dp),
+                                        )
+                                        .clickable(onClick = onOpenSuggestions)
+                                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = stringResource(MR.strings.suggestions_similar_titles),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 endContent = {

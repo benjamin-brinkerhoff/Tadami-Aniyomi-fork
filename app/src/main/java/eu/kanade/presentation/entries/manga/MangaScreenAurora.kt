@@ -512,6 +512,50 @@ fun MangaScreenAuroraImpl(
                                     onShareClicked = onShareClicked,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
+                                if (entrySuggestionsEnabled) {
+                                    if (entrySuggestionsExpandInline) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        eu.kanade.presentation.entries.components.aurora.AuroraSuggestionsRow(
+                                            state = state.suggestions,
+                                            onSuggestionClick = onSuggestionClick,
+                                            onOpenSuggestions = onOpenSuggestions,
+                                            onRetryClick = onRetrySuggestions,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    } else if (!entrySuggestionsInOverflow) {
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(
+                                                    brush = Brush.linearGradient(
+                                                        colors = if (colors.isDark) {
+                                                            listOf(
+                                                                Color.White.copy(alpha = 0.12f),
+                                                                Color.White.copy(alpha = 0.08f),
+                                                            )
+                                                        } else {
+                                                            listOf(
+                                                                colors.accent.copy(alpha = 0.15f),
+                                                                colors.accent.copy(alpha = 0.10f),
+                                                            )
+                                                        },
+                                                    ),
+                                                    shape = RoundedCornerShape(12.dp),
+                                                )
+                                                .auroraSpringClick(onClick = onOpenSuggestions)
+                                                .padding(vertical = 12.dp, horizontal = 16.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Text(
+                                                text = stringResource(MR.strings.suggestions_similar_titles),
+                                                color = if (colors.isDark) Color.White else colors.accent,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 14.sp,
+                                            )
+                                        }
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(24.dp))
                             }
                         }

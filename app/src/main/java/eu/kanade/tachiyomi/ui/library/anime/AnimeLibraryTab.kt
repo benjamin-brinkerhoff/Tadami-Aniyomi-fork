@@ -518,9 +518,12 @@ data object AnimeLibraryTab : Tab {
                 // When model changes from tap → animate pager
                 LaunchedEffect(animeCategoryIndex) {
                     if (animeCategoryIndex != pagerState.currentPage) {
-                        isProgrammaticScroll.value = true
-                        pagerState.animateScrollToPage(animeCategoryIndex)
-                        isProgrammaticScroll.value = false
+                        try {
+                            isProgrammaticScroll.value = true
+                            pagerState.animateScrollToPage(animeCategoryIndex)
+                        } finally {
+                            isProgrammaticScroll.value = false
+                        }
                     }
                 }
                 HorizontalPager(
@@ -576,9 +579,12 @@ data object AnimeLibraryTab : Tab {
                 }
                 LaunchedEffect(mangaCategoryIndex) {
                     if (mangaCategoryIndex != pagerState.currentPage) {
-                        isProgrammaticScroll.value = true
-                        pagerState.animateScrollToPage(mangaCategoryIndex)
-                        isProgrammaticScroll.value = false
+                        try {
+                            isProgrammaticScroll.value = true
+                            pagerState.animateScrollToPage(mangaCategoryIndex)
+                        } finally {
+                            isProgrammaticScroll.value = false
+                        }
                     }
                 }
                 HorizontalPager(
@@ -668,9 +674,12 @@ data object AnimeLibraryTab : Tab {
                 }
                 LaunchedEffect(novelCategoryIndex) {
                     if (novelCategoryIndex != pagerState.currentPage) {
-                        isProgrammaticScroll.value = true
-                        pagerState.animateScrollToPage(novelCategoryIndex)
-                        isProgrammaticScroll.value = false
+                        try {
+                            isProgrammaticScroll.value = true
+                            pagerState.animateScrollToPage(novelCategoryIndex)
+                        } finally {
+                            isProgrammaticScroll.value = false
+                        }
                     }
                 }
                 HorizontalPager(
@@ -1924,14 +1933,14 @@ private fun AuroraLibraryCategoryTabs(
     val menuBorderBrush = remember(colors) { auroraMenuRimLightBrush(colors) }
 
     val scrollState = rememberScrollState()
-    val tabWidths = remember { mutableMapOf<Int, Int>() }
+    val tabWidths = remember(categories) { mutableMapOf<Int, Int>() }
     var containerWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
 
-    val animTabWidths = remember { mutableStateMapOf<Int, Float>() }
-    val animTabHeights = remember { mutableStateMapOf<Int, Float>() }
-    val animTabPositionsX = remember { mutableStateMapOf<Int, Float>() }
-    val animTabPositionsY = remember { mutableStateMapOf<Int, Float>() }
+    val animTabWidths = remember(categories) { mutableStateMapOf<Int, Float>() }
+    val animTabHeights = remember(categories) { mutableStateMapOf<Int, Float>() }
+    val animTabPositionsX = remember(categories) { mutableStateMapOf<Int, Float>() }
+    val animTabPositionsY = remember(categories) { mutableStateMapOf<Int, Float>() }
 
     var prevSelectedIndex by remember { mutableIntStateOf(coercedSelected) }
     LaunchedEffect(coercedSelected) {

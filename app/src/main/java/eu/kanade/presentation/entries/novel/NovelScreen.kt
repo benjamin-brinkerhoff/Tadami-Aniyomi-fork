@@ -1,6 +1,8 @@
 package eu.kanade.presentation.entries.novel
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Bookmark
@@ -62,10 +65,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.crossfade
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.components.AuroraCoverPlaceholderVariant
 import eu.kanade.presentation.components.relativeDateTimeText
@@ -171,6 +177,10 @@ fun NovelScreen(
     onOpenSuggestions: () -> Unit = {},
 ) {
     val uiPreferences = Injekt.get<UiPreferences>()
+    val sourcePreferences = remember { Injekt.get<SourcePreferences>() }
+    val entrySuggestionsEnabled by sourcePreferences.entrySuggestionsEnabled().collectAsState()
+    val entrySuggestionsExpandInline by uiPreferences.entrySuggestionsExpandInline().collectAsState()
+    val entrySuggestionsInOverflow by uiPreferences.entrySuggestionsInOverflow().collectAsState()
     val theme by uiPreferences.appTheme().collectAsState()
     val autoJumpToNextEnabled by uiPreferences.entryAutoJumpToNextNovel().collectAsState()
     val autoJumpToNextLabel = stringResource(
@@ -741,6 +751,49 @@ fun NovelScreen(
                                 Text(
                                     text = stringResource(AYMR.strings.novel_epub_short),
                                     modifier = Modifier.padding(start = 4.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (entrySuggestionsEnabled) {
+                    if (entrySuggestionsExpandInline) {
+                        item(key = "suggestions_row") {
+                            eu.kanade.presentation.entries.components.aurora.AuroraSuggestionsRow(
+                                state = state.suggestions,
+                                onSuggestionClick = onSuggestionClick,
+                                onOpenSuggestions = onOpenSuggestions,
+                                onRetryClick = onRetrySuggestions,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = MaterialTheme.padding.medium),
+                            )
+                        }
+                    } else if (!entrySuggestionsInOverflow) {
+                        item(key = "suggestions_button") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = MaterialTheme.padding.medium, vertical = 6.dp)
+                                    .background(
+                                        brush = Brush.linearGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                            ),
+                                        ),
+                                        shape = RoundedCornerShape(12.dp),
+                                    )
+                                    .clickable(onClick = onOpenSuggestions)
+                                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = stringResource(MR.strings.suggestions_similar_titles),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
                                 )
                             }
                         }
