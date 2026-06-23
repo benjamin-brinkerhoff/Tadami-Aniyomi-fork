@@ -259,6 +259,7 @@ dependencies {
     implementation(androidx.splashscreen)
     implementation(androidx.recyclerview)
     implementation(androidx.viewpager)
+    implementation(androidx.localbroadcastmanager)
     implementation(androidx.profileinstaller)
     implementation(androidx.webkit)
     implementation(aniyomilibs.mediasession)
