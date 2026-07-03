@@ -380,7 +380,7 @@ class DefaultNovelExtensionManager(
     // ponytail: Auto-enable languages of the newly installed novel plugin
     private fun enableLanguageOf(plugin: NovelPlugin) {
         val lang = plugin.lang
-        if (lang.isNotBlank()) {
+        if (lang.isNotBlank() && lang != "all") {
             sourcePreferences?.enabledLanguages()?.let { enabledLanguagesPref ->
                 val currentLangs = enabledLanguagesPref.get()
                 if (lang !in currentLangs) {
