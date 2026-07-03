@@ -64,7 +64,42 @@ internal object MangaExtensionLoader {
 
     private const val PRIVATE_EXTENSION_EXTENSION = "ext"
 
-    private fun getPrivateExtensionDir(context: Context) = File(context.filesDir, "exts")
+    private var isMigrated = false
+
+    private fun getPrivateExtensionDir(context: Context): File {
+        val targetDir = File(context.filesDir, "manga_exts")
+        if (!isMigrated) {
+            synchronized(this) {
+                if (!isMigrated) {
+                    migrateLegacyPrivateExtensions(context, targetDir)
+                    isMigrated = true
+                }
+            }
+        }
+        return targetDir
+    }
+
+    private fun migrateLegacyPrivateExtensions(context: Context, targetDir: File) {
+        val legacyDir = File(context.filesDir, "exts")
+        if (!legacyDir.isDirectory) return
+
+        legacyDir.listFiles()?.forEach { file ->
+            if (file.isFile && file.extension == PRIVATE_EXTENSION_EXTENSION) {
+                val pkgName = file.nameWithoutExtension
+                if (pkgName.matches(Regex("^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)+$"))) {
+                    if (!pkgName.contains(".anime")) {
+                        targetDir.mkdirs()
+                        val targetFile = File(targetDir, file.name)
+                        file.renameTo(targetFile)
+                    }
+                }
+            }
+        }
+
+        if (legacyDir.listFiles().isNullOrEmpty()) {
+            legacyDir.delete()
+        }
+    }
 
     fun installPrivateExtensionFile(context: Context, file: File): Boolean {
         val extension = context.packageManager.getPackageArchiveInfo(
@@ -72,6 +107,12 @@ internal object MangaExtensionLoader {
             PACKAGE_FLAGS,
         )
             ?.takeIf { isPackageAnExtension(it) } ?: return false
+
+        val pkgName = extension.packageName
+        if (!pkgName.matches(Regex("^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)+$"))) {
+            logcat(LogPriority.ERROR) { "Invalid package name: $pkgName" }
+            return false
+        }
         val currentExtension = getMangaExtensionPackageInfoFromPkgName(
             context,
             extension.packageName,

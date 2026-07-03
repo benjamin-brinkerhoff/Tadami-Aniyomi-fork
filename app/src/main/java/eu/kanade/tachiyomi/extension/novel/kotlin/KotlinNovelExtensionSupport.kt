@@ -50,6 +50,7 @@ import eu.kanade.tachiyomi.util.lang.Hash
 import eu.kanade.tachiyomi.util.storage.copyAndSetReadOnlyTo
 import eu.kanade.tachiyomi.util.storage.getUriCompat
 import eu.kanade.tachiyomi.util.system.ChildFirstPathClassLoader
+import eu.kanade.tachiyomi.util.system.isPackageInstalled
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -125,12 +126,14 @@ class KotlinNovelExtensionInstaller(
         withContext(Dispatchers.IO) {
             KotlinNovelExtensionLoader.uninstallPrivateExtension(context, pkgName)
         }
-        runCatching {
-            Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkgName"))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .let(context::startActivity)
-        }.onFailure {
-            logcat(LogPriority.WARN, it) { "Failed to launch system uninstall for Kotlin novel extension $pkgName" }
+        if (context.isPackageInstalled(pkgName)) {
+            runCatching {
+                Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkgName"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .let(context::startActivity)
+            }.onFailure {
+                logcat(LogPriority.WARN, it) { "Failed to launch system uninstall for Kotlin novel extension $pkgName" }
+            }
         }
     }
 }
@@ -189,6 +192,11 @@ object KotlinNovelExtensionLoader {
         file: File,
         pkgName: String,
     ): Boolean {
+        if (!pkgName.matches(Regex("^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)+$"))) {
+            logcat(LogPriority.ERROR) { "Invalid package name: $pkgName" }
+            return false
+        }
+
         val pkgManager = context.packageManager
         val archiveInfo = pkgManager.getPackageArchiveInfo(file.absolutePath, PACKAGE_FLAGS)
             ?.takeIf { isPackageAnExtension(it) }

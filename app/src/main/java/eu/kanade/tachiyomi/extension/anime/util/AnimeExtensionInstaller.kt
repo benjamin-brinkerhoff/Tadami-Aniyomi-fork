@@ -448,13 +448,13 @@ internal class AnimeExtensionInstaller(private val context: Context) {
      * @param pkgName The package name of the extension to uninstall
      */
     fun uninstallApk(pkgName: String) {
+        AnimeExtensionLoader.uninstallPrivateExtension(context, pkgName)
         if (context.isPackageInstalled(pkgName)) {
             @Suppress("DEPRECATION")
             val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, "package:$pkgName".toUri())
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
         } else {
-            AnimeExtensionLoader.uninstallPrivateExtension(context, pkgName)
             AnimeExtensionInstallReceiver.notifyRemoved(context, pkgName)
         }
     }
