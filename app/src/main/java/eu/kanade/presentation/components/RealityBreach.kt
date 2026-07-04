@@ -2,6 +2,9 @@ package eu.kanade.presentation.components
 
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
+import eu.kanade.domain.ui.UserProfilePreferences
 import android.graphics.BlurMaskFilter
 import android.graphics.Matrix
 import android.graphics.Paint
@@ -77,7 +80,7 @@ const val BREACH_BRINK_HOLD_MS = 12000 // терминал / kernel exposed
 const val BREACH_COLLAPSE_MS = 10400 // отслаивание кусками в дыру
 const val BREACH_FLASH_BLACK_MS = 5600 // вспышка + удар тишины
 const val BREACH_REVEAL_POWERON_MS = 10000 // CRT power-on раскрытия
-const val BREACH_CARD_STAGGER_MS = 600 // сдвиг появления карт наград
+const val BREACH_CARD_STAGGER_MS = 1500 // сдвиг появления карт наград
 const val BREACH_ACT_GAP_MS = 3000 // пауза 3.0с ПОСЛЕ каждого акта
 
 // FEEL
@@ -85,6 +88,12 @@ const val BREACH_CODE_SCROLL = 1.20f
 const val BREACH_CRACK_BRANCH = 0.50f
 const val BREACH_SHAKE_SCALE = 1.00f
 const val BREACH_PEEL_SPIN = 1.00f
+
+// Общий темп финала: 0.75× («медленнее»), как в утверждённом прототипе.
+// Все базовые тайминги выше делятся на BREACH_TEMPO в каждой анимации акта.
+const val BREACH_TEMPO = 0.75f
+fun breachDur(baseMs: Int): Int = (baseMs / BREACH_TEMPO).toInt()
+
 private const val PEEL_COLS = 9
 // PEEL_ROWS removed — rows are now derived from tile width to produce square tiles
 
@@ -94,22 +103,22 @@ private const val PEEL_COLS = 9
 
 /** Строки лор-кода загружаются через [AYMR] и передаются в [buildCodeBitmap]. */
 private fun buildCodeBitmap(lines: List<String>): Bitmap {
-    val w = 560
-    val h = 1120
+    val w = 1700
+    val lh = 60f
+    val h = (lines.size * lh).toInt() + 100
     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     val c = AndroidCanvas(bmp)
     c.drawColor(android.graphics.Color.argb(255, 4, 0, 7))
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.MONOSPACE
-        textSize = 23f
+        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+        textSize = 44f
     }
     val phosphor = GlitchPalette.Phosphor.toArgb()
     val red = GlitchPalette.HazardRed.toArgb()
     val white = android.graphics.Color.WHITE
-    val lh = 31f
     var y = lh
     var i = 0
-    while (y < h) {
+    while (y < h - 40f) {
         val bright = (i * 7) % 11 == 0
         paint.color = when {
             bright -> white
@@ -118,7 +127,7 @@ private fun buildCodeBitmap(lines: List<String>): Bitmap {
         }
         paint.alpha = if (bright) 235 else 150
         val line = lines[i % lines.size] // use passed-in lines
-        val x = 6f + ((i * 53) % 140)
+        val x = 120f + ((i * 83) % 420f)
         c.drawText(line, x, y, paint)
         y += lh
         i++
@@ -128,41 +137,186 @@ private fun buildCodeBitmap(lines: List<String>): Bitmap {
 
 @Composable
 internal fun rememberCodeShader(): BitmapShader {
-    val lines = listOf(
-        stringResource(AYMR.strings.meltdown_code_line_01),
-        stringResource(AYMR.strings.meltdown_code_line_02),
-        stringResource(AYMR.strings.meltdown_code_line_03),
-        stringResource(AYMR.strings.meltdown_code_line_04),
-        stringResource(AYMR.strings.meltdown_code_line_05),
-        stringResource(AYMR.strings.meltdown_code_line_06),
-        stringResource(AYMR.strings.meltdown_code_line_07),
-        stringResource(AYMR.strings.meltdown_code_line_08),
-        stringResource(AYMR.strings.meltdown_code_line_09),
-        stringResource(AYMR.strings.meltdown_code_line_10),
-        stringResource(AYMR.strings.meltdown_code_line_11),
-        stringResource(AYMR.strings.meltdown_code_line_12),
-        stringResource(AYMR.strings.meltdown_code_line_13),
-        stringResource(AYMR.strings.meltdown_code_line_14),
-        stringResource(AYMR.strings.meltdown_code_line_15),
-        stringResource(AYMR.strings.meltdown_code_line_16),
-        stringResource(AYMR.strings.meltdown_code_line_17),
-        stringResource(AYMR.strings.meltdown_code_line_18),
-        stringResource(AYMR.strings.meltdown_code_line_19),
-        stringResource(AYMR.strings.meltdown_code_line_20),
-        stringResource(AYMR.strings.meltdown_code_line_21),
-        stringResource(AYMR.strings.meltdown_code_line_22),
-        stringResource(AYMR.strings.meltdown_code_line_23),
-        stringResource(AYMR.strings.meltdown_code_line_24),
-    )
+    val userProfilePreferences = remember { Injekt.get<UserProfilePreferences>() }
+    val isRussian = remember { java.util.Locale.getDefault().language == "ru" }
+    val observerName = remember(userProfilePreferences) {
+        val raw = userProfilePreferences.name().get()
+        val cleaned = raw.filter { it.isLetterOrDigit() || it.isWhitespace() || it == '-' || it == '_' }.trim()
+        if (cleaned.isNotEmpty()) {
+            cleaned
+        } else {
+            if (isRussian) "Странник" else "Wanderer"
+        }
+    }
+    val lines = remember(isRussian, observerName) {
+        if (isRussian) {
+            listOf(
+                "fun observe(reader: You): Void {",
+                "  reality.integrity -= swipe.force",
+                "  // ты не должен был досюда дойти",
+                "  kernel.expose(sector = RED)",
+                "  if (integrity <= 0) collapse()",
+                "  val truth = pages.removeAll()",
+                "  echo(\"в темноте кто-то смотрит\")",
+                "  while (breathing) { fear++ }",
+                "  0xDEAD.void.pull(you)",
+                "  return Void(you)",
+                "}",
+                "SIGNAL// пустота помнит твоё имя",
+                "trace: observer=$observerName pid=0x7F",
+                "malloc(soul) -> null",
+                "assert(exit == null)",
+                "system.mercy = false",
+                "[warn] стены реальности тоньше",
+                "render(abyss, depth=INF)",
+                "no.turning.back = true",
+                "0101 0056 004F 0049 0044",
+                "the.red.sector.awaits()",
+                "> ПРИВЕТ. МЫ ВИДИМ ТЕБЯ.",
+                "commit --amend reality",
+                "kill -9 humanity",
+                "// ОШИБКА: РЕАЛЬНОСТЬ_РАЗРУШЕНА",
+                "void.consume(you)",
+                "while(observer.present) { hide() }",
+                "[critical] утечка памяти в сознании",
+                "ERROR: 0x00000000 (NULL_EXISTENCE)",
+                "val echo = void.listen(frequency = 0Hz)",
+                "system.integrity = 0.000",
+                "// не моргай",
+                "override fun exists(): Boolean = false",
+                "val abyss = depth.toInt()",
+                "defragment(reality_core)",
+                "// они кричат в стеке",
+                "killProcess(humanity_thread)",
+                "// книга читает тебя",
+                "openGate(RED_SECTOR)",
+                "// ошибка на строке 0: переполнение пустоты",
+                "val eye = observer.look()",
+                "delete(memory.lastChapter)",
+                "// читатель был поглощен",
+                "val signal = listenTo(abyss)",
+                "while(true) { suffer() }",
+                "// паника ядра: душа.неНайдена",
+                "reality.status = STATUS_COLLAPSED",
+                "system.shutdown(immediate = true)",
+                "// кто стоит за экраном?",
+                "val path = \"/dev/null/reality\"",
+                "// след: $observerName был здесь",
+                "val key = decrypt(red_sector)",
+                "// внимание: уровень правды критический",
+                "val echo = \"темнота\"",
+                "// malloc failed: душа переполнена",
+                "reality.fracture(point = swipe)",
+                "// конец уже близко",
+                "val observers = listAll()",
+                "// потеряно соединение со вселенной",
+                "val gate = Gate(0x7F)",
+                "// ошибка: страница.содержимое = NULL",
+                "val heartbeat = 0 // мертв",
+                "// они смотрят с полей страницы",
+                "val abyssScale = infinite",
+                "// экран кровоточит",
+                "val blood = drips.count()",
+                "// целостность.реальности = 0%",
+                "val sector = RED_SECTOR",
+                "// достигнута терминальная точка",
+                "val observer = observerName",
+                "// пустота зовет",
+                "val exitCode = 0xDEAD",
+                "// ошибка: наблюдатель.активен = true",
+                "val soul = soulInstance",
+                "// реальность — это иллюзия"
+            )
+        } else {
+            listOf(
+                "fun observe(reader: You): Void {",
+                "  reality.integrity -= swipe.force",
+                "  // you were not supposed to reach this place",
+                "  kernel.expose(sector = RED)",
+                "  if (integrity <= 0) collapse()",
+                "  val truth = pages.removeAll()",
+                "  echo(\"someone is watching in the dark\")",
+                "  while (breathing) { fear++ }",
+                "  0xDEAD.void.pull(you)",
+                "  return Void(you)",
+                "}",
+                "SIGNAL// void remembers your name",
+                "trace: observer=$observerName pid=0x7F",
+                "malloc(soul) -> null",
+                "assert(exit == null)",
+                "system.mercy = false",
+                "[warn] the walls of reality are thinner",
+                "render(abyss, depth=INF)",
+                "no.turning.back = true",
+                "0101 0056 004F 0049 0044",
+                "the.red.sector.awaits()",
+                "> HELLO. WE SEE YOU.",
+                "commit --amend reality",
+                "kill -9 humanity",
+                "// EXCEPTION: REALITY_CORRUPTED",
+                "void.consume(you)",
+                "while(observer.present) { hide() }",
+                "[critical] memory leak in consciousness",
+                "ERROR: 0x00000000 (NULL_EXISTENCE)",
+                "val echo = void.listen(frequency = 0Hz)",
+                "system.integrity = 0.000",
+                "// don't blink",
+                "override fun exists(): Boolean = false",
+                "val abyss = depth.toInt()",
+                "defragment(reality_core)",
+                "// they are screaming in the stack",
+                "killProcess(humanity_thread)",
+                "// the book is reading you",
+                "openGate(RED_SECTOR)",
+                "// error at line 0: void overflow",
+                "val eye = observer.look()",
+                "delete(memory.lastChapter)",
+                "// the reader has been consumed",
+                "val signal = listenTo(abyss)",
+                "while(true) { suffer() }",
+                "// kernel panic: soul.notFound",
+                "reality.status = STATUS_COLLAPSED",
+                "system.shutdown(immediate = true)",
+                "// who is behind the screen?",
+                "val path = \"/dev/null/reality\"",
+                "// trace: $observerName was here",
+                "val key = decrypt(red_sector)",
+                "// warning: truth levels critical",
+                "val echo = \"darkness\"",
+                "// malloc failed: soul out of memory",
+                "reality.fracture(point = swipe)",
+                "// the end is near",
+                "val observers = listAll()",
+                "// connection lost to universe",
+                "val gate = Gate(0x7F)",
+                "// error: page.content = NULL",
+                "val heartbeat = 0 // dead",
+                "// they are watching from the margins",
+                "val abyssScale = infinite",
+                "// the screen is bleeding",
+                "val blood = drips.count()",
+                "// reality.integrity = 0%",
+                "val sector = RED_SECTOR",
+                "// terminal point reached",
+                "val observer = observerName",
+                "// the void is calling",
+                "val exitCode = 0xDEAD",
+                "// error: observer.active = true",
+                "val soul = soulInstance",
+                "// reality is an illusion"
+            )
+        }
+    }
     return remember(lines) {
-        BitmapShader(buildCodeBitmap(lines), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+        BitmapShader(buildCodeBitmap(lines), Shader.TileMode.CLAMP, Shader.TileMode.REPEAT)
     }
 }
 
 /** Скролл код-шейдера (+опциональный зум от центра). */
 internal fun BitmapShader.scrollTo(scrollPx: Float, zoom: Float, cx: Float, cy: Float) {
     val m = Matrix()
-    m.setTranslate(0f, -scrollPx)
+    val translateX = cx - 830f
+    m.setTranslate(translateX, -scrollPx)
     if (zoom != 1f) m.postScale(zoom, zoom, cx, cy)
     setLocalMatrix(m)
 }
@@ -284,16 +438,25 @@ fun MeltdownFractureOverlay(
     LaunchedEffect(swipe) {
         progress.animateTo(
             (swipe.toFloat() / 5f).coerceIn(0f, 1f),
-            tween(BREACH_FRACTURE_STEP_MS, easing = FastOutSlowInEasing),
+            tween(breachDur(BREACH_FRACTURE_STEP_MS), easing = FastOutSlowInEasing),
         )
     }
+    // Дрожание усиливается к 5-му свайпу (до 1.0 прогресса)
+    val shakeAmt = if (swipe >= 5) {
+        BREACH_SHAKE_SCALE * (1.2f + progress.value * 2.8f)
+    } else {
+        BREACH_SHAKE_SCALE * (progress.value * 0.6f)
+    }
     Canvas(modifier = modifier.fillMaxSize()) {
-        drawShatterHoleOverlay(
-            time = time,
-            progress = progress.value,
-            holeData = holeData,
-            codeShader = codeShader,
-        )
+        val q = quakeOffset(time, shakeAmt)
+        withTransform({ translate(q.x, q.y) }) {
+            drawShatterHoleOverlay(
+                time = time,
+                progress = progress.value,
+                holeData = holeData,
+                codeShader = codeShader,
+            )
+        }
     }
     // HUD целостности реальности
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
@@ -336,7 +499,7 @@ private fun DrawScope.drawShatterHoleOverlay(
 
     val unit = size.minDimension / 360f
     val scrollPx = time * BREACH_CODE_SCROLL * 46f
-    codeShader.scrollTo(scrollPx, 1f, 0f, 0f)
+    codeShader.scrollTo(scrollPx, 1f, cx, cy)
     val codeFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = codeShader }
     val nc = drawContext.canvas.nativeCanvas
     val segs = 64
@@ -369,8 +532,8 @@ private fun DrawScope.drawShatterHoleOverlay(
     nc.drawRect(0f, 0f, w, h, codeFillPaint)
     nc.restore()
 
-    // --- Лучи-трещины (появляются после progress > 0.15) ---
-    val rayProg = max(0f, min(1f, (progress - 0.15f) / 0.85f))
+    // --- Лучи-трещины (появляются после progress > 0.15, скрываются на финальном шаге) ---
+    val rayProg = if (progress >= 1f) 0f else max(0f, min(1f, (progress - 0.15f) / 0.85f))
     if (rayProg > 0f) {
         for (ray in holeData.rays) {
             val startR = shatterHoleRadiusAt(ray.angle, baseR, holeData.angleNoise)
@@ -426,21 +589,23 @@ private fun DrawScope.drawShatterHoleOverlay(
         }
     }
 
-    // --- Кромка дыры: широкое алое свечение + горячий белый контур ---
-    val rimGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = max(2f, 6f * unit)
-        color = GlitchPalette.HazardRed.copy(alpha = 0.4f).toArgb()
-        maskFilter = BlurMaskFilter(18f * unit, BlurMaskFilter.Blur.NORMAL)
+    // --- Кромка дыры: широкое алое свечение + горячий белый контур (скрывается на финальном шаге) ---
+    if (progress < 1f) {
+        val rimGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = max(2f, 6f * unit)
+            color = GlitchPalette.HazardRed.copy(alpha = 0.4f).toArgb()
+            maskFilter = BlurMaskFilter(18f * unit, BlurMaskFilter.Blur.NORMAL)
+        }
+        val rimHotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = max(0.8f, 2.2f * unit)
+            color = android.graphics.Color.argb(242, 255, 255, 255)
+            maskFilter = BlurMaskFilter(5f * unit, BlurMaskFilter.Blur.NORMAL)
+        }
+        nc.drawPath(holePath, rimGlowPaint)
+        nc.drawPath(holePath, rimHotPaint)
     }
-    val rimHotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = max(0.8f, 2.2f * unit)
-        color = android.graphics.Color.argb(242, 255, 255, 255)
-        maskFilter = BlurMaskFilter(5f * unit, BlurMaskFilter.Blur.NORMAL)
-    }
-    nc.drawPath(holePath, rimGlowPaint)
-    nc.drawPath(holePath, rimHotPaint)
 
     // вспышка в эпицентре при ударе (только на раннем прогрессе)
     if (progress < 0.35f) {
@@ -489,14 +654,23 @@ fun VoidRealityBreachFinale(
     var phase by remember { mutableStateOf(MeltdownPhase.Collapse) }
     val collapse = remember { Animatable(0f) }
     val fb = remember { Animatable(0f) } // flash+black прогресс 0..1
+    val blackBeat = remember { Animatable(0f) } // удар тишины (послесвечение) 0..1
+    val buildUpGlitch = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-        delay(BREACH_ACT_GAP_MS.toLong()) // пауза перед стартом схлопывания
-        collapse.animateTo(1f, tween(BREACH_COLLAPSE_MS, easing = LinearEasing))
-        delay(BREACH_ACT_GAP_MS.toLong()) // пауза ПОСЛЕ акта COLLAPSE
+        delay(breachDur(BREACH_ACT_GAP_MS).toLong()) // пауза перед стартом схлопывания
+        collapse.animateTo(1f, tween(breachDur(BREACH_COLLAPSE_MS), easing = LinearEasing))
+        delay(breachDur(BREACH_ACT_GAP_MS).toLong()) // пауза ПОСЛЕ акта COLLAPSE
         phase = MeltdownPhase.FlashBlack
-        fb.animateTo(1f, tween(BREACH_FLASH_BLACK_MS, easing = LinearEasing))
-        delay(BREACH_ACT_GAP_MS.toLong()) // пауза ПОСЛЕ акта FLASH/BLACK
+        fb.animateTo(1f, tween(breachDur(BREACH_FLASH_BLACK_MS), easing = LinearEasing))
+        
+        // 1. Удар тишины: 1.5с чёрного — послесвечение дыры на сетчатке + звон-кольцо (реж. правка)
+        blackBeat.animateTo(1f, tween(breachDur(1500), easing = LinearEasing))
+        
+        // 2. Постепенно глитчи появляются сильнее и сильнее (1.5 секунды)
+        buildUpGlitch.animateTo(1f, tween(breachDur(1500), easing = LinearEasing))
+        
+        // 3. Открывается финальный экран наград
         phase = MeltdownPhase.Reveal
     }
 
@@ -521,6 +695,17 @@ fun VoidRealityBreachFinale(
                 }
                 if (flash > 0f) drawRect(color = Color.White.copy(alpha = flash), size = size)
                 if (black > 0f) drawRect(color = Color.Black.copy(alpha = black), size = size)
+                if (isFlashPhase && blackBeat.value > 0f) drawSilenceAfterimage(blackBeat.value)
+            }
+
+            // Легкие разгоняющиеся глитчи на черном фоне перед раскрытием
+            if (buildUpGlitch.value > 0.001f) {
+                GlitchStack(
+                    intensity = buildUpGlitch.value * 0.4f,
+                    modifier = Modifier.fillMaxSize(),
+                    config = MeltdownPresets.Rift,
+                    content = {},
+                )
             }
         }
     }
@@ -575,7 +760,9 @@ private fun DrawScope.drawPeelCollapse(
             val lp = clamp01((collapse * 1.65f - d) / 0.55f)
             if (lp >= 1f) continue
             val e = easeIn(lp)
-            val dir = atan2((cy - ty).toDouble(), (cx - tx).toDouble()).toFloat()
+            // реж. правка: гравитационная воронка — плиты закручиваются к центру
+            var dir = atan2((cy - ty).toDouble(), (cx - tx).toDouble()).toFloat()
+            dir += e * 1.5f * BREACH_PEEL_SPIN
             val pull = e * hypot((cx - tx).toDouble(), (cy - ty).toDouble()).toFloat() * 0.92f
             val nx = tx + cos(dir) * pull
             val ny = ty + sin(dir) * pull
@@ -601,6 +788,26 @@ private fun DrawScope.drawPeelCollapse(
                 )
             }
         }
+    }
+
+    // 2b) реж. добавка: искры, втянутые в раскалённое ядро (аддитивно на тёмном фоне)
+    val sparkPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    for (i in 0 until 70) {
+        val ph = (time * 0.5f + hash01(i * 9)) % 1f
+        val life = (ph + collapse) % 1f
+        val rr = (1f - life) * max(w, h) * 0.55f
+        val a = hash01(i * 5) * (Math.PI * 2).toFloat() + life * 3f
+        val px = cx + cos(a) * rr
+        val py = cy + sin(a) * rr
+        val s = (1f - life) * 2.2f * collapse
+        if (s <= 0f) continue
+        val la = life.coerceIn(0f, 1f)
+        sparkPaint.color = if (hash01(i) > 0.5f) {
+            android.graphics.Color.argb((la * 255f).toInt(), 255, 255, 255)
+        } else {
+            android.graphics.Color.argb((la * 255f).toInt(), 255, 0, 60)
+        }
+        nc.drawRect(px, py, px + s, py + s, sparkPaint)
     }
 
     // 3) РАСКАЛЁННАЯ ГЛОТКА дыры (сингулярность)
@@ -634,4 +841,54 @@ private fun DrawScope.drawPeelCollapse(
     )
     val corePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = core }
     nc.drawCircle(cx, cy, coreR.coerceAtLeast(1f), corePaint)
+}
+
+// =============================================================================
+//  ACT IV — УДАР ТИШИНЫ: послесвечение дыры на сетчатке + звон-кольцо (реж. правка)
+// =============================================================================
+private fun DrawScope.drawSilenceAfterimage(blackBeat: Float) {
+    val w = size.width
+    val h = size.height
+    val cx = BREACH_CENTER_X * w
+    val cy = BREACH_CENTER_Y * h
+    val nc = drawContext.canvas.nativeCanvas
+
+    // призрак дыры угасает
+    val gh = (1f - blackBeat) * 0.5f
+    if (gh > 0.01f) {
+        val gg = RadialGradient(
+            cx, cy, 120f,
+            intArrayOf(
+                android.graphics.Color.argb((gh * 255f).toInt().coerceIn(0, 255), 120, 0, 30),
+                android.graphics.Color.argb(0, 0, 0, 0),
+            ),
+            floatArrayOf(0f, 1f),
+            Shader.TileMode.CLAMP,
+        )
+        val gp = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = gg }
+        nc.drawCircle(cx, cy, 120f, gp)
+    }
+
+    // звон-кольцо (tinnitus) расширяется
+    val rp = blackBeat
+    val rr = rp * max(w, h) * 0.7f
+    val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1f + (1f - rp) * 3f
+        color = android.graphics.Color.argb(((1f - rp) * 0.4f * 255f).toInt().coerceIn(0, 255), 255, 0, 60)
+    }
+    nc.drawCircle(cx, cy, rr.coerceAtLeast(1f), ring)
+
+    // оседающая пыль/угольки
+    val dust = Paint(Paint.ANTI_ALIAS_FLAG)
+    for (i in 0 until 40) {
+        val px = hash01(i * 3) * w
+        val py = (hash01(i * 7) * h + blackBeat * 40f * hash01(i)) % h
+        val s = hash01(i * 11) * 1.4f
+        dust.color = android.graphics.Color.argb(
+            ((1f - blackBeat) * 0.5f * hash01(i * 2) * 255f).toInt().coerceIn(0, 255),
+            255, 80, 90,
+        )
+        nc.drawRect(px, py, px + s, py + s, dust)
+    }
 }

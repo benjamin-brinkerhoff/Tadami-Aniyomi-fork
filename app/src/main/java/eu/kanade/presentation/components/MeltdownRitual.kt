@@ -5,6 +5,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -232,115 +233,223 @@ fun VoidRevealScreen(
     onEnterTreasury: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val backgroundReveal = remember { Animatable(0f) }
     var powered by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { powered = true }
     val applied = remember {
         mutableStateListOf<Boolean>().apply { repeat(rewards.size) { add(false) } }
     }
-    val title =
-        rememberScrambleReveal(
-            stringResource(AYMR.strings.meltdown_ritual_reveal_title),
-            charDelayMs = 84,
-            scramblePerChar = 3,
+
+    val revealGlitchIntensity = remember { Animatable(0.9f) }
+    LaunchedEffect(Unit) {
+        // 1. Плавно проявляем фон
+        backgroundReveal.animateTo(1f, tween(2500, easing = LinearEasing))
+        // 2. Включаем питание CRT-эффекта и запускаем последовательное заполнение экрана
+        powered = true
+        // 3. Плавно затухает интенсивность общего глитча
+        revealGlitchIntensity.animateTo(
+            targetValue = 0.25f,
+            animationSpec = tween(2500, easing = LinearEasing),
         )
+    }
+
+    val scope = rememberCoroutineScope()
+    var activeStep by remember { mutableStateOf(0) }
 
     AuroraAmbientBackground(
         enabled = true,
         specialBackgroundStyle = "void_weeping_red",
         modifier = modifier.fillMaxSize(),
     ) {
+        // Черный оверлей для плавного проявления фона и плачущего глаза
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 1f - backgroundReveal.value))
+        )
+
         GlitchStack(
-            intensity = 0.22f,
+            intensity = revealGlitchIntensity.value,
             modifier = Modifier.fillMaxSize(),
             config = MeltdownPresets.Rift,
             content = {},
         )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .crtPowerOn(powered)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 22.dp, vertical = 30.dp),
-        ) {
-            Text(
-                text = "// TRANSMISSION_LOST   REC \u25CF",
-                color = GlitchPalette.HazardRed.copy(alpha = 0.7f),
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(14.dp))
-            BrutalTag(text = "MYTHIC // 999 PTS")
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 34.sp,
-                lineHeight = 38.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = stringResource(AYMR.strings.meltdown_ritual_achievement_unlocked),
-                color = GlitchPalette.Phosphor,
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(20.dp))
-            HazardDivider()
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = stringResource(AYMR.strings.meltdown_ritual_reveal_desc),
-                color = Color(0xFFCDBDBE),
-                fontSize = 13.sp,
-                lineHeight = 20.sp,
-                fontFamily = FontFamily.Monospace,
-            )
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = stringResource(AYMR.strings.meltdown_ritual_rewards_count, rewards.size),
-                color = GlitchPalette.HazardRed,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-            )
-            Spacer(Modifier.height(14.dp))
-            rewards.forEachIndexed { index, reward ->
-                StaggerReveal(index = index) {
-                    VoidRewardRow(
-                        index = index + 1,
-                        reward = reward,
-                        applied = applied[index],
-                        onApply = {
-                            reward.onApply()
-                            applied[index] = true
+
+        if (powered) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .crtPowerOn(powered)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 22.dp, vertical = 30.dp),
+            ) {
+                SequentialRevealItem(enabled = activeStep >= 0) {
+                    GlitchTypewriterText(
+                        text = "// TRANSMISSION_LOST   REC \u25CF",
+                        enabled = activeStep >= 0,
+                        onFinished = { if (activeStep == 0) activeStep = 1 },
+                        color = GlitchPalette.HazardRed.copy(alpha = 0.7f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                SequentialRevealItem(enabled = activeStep >= 1) {
+                    BrutalTag(
+                        text = "MYTHIC // 999 PTS",
+                        enabled = activeStep >= 1,
+                        onFinished = { if (activeStep == 1) activeStep = 2 },
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                SequentialRevealItem(enabled = activeStep >= 2) {
+                    var titleText by remember { mutableStateOf("") }
+                    val rawTitle = stringResource(AYMR.strings.meltdown_ritual_reveal_title)
+                    LaunchedEffect(activeStep) {
+                        if (activeStep < 2) return@LaunchedEffect
+                        val sb = StringBuilder()
+                        val charDelayMs = 26L
+                        val scramblePerChar = 2
+                        for (i in rawTitle.indices) {
+                            val target = rawTitle[i]
+                            if (!target.isWhitespace()) {
+                                repeat(scramblePerChar) {
+                                    sb.append(SCRAMBLE_GLYPHS.random())
+                                    titleText = sb.toString()
+                                    kotlinx.coroutines.delay(charDelayMs / (scramblePerChar + 1))
+                                    sb.deleteCharAt(sb.length - 1)
+                                }
+                            }
+                            sb.append(target)
+                            titleText = sb.toString()
+                            kotlinx.coroutines.delay(charDelayMs)
+                        }
+                        if (activeStep == 2) activeStep = 3
+                    }
+                    Text(
+                        text = titleText,
+                        color = Color.White,
+                        fontSize = 34.sp,
+                        lineHeight = 38.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                SequentialRevealItem(enabled = activeStep >= 3) {
+                    GlitchTypewriterText(
+                        text = stringResource(AYMR.strings.meltdown_ritual_achievement_unlocked),
+                        enabled = activeStep >= 3,
+                        onFinished = { if (activeStep == 3) activeStep = 4 },
+                        color = GlitchPalette.Phosphor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
+                SequentialRevealItem(enabled = activeStep >= 4) {
+                    HazardDivider()
+                    LaunchedEffect(activeStep) {
+                        if (activeStep == 4) {
+                            kotlinx.coroutines.delay(200L)
+                            activeStep = 5
+                        }
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+                SequentialRevealItem(enabled = activeStep >= 5) {
+                    GlitchTypewriterText(
+                        text = stringResource(AYMR.strings.meltdown_ritual_reveal_desc),
+                        enabled = activeStep >= 5,
+                        onFinished = { if (activeStep == 5) activeStep = 6 },
+                        color = Color(0xFFCDBDBE),
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+                SequentialRevealItem(enabled = activeStep >= 6) {
+                    GlitchTypewriterText(
+                        text = stringResource(AYMR.strings.meltdown_ritual_rewards_count, rewards.size),
+                        enabled = activeStep >= 6,
+                        onFinished = { if (activeStep == 6) activeStep = 7 },
+                        color = GlitchPalette.HazardRed,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+
+                rewards.forEachIndexed { index, reward ->
+                    val cardEnabled = activeStep >= 7 + index
+                    SequentialRevealItem(enabled = cardEnabled) {
+                        VoidRewardRow(
+                            index = index + 1,
+                            reward = reward,
+                            applied = applied[index],
+                            enabled = cardEnabled,
+                            onCardFinished = {
+                                scope.launch {
+                                    kotlinx.coroutines.delay(200L)
+                                    if (activeStep == 7 + index) {
+                                        activeStep = 8 + index
+                                    }
+                                }
+                            },
+                            onApply = {
+                                reward.onApply()
+                                applied[index] = true
+                            },
+                        )
+                    }
+                    if (cardEnabled) {
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+
+                val applyAllEnabled = activeStep >= 7 + rewards.size
+                SequentialRevealItem(enabled = applyAllEnabled) {
+                    BrutalActionButton(
+                        text = stringResource(AYMR.strings.meltdown_ritual_apply_all),
+                        filled = false,
+                        visibleEnabled = applyAllEnabled,
+                        onFinished = {
+                            scope.launch {
+                                kotlinx.coroutines.delay(150L)
+                                if (activeStep == 7 + rewards.size) {
+                                    activeStep = 8 + rewards.size
+                                }
+                            }
+                        },
+                        onClick = {
+                            rewards.forEachIndexed { i, r ->
+                                if (!applied[i]) {
+                                    r.onApply()
+                                    applied[i] = true
+                                }
+                            }
                         },
                     )
                 }
-                Spacer(Modifier.height(12.dp))
+                if (applyAllEnabled) {
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                val enterTreasuryEnabled = activeStep >= 8 + rewards.size
+                SequentialRevealItem(enabled = enterTreasuryEnabled) {
+                    BrutalActionButton(
+                        text = stringResource(AYMR.strings.meltdown_ritual_enter_treasury),
+                        filled = true,
+                        visibleEnabled = enterTreasuryEnabled,
+                        onFinished = {
+                            if (activeStep == 8 + rewards.size) {
+                                activeStep = 9 + rewards.size
+                            }
+                        },
+                        onClick = onEnterTreasury,
+                    )
+                }
+                Spacer(Modifier.height(28.dp))
             }
-            Spacer(Modifier.height(8.dp))
-            BrutalActionButton(
-                text = stringResource(AYMR.strings.meltdown_ritual_apply_all),
-                filled = false,
-                onClick = {
-                    rewards.forEachIndexed { i, r ->
-                        if (!applied[i]) {
-                            r.onApply()
-                            applied[i] = true
-                        }
-                    }
-                },
-            )
-            Spacer(Modifier.height(12.dp))
-            BrutalActionButton(
-                text = stringResource(AYMR.strings.meltdown_ritual_enter_treasury),
-                filled = true,
-                onClick = onEnterTreasury,
-            )
-            Spacer(Modifier.height(28.dp))
         }
     }
 }
@@ -549,12 +658,13 @@ private fun DirectiveStep(num: String, text: String, startDelayMs: Long = 0L) {
 @Composable
 private fun StaggerReveal(
     index: Int,
+    baseDelayMs: Long = 0L,
     content: @Composable () -> Unit,
 ) {
     val anim = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(index.toLong() * BREACH_CARD_STAGGER_MS)
-        anim.animateTo(1f, tween(840, easing = LinearEasing))
+        kotlinx.coroutines.delay(baseDelayMs + index.toLong() * breachDur(BREACH_CARD_STAGGER_MS))
+        anim.animateTo(1f, tween(breachDur(840), easing = LinearEasing))
     }
     Box(
         modifier = Modifier.graphicsLayer {
@@ -567,19 +677,51 @@ private fun StaggerReveal(
 }
 
 @Composable
-private fun BrutalTag(text: String) {
-    Box(
-        modifier = Modifier
-            .background(GlitchPalette.HazardRed)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-    ) {
-        Text(
-            text = text,
-            color = Color.Black,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.Monospace,
-        )
+private fun BrutalTag(
+    text: String,
+    enabled: Boolean = true,
+    onFinished: () -> Unit = {},
+) {
+    var out by remember(text) { mutableStateOf("") }
+    LaunchedEffect(text, enabled) {
+        if (!enabled) {
+            out = ""
+            return@LaunchedEffect
+        }
+        val sb = StringBuilder()
+        val scrambleGlyphs = SCRAMBLE_GLYPHS
+        val charDelayMs = 26L
+        val scramblePerChar = 2
+        for (i in text.indices) {
+            val target = text[i]
+            if (!target.isWhitespace()) {
+                repeat(scramblePerChar) {
+                    sb.append(scrambleGlyphs.random())
+                    out = sb.toString()
+                    kotlinx.coroutines.delay(charDelayMs / (scramblePerChar + 1))
+                    sb.deleteCharAt(sb.length - 1)
+                }
+            }
+            sb.append(target)
+            out = sb.toString()
+            kotlinx.coroutines.delay(charDelayMs)
+        }
+        onFinished()
+    }
+    if (enabled && out.isNotEmpty()) {
+        Box(
+            modifier = Modifier
+                .background(GlitchPalette.HazardRed)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+        ) {
+            Text(
+                text = out,
+                color = Color.Black,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+            )
+        }
     }
 }
 
@@ -613,67 +755,82 @@ private fun VoidRewardRow(
     reward: VoidReward,
     applied: Boolean,
     onApply: () -> Unit,
+    enabled: Boolean,
+    onCardFinished: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .offset(x = 5.dp, y = 5.dp)
-                .background(GlitchPalette.HazardRed.copy(alpha = 0.20f)),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF0A0203))
-                .border(2.dp, GlitchPalette.HazardRed.copy(alpha = if (applied) 0.95f else 0.5f))
-                .padding(14.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "[" + index.toString().padStart(2, '0') + "]",
-                    color = GlitchPalette.HazardRed,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = reward.tag,
-                    color = GlitchPalette.Phosphor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = reward.name,
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
+    var cardStep by remember(enabled) { mutableStateOf(0) }
+    if (enabled) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .offset(x = 5.dp, y = 5.dp)
+                    .background(GlitchPalette.HazardRed.copy(alpha = 0.20f)),
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = reward.lore,
-                color = Color(0xFF9A8A8B),
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                fontFamily = FontFamily.Monospace,
-            )
-            Spacer(Modifier.height(12.dp))
-            BrutalActionButton(
-                text = if (applied) {
-                    stringResource(
-                        AYMR.strings.meltdown_ritual_reward_active,
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0A0203))
+                    .border(2.dp, GlitchPalette.HazardRed.copy(alpha = if (applied) 0.95f else 0.5f))
+                    .padding(14.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GlitchTypewriterText(
+                        text = "[" + index.toString().padStart(2, '0') + "]",
+                        enabled = enabled && cardStep >= 0,
+                        onFinished = { if (cardStep == 0) cardStep = 1 },
+                        color = GlitchPalette.HazardRed,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
                     )
+                    Spacer(Modifier.width(10.dp))
+                    GlitchTypewriterText(
+                        text = reward.tag,
+                        enabled = enabled && cardStep >= 1,
+                        onFinished = { if (cardStep == 1) cardStep = 2 },
+                        color = GlitchPalette.Phosphor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                GlitchTypewriterText(
+                    text = reward.name,
+                    enabled = enabled && cardStep >= 2,
+                    onFinished = { if (cardStep == 2) cardStep = 3 },
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                )
+                Spacer(Modifier.height(4.dp))
+                GlitchTypewriterText(
+                    text = reward.lore,
+                    enabled = enabled && cardStep >= 3,
+                    onFinished = { if (cardStep == 3) cardStep = 4 },
+                    color = Color(0xFF9A8A8B),
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+                Spacer(Modifier.height(12.dp))
+                val btnText = if (applied) {
+                    stringResource(AYMR.strings.meltdown_ritual_reward_active)
                 } else {
                     stringResource(AYMR.strings.meltdown_ritual_reward_apply)
-                },
-                filled = applied,
-                enabled = !applied,
-                onClick = onApply,
-            )
+                }
+                BrutalActionButton(
+                    text = btnText,
+                    filled = applied,
+                    enabled = !applied,
+                    visibleEnabled = enabled && cardStep >= 4,
+                    onFinished = {
+                        if (cardStep == 4) {
+                            cardStep = 5
+                            onCardFinished()
+                        }
+                    },
+                    onClick = onApply,
+                )
+            }
         }
     }
 }
@@ -684,25 +841,131 @@ private fun BrutalActionButton(
     filled: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    visibleEnabled: Boolean = true,
+    onFinished: () -> Unit = {},
     onClick: () -> Unit,
 ) {
     val accent = GlitchPalette.HazardRed
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .background(if (filled) accent else Color(0xFF0A0203))
-            .border(2.dp, accent)
-            .then(if (enabled) Modifier.clickable { onClick() } else Modifier),
-        contentAlignment = Alignment.Center,
-    ) {
+    var out by remember(text) { mutableStateOf("") }
+    LaunchedEffect(text, visibleEnabled) {
+        if (!visibleEnabled) {
+            out = ""
+            return@LaunchedEffect
+        }
+        val sb = StringBuilder()
+        val scrambleGlyphs = SCRAMBLE_GLYPHS
+        val charDelayMs = 26L
+        val scramblePerChar = 2
+        for (i in text.indices) {
+            val target = text[i]
+            if (!target.isWhitespace()) {
+                repeat(scramblePerChar) {
+                    sb.append(scrambleGlyphs.random())
+                    out = sb.toString()
+                    kotlinx.coroutines.delay(charDelayMs / (scramblePerChar + 1))
+                    sb.deleteCharAt(sb.length - 1)
+                }
+            }
+            sb.append(target)
+            out = sb.toString()
+            kotlinx.coroutines.delay(charDelayMs)
+        }
+        onFinished()
+    }
+    if (visibleEnabled && out.isNotEmpty()) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .background(if (filled) accent else Color(0xFF0A0203))
+                .border(2.dp, accent)
+                .then(if (enabled) Modifier.clickable { onClick() } else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = out,
+                color = if (filled) Color.Black else accent,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GlitchTypewriterText(
+    text: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onFinished: () -> Unit = {},
+    color: Color = Color.Unspecified,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    lineHeight: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    fontWeight: FontWeight? = null,
+    fontFamily: FontFamily? = FontFamily.Monospace,
+) {
+    var out by remember(text) { mutableStateOf("") }
+    LaunchedEffect(text, enabled) {
+        if (!enabled) {
+            out = ""
+            return@LaunchedEffect
+        }
+        val sb = StringBuilder()
+        val scrambleGlyphs = SCRAMBLE_GLYPHS
+        val charDelayMs = 26L
+        val scramblePerChar = 2
+        for (i in text.indices) {
+            val target = text[i]
+            if (!target.isWhitespace()) {
+                repeat(scramblePerChar) {
+                    sb.append(scrambleGlyphs.random())
+                    out = sb.toString()
+                    kotlinx.coroutines.delay(charDelayMs / (scramblePerChar + 1))
+                    sb.deleteCharAt(sb.length - 1)
+                }
+            }
+            sb.append(target)
+            out = sb.toString()
+            kotlinx.coroutines.delay(charDelayMs)
+        }
+        onFinished()
+    }
+    if (enabled && out.isNotEmpty()) {
         Text(
-            text = text,
-            color = if (filled) Color.Black else accent,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.Monospace,
+            text = out,
+            modifier = modifier,
+            color = color,
+            fontSize = fontSize,
+            lineHeight = lineHeight,
+            fontWeight = fontWeight,
+            fontFamily = fontFamily,
         )
+    }
+}
+
+@Composable
+private fun SequentialRevealItem(
+    enabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val anim = remember { Animatable(0f) }
+    LaunchedEffect(enabled) {
+        if (enabled) {
+            anim.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
+        } else {
+            anim.snapTo(0f)
+        }
+    }
+    if (enabled) {
+        Box(
+            modifier = Modifier.graphicsLayer {
+                alpha = anim.value
+                translationY = (1f - anim.value) * 16f
+            },
+        ) {
+            content()
+        }
     }
 }
 
@@ -715,6 +978,7 @@ private fun hash01(i: Int): Float {
 //  3D-РАЗРУШЕНИЕ ЭКРАНА (пресет подобран в HTML-прототипе)
 //  Осколки несут текстуру экрана, кувыркаются в 3D, летят на камеру и падают.
 // =============================================================================
+private const val SCRAMBLE_GLYPHS = "\u2588\u2593\u2592\u2591#@%&/\\\\<>*+=-01"
 private const val CRUMBLE_MS = 9500 // speed
 private const val CRUMBLE_SECTORS = 14 // sectors
 private const val CRUMBLE_RINGS = 4 // rings

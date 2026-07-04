@@ -857,7 +857,7 @@ object SettingsAdvancedScreen : SearchableSettings {
                     staticNoise = false,
                     flicker = true,
                     bloodVignette = true,
-                    bloodDrips = true,
+                    bloodDrips = false,
                 ),
             ) {
                 RiftDatamoshBackground(

@@ -86,11 +86,11 @@ object MeltdownPresets {
     // Шаг 1 — инициация: резкий джолт + средний фон
     val Initiation = GlitchConfig(bloodDrips = false, crackedGlass = false)
 
-    // Шаг 2 — разлом: агрессивнее, с потёками
-    val Rift = GlitchConfig(bloodDrips = true, crackedGlass = false)
+    // Шаг 2 — разлом: агрессивнее
+    val Rift = GlitchConfig(bloodDrips = false, crackedGlass = false)
 
-    // Шаг 3 — финальный meltdown в читалке: всё включено
-    val Void = GlitchConfig(bloodDrips = true, crackedGlass = true)
+    // Шаг 3 — финальный meltdown в читалке
+    val Void = GlitchConfig(bloodDrips = false, crackedGlass = false)
 
     /** Плавное соответствие "номер свайпа (0..5) -> интенсивность". */
     fun swipeIntensity(swipe: Int): Float = when (swipe) {
