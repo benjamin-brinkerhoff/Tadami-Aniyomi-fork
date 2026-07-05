@@ -34,7 +34,7 @@ internal object GeminiXmlSegmentParser {
             sanitized = sanitized,
             out = out,
         )
-        return out
+        return out.map { it?.unescapeHtmlEntities() }
     }
 
     fun parsePlaintext(
@@ -72,7 +72,7 @@ internal object GeminiXmlSegmentParser {
         normalizedSource.take(expectedCount).forEachIndexed { index, text ->
             out[index] = text
         }
-        return out
+        return out.map { it?.unescapeHtmlEntities() }
     }
 
     private fun String.sanitizeXmlResponseForParsing(): String {
@@ -85,11 +85,22 @@ internal object GeminiXmlSegmentParser {
         return trimmed
             .replace("&lt;", "<", ignoreCase = true)
             .replace("&gt;", ">", ignoreCase = true)
+            .trim()
+    }
+
+    private fun String.unescapeHtmlEntities(): String {
+        if (!contains('&')) return this
+        return this
             .replace("&quot;", "\"", ignoreCase = true)
             .replace("&#34;", "\"")
             .replace("&apos;", "'", ignoreCase = true)
             .replace("&#39;", "'")
-            .trim()
+            .replace("&amp;", "&", ignoreCase = true)
+            .replace("&#38;", "&")
+            .replace("&lt;", "<", ignoreCase = true)
+            .replace("&#60;", "<")
+            .replace("&gt;", ">", ignoreCase = true)
+            .replace("&#62;", ">")
     }
 
     private fun recoverStartTagDelimitedSegments(

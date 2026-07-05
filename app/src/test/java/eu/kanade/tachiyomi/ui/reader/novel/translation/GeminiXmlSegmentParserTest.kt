@@ -18,6 +18,15 @@ class GeminiXmlSegmentParserTest {
     }
 
     @Test
+    fun `unescapes html entities like quot and apos when tags are not escaped`() {
+        val raw = "<s i='0'>Hello, &quot;world&quot;!</s><s i='1'>It&#39;s beautiful</s>"
+
+        val parsed = GeminiXmlSegmentParser.parse(raw, expectedCount = 2)
+
+        parsed shouldBe listOf("Hello, \"world\"!", "It's beautiful")
+    }
+
+    @Test
     fun `fills missing indexes with null`() {
         val raw = "<s i='0'>First</s><s i='2'>Third</s>"
 
