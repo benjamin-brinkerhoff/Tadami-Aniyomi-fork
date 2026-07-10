@@ -723,17 +723,19 @@ object HomeHubTab : Tab {
         val showAnimeSection by if (deferHeavyCustomization) {
             uiPreferences.showAnimeSection().collectAsStateWithLifecycle()
         } else {
-            remember { mutableStateOf(true) }
+            // Use real value from pref on first frame (cheap .get()), to avoid change when defer sets.
+            // This prevents sections list from changing and re-mounting the tab content (which was causing repeated content-start and skeleton flicker).
+            remember { mutableStateOf(uiPreferences.showAnimeSection().get()) }
         }
         val showMangaSection by if (deferHeavyCustomization) {
             uiPreferences.showMangaSection().collectAsStateWithLifecycle()
         } else {
-            remember { mutableStateOf(true) }
+            remember { mutableStateOf(uiPreferences.showMangaSection().get()) }
         }
         val showNovelSection by if (deferHeavyCustomization) {
             uiPreferences.showNovelSection().collectAsStateWithLifecycle()
         } else {
-            remember { mutableStateOf(true) }
+            remember { mutableStateOf(uiPreferences.showNovelSection().get()) }
         }
 
         val sections = remember(showAnimeSection, showMangaSection, showNovelSection) {
@@ -1052,7 +1054,12 @@ object HomeHubTab : Tab {
             }
         }
 
-        val tabs = sections.map { section ->
+        // PERF: remember the tabs list so that defer flips (which cause parent recompose + re-eval of light vs collect branches)
+        // do not create brand new TabContent instances. This prevents the pager from remounting HomeHub pages,
+        // which was causing repeated content-start logs and transient skeleton states.
+        // Keys chosen so legitimate changes (search, selection, modes) still produce updated list.
+        val tabs = remember(sections, selectedSection, homeHeroCtaMode, homeHubRecentCardMode, profileScreenModel, animeSearchQuery, mangaSearchQuery, novelSearchQuery, scrollResetToken) {
+            sections.map { section ->
             when (section) {
                 HomeHubSection.Anime -> TabContent(
                     titleRes = AYMR.strings.label_anime,
@@ -1104,6 +1111,7 @@ object HomeHubTab : Tab {
                 )
             }
         }.toPersistentList()
+        }
 
         val initialIndex = resolveHomeHubSectionIndex(sections, selectedSection)
         val pagerState = rememberPagerState(initialPage = initialIndex) { tabs.size }

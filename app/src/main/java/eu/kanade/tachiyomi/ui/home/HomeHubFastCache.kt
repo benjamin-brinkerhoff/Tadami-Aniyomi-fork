@@ -80,6 +80,8 @@ internal class HomeHubFastCache(context: Context, section: HomeHubSection) {
         memoryCache = memoryCache?.copy(userAvatar = path)
     }
 
+    fun loadCachedState(): CachedHomeState = load()
+
     companion object {
         private const val KEY_HERO = "hero"
         private const val KEY_HISTORY = "history"

@@ -30,14 +30,58 @@ internal class HomeHubScreenModel(
     userProfilePreferences: UserProfilePreferences = Injekt.get(),
 ) : BaseHomeHubScreenModel(
     context = context,
-    initialState = HomeHubUiState(
-        userName = userProfilePreferences.name().get(),
-        userAvatar = userProfilePreferences.avatarUrl().get(),
-        greeting = AYMR.strings.aurora_welcome_back,
-        greetingReady = false,
-        isLoading = true,
-        showWelcome = true,
-    ),
+    initialState = run {
+        val tempCache = HomeHubFastCache(context, HomeHubSection.Anime)
+        val cached = tempCache.loadCachedState()
+        val hadCache = !cached.isEmpty || cached.isInitialized
+        if (hadCache) {
+            HomeHubUiState(
+                hero = cached.hero?.let { h ->
+                    HomeHubHero(
+                        entryId = h.entryId,
+                        title = h.title,
+                        progressNumber = h.progressNumber,
+                        coverData = AnimeCover(h.entryId, -1, true, h.coverUrl, h.coverLastModified),
+                    )
+                },
+                history = cached.history.map { h ->
+                    HomeHubHistory(
+                        entryId = h.entryId,
+                        title = h.title,
+                        progressNumber = h.progressNumber,
+                        coverData = AnimeCover(h.entryId, -1, true, h.coverUrl, h.coverLastModified),
+                        section = HomeHubSection.Anime,
+                    )
+                },
+                recommendations = cached.recommendations.map { r ->
+                    HomeHubRecommendation(
+                        entryId = r.entryId,
+                        title = r.title,
+                        coverData = AnimeCover(r.entryId, -1, true, r.coverUrl, r.coverLastModified),
+                        section = HomeHubSection.Anime,
+                        progressNumerator = r.progressNumerator,
+                        progressDenominator = r.totalCount,
+                    )
+                },
+                userName = cached.userName,
+                userAvatar = cached.userAvatar,
+                greeting = AYMR.strings.aurora_welcome_back,
+                greetingReady = true,
+                isLoading = false,
+                showWelcome = !cached.isInitialized && cached.isEmpty,
+                showFilteredEmpty = cached.isInitialized && cached.isEmpty,
+            )
+        } else {
+            HomeHubUiState(
+                userName = userProfilePreferences.name().get(),
+                userAvatar = userProfilePreferences.avatarUrl().get(),
+                greeting = AYMR.strings.aurora_welcome_back,
+                greetingReady = false,
+                isLoading = true,
+                showWelcome = true,
+            )
+        }
+    },
     userProfilePreferences = userProfilePreferences,
 ) {
 

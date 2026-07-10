@@ -81,12 +81,29 @@ class MangaExtensionStoreRepositoryImpl(
     }
 
     override suspend fun getAll(): List<ExtensionStore> {
-        migrateLegacyIfNeeded()
         return handler.awaitList { db -> db.extension_storeQueries.getAll(::extensionStoreMapper) }
     }
 
+    /**
+     * One-time port from legacy extension_repos if this store table is empty.
+     * Called from extension code paths (which are deferred after first frame).
+     * Uses cheap count + volatile to avoid repeated work.
+     */
+    override suspend fun ensureLegacyMigrated() {
+        migrateLegacyIfNeeded()
+    }
+
+    @Volatile
+    private var legacyMigrationChecked = false
+
     private suspend fun migrateLegacyIfNeeded() {
-        if (handler.awaitList { db -> db.extension_storeQueries.getAll() }.isNotEmpty()) return
+        if (legacyMigrationChecked) return
+
+        val count = handler.awaitOneOrNull { db -> db.extension_storeQueries.getCount() } ?: 0L
+        if (count > 0L) {
+            legacyMigrationChecked = true
+            return
+        }
 
         handler.awaitList { db ->
             db.extension_reposQueries.findAll { baseUrl, name, shortName, website, fingerprint ->
@@ -101,6 +118,7 @@ class MangaExtensionStoreRepositoryImpl(
         }.forEach { repo ->
             upsertStore(repo.toLegacyExtensionStore())
         }
+        legacyMigrationChecked = true
     }
 
     override fun getAllAsFlow(): Flow<List<ExtensionStore>> {

@@ -19,4 +19,11 @@ interface ExtensionStoreRepository {
     fun getCountAsFlow(): Flow<Long>
 
     suspend fun remove(indexUrl: String)
+
+    /**
+     * One-time migration helper from legacy repos. Default no-op for implementations
+     * that don't need it. Data impls override to do the port if store table is empty.
+     * Called only from extension fetch paths (deferred after first frame for perf).
+     */
+    suspend fun ensureLegacyMigrated() {}
 }

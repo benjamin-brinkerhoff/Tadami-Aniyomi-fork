@@ -32,6 +32,7 @@ class AnimeExtensionStoreScreenModel(
 
     init {
         screenModelScope.launchIO {
+            getExtensionRepo.getAll() // trigger legacy port
             getExtensionRepo.subscribeAll()
                 .collectLatest { repos ->
                     mutableState.update {

@@ -36,6 +36,8 @@ class MangaExtensionStoreScreenModel(
 
     init {
         screenModelScope.launchIO {
+            // Trigger legacy port on first open of extension store screen (after Home launch)
+            getExtensionRepo.getAll() // this will call ensureLegacyMigrated inside
             getExtensionRepo.subscribeAll()
                 .collectLatest { repos ->
                     mutableState.update {

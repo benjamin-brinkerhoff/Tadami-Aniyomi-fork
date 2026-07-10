@@ -14,6 +14,7 @@ class GetAnimeExtensionRepo(
     }
 
     suspend fun getAll(): List<ExtensionRepo> {
+        repository.ensureLegacyMigrated()
         return repository.getAll().map { it.toExtensionRepo() }
     }
 }

@@ -46,6 +46,7 @@ class NovelExtensionStoreScreenModel(
                     .apply()
             }
 
+            getExtensionRepo.getAll() // trigger legacy port for stores
             getExtensionRepo.subscribeAll()
                 .collectLatest { repos ->
                     mutableState.update {
