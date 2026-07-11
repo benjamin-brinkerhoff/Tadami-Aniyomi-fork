@@ -199,7 +199,42 @@ class NovelRepositoryImpl(
                     )
                     updated
                 } else {
-                    local
+                    val newThumbnailUrl = if (local.thumbnailUrl.isNullOrBlank()) {
+                        novel.thumbnailUrl
+                    } else {
+                        local.thumbnailUrl
+                    }
+                    if (newThumbnailUrl != local.thumbnailUrl) {
+                        val updated = local.copy(thumbnailUrl = newThumbnailUrl)
+                        db.novelsQueries.update(
+                            source = updated.source,
+                            url = updated.url,
+                            author = updated.author,
+                            description = updated.description,
+                            notes = updated.notes,
+                            genre = updated.genre?.let(StringListColumnAdapter::encode),
+                            title = updated.title,
+                            status = updated.status,
+                            thumbnailUrl = updated.thumbnailUrl,
+                            favorite = updated.favorite,
+                            pinned = updated.pinned,
+                            lastUpdate = updated.lastUpdate,
+                            nextUpdate = updated.nextUpdate,
+                            calculateInterval = updated.fetchInterval.toLong(),
+                            initialized = updated.initialized,
+                            viewer = updated.viewerFlags,
+                            chapterFlags = updated.chapterFlags,
+                            coverLastModified = updated.coverLastModified,
+                            dateAdded = updated.dateAdded,
+                            novelId = updated.id,
+                            updateStrategy = MangaUpdateStrategyColumnAdapter.encode(updated.updateStrategy),
+                            version = updated.version,
+                            isSyncing = 0,
+                        )
+                        updated
+                    } else {
+                        local
+                    }
                 }
             }
         }

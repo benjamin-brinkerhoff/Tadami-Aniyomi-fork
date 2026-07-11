@@ -31,6 +31,7 @@ import okio.buffer
 import okio.sink
 import okio.source
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.entries.anime.interactor.GetAnime
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.entries.anime.model.AnimeCover
 import tachiyomi.domain.source.anime.service.AnimeSourceManager
@@ -54,8 +55,9 @@ class AnimeImageFetcher(
     private val options: Options,
     private val coverFileProvider: (String?) -> File?,
     private val customCoverFileLazy: Lazy<File>,
-    private val diskCacheKeyProvider: (String?) -> String,
+    private val diskCacheKeyProvider: (String?, Long?) -> String,
     private val metadataCoverUrlProvider: suspend () -> String? = { null },
+    private val dbCoverProvider: suspend () -> Pair<String?, Long>? = { null },
     private val sourceLazy: Lazy<AnimeHttpSource?>,
     private val callFactoryLazy: Lazy<Call.Factory>,
     private val imageLoader: ImageLoader,
@@ -67,21 +69,31 @@ class AnimeImageFetcher(
         if (useCustomCover) {
             val customCoverFile = customCoverFileLazy.value
             if (customCoverFile.exists()) {
-                val diskCacheKey = diskCacheKeyProvider(url)
+                val diskCacheKey = diskCacheKeyProvider(url, null)
                 debugTitleCoverFlow(scope = "anime-fetcher", message = "custom-cover-hit file=${customCoverFile.name}")
                 return fileLoader(customCoverFile, diskCacheKey)
             }
         }
 
-        val effectiveUrl = metadataCoverUrlProvider()?.takeIf { it.isNotBlank() } ?: url
-        val diskCacheKey = diskCacheKeyProvider(effectiveUrl)
+        var effectiveUrl = metadataCoverUrlProvider()?.takeIf { it.isNotBlank() } ?: url
+        var lastModified: Long? = null
+
+        if (effectiveUrl.isNullOrBlank()) {
+            val dbResult = dbCoverProvider()
+            if (dbResult != null) {
+                effectiveUrl = dbResult.first
+                lastModified = dbResult.second
+            }
+        }
+
+        val diskCacheKey = diskCacheKeyProvider(effectiveUrl, lastModified)
         debugTitleCoverFlow(scope = "anime-fetcher") {
             "fetch url=${previewTitleCoverUrl(url)} effectiveUrl=${previewTitleCoverUrl(effectiveUrl)} " +
                 "diskCacheKey=$diskCacheKey useCustomCover=$useCustomCover " +
                 "isLibrary=$isLibraryAnime useBackground=${options.useBackground}"
         }
 
-        if (effectiveUrl == null) error("No cover specified")
+        if (effectiveUrl.isNullOrBlank()) error("No cover specified")
         return when (getResourceType(effectiveUrl)) {
             Type.URL -> httpLoader(effectiveUrl, diskCacheKey)
             Type.File -> fileLoader(File(effectiveUrl.substringAfter("file://")), diskCacheKey)
@@ -339,6 +351,7 @@ class AnimeImageFetcher(
         private val backgroundCache: AnimeBackgroundCache by injectLazy()
         private val sourceManager: AnimeSourceManager by injectLazy()
         private val metadataCoverResolver: MetadataCoverResolver by injectLazy()
+        private val getAnime: GetAnime by injectLazy()
 
         override fun create(data: Anime, options: Options, imageLoader: ImageLoader): Fetcher {
             val isBackground = options.useBackground
@@ -364,15 +377,25 @@ class AnimeImageFetcher(
                     }
                 },
                 customCoverFileLazy = customCoverCacheLazy,
-                diskCacheKeyProvider = { effectiveUrl ->
+                diskCacheKeyProvider = { effectiveUrl, lastModified ->
                     if (isBackground) {
-                        "anime-bg;${data.id};$effectiveUrl;${data.backgroundLastModified}"
+                        "anime-bg;${data.id};$effectiveUrl;${lastModified ?: data.backgroundLastModified}"
                     } else {
-                        "anime;${data.id};$effectiveUrl;${data.coverLastModified}"
+                        "anime;${data.id};$effectiveUrl;${lastModified ?: data.coverLastModified}"
                     }
                 },
                 metadataCoverUrlProvider = {
                     if (isBackground) null else metadataCoverResolver.resolveAnimeCoverUrl(data.id)
+                },
+                dbCoverProvider = {
+                    getAnime.await(data.id)?.let {
+                        if (isBackground) {
+                            it.backgroundUrl to it.backgroundLastModified
+                        } else {
+                            it.thumbnailUrl to
+                                it.coverLastModified
+                        }
+                    }
                 },
                 sourceLazy = lazy { sourceManager.get(data.source) as? AnimeHttpSource },
                 callFactoryLazy = callFactoryLazy,
@@ -388,6 +411,7 @@ class AnimeImageFetcher(
         private val coverCache: AnimeCoverCache by injectLazy()
         private val sourceManager: AnimeSourceManager by injectLazy()
         private val metadataCoverResolver: MetadataCoverResolver by injectLazy()
+        private val getAnime: GetAnime by injectLazy()
 
         override fun create(data: AnimeCover, options: Options, imageLoader: ImageLoader): Fetcher {
             return AnimeImageFetcher(
@@ -396,8 +420,11 @@ class AnimeImageFetcher(
                 options = options,
                 coverFileProvider = coverCache::getCoverFile,
                 customCoverFileLazy = lazy { coverCache.getCustomCoverFile(data.animeId) },
-                diskCacheKeyProvider = { effectiveUrl -> "anime;${data.animeId};$effectiveUrl;${data.lastModified}" },
+                diskCacheKeyProvider = { effectiveUrl, lastModified ->
+                    "anime;${data.animeId};$effectiveUrl;${lastModified ?: data.lastModified}"
+                },
                 metadataCoverUrlProvider = { metadataCoverResolver.resolveAnimeCoverUrl(data.animeId) },
+                dbCoverProvider = { getAnime.await(data.animeId)?.let { it.thumbnailUrl to it.coverLastModified } },
                 sourceLazy = lazy { sourceManager.get(data.sourceId) as? AnimeHttpSource },
                 callFactoryLazy = callFactoryLazy,
                 imageLoader = imageLoader,

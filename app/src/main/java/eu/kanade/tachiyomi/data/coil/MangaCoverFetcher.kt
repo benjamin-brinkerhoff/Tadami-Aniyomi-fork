@@ -30,6 +30,7 @@ import okio.buffer
 import okio.sink
 import okio.source
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.entries.manga.interactor.GetManga
 import tachiyomi.domain.entries.manga.model.Manga
 import tachiyomi.domain.entries.manga.model.MangaCover
 import tachiyomi.domain.source.manga.service.MangaSourceManager
@@ -53,8 +54,9 @@ class MangaCoverFetcher(
     private val options: Options,
     private val coverFileProvider: (String?) -> File?,
     private val customCoverFileLazy: Lazy<File>,
-    private val diskCacheKeyProvider: (String?) -> String,
+    private val diskCacheKeyProvider: (String?, Long?) -> String,
     private val metadataCoverUrlProvider: suspend () -> String? = { null },
+    private val dbCoverProvider: suspend () -> Pair<String?, Long>? = { null },
     private val sourceLazy: Lazy<HttpSource?>,
     private val callFactoryLazy: Lazy<Call.Factory>,
     private val imageLoader: ImageLoader,
@@ -66,20 +68,30 @@ class MangaCoverFetcher(
         if (useCustomCover) {
             val customCoverFile = customCoverFileLazy.value
             if (customCoverFile.exists()) {
-                val diskCacheKey = diskCacheKeyProvider(url)
+                val diskCacheKey = diskCacheKeyProvider(url, null)
                 debugTitleCoverFlow(scope = "manga-fetcher", message = "custom-cover-hit file=${customCoverFile.name}")
                 return fileLoader(customCoverFile, diskCacheKey)
             }
         }
 
-        val effectiveUrl = metadataCoverUrlProvider()?.takeIf { it.isNotBlank() } ?: url
-        val diskCacheKey = diskCacheKeyProvider(effectiveUrl)
+        var effectiveUrl = metadataCoverUrlProvider()?.takeIf { it.isNotBlank() } ?: url
+        var lastModified: Long? = null
+
+        if (effectiveUrl.isNullOrBlank()) {
+            val dbResult = dbCoverProvider()
+            if (dbResult != null) {
+                effectiveUrl = dbResult.first
+                lastModified = dbResult.second
+            }
+        }
+
+        val diskCacheKey = diskCacheKeyProvider(effectiveUrl, lastModified)
         debugTitleCoverFlow(scope = "manga-fetcher") {
             "fetch url=${previewTitleCoverUrl(url)} effectiveUrl=${previewTitleCoverUrl(effectiveUrl)} " +
                 "diskCacheKey=$diskCacheKey useCustomCover=$useCustomCover isLibrary=$isLibraryManga"
         }
 
-        if (effectiveUrl == null) error("No cover specified")
+        if (effectiveUrl.isNullOrBlank()) error("No cover specified")
         return when (getResourceType(effectiveUrl)) {
             Type.URL -> httpLoader(effectiveUrl, diskCacheKey)
             Type.File -> fileLoader(File(effectiveUrl.substringAfter("file://")), diskCacheKey)
@@ -336,6 +348,7 @@ class MangaCoverFetcher(
         private val coverCache: MangaCoverCache by injectLazy()
         private val sourceManager: MangaSourceManager by injectLazy()
         private val metadataCoverResolver: MetadataCoverResolver by injectLazy()
+        private val getManga: GetManga by injectLazy()
 
         override fun create(data: Manga, options: Options, imageLoader: ImageLoader): Fetcher {
             return MangaCoverFetcher(
@@ -344,8 +357,11 @@ class MangaCoverFetcher(
                 options = options,
                 coverFileProvider = coverCache::getCoverFile,
                 customCoverFileLazy = lazy { coverCache.getCustomCoverFile(data.id) },
-                diskCacheKeyProvider = { effectiveUrl -> "manga;${data.id};$effectiveUrl;${data.coverLastModified}" },
+                diskCacheKeyProvider = { effectiveUrl, lastModified ->
+                    "manga;${data.id};$effectiveUrl;${lastModified ?: data.coverLastModified}"
+                },
                 metadataCoverUrlProvider = { metadataCoverResolver.resolveMangaCoverUrl(data.id) },
+                dbCoverProvider = { getManga.await(data.id)?.let { it.thumbnailUrl to it.coverLastModified } },
                 sourceLazy = lazy { sourceManager.get(data.source) as? HttpSource },
                 callFactoryLazy = callFactoryLazy,
                 imageLoader = imageLoader,
@@ -360,6 +376,7 @@ class MangaCoverFetcher(
         private val coverCache: MangaCoverCache by injectLazy()
         private val sourceManager: MangaSourceManager by injectLazy()
         private val metadataCoverResolver: MetadataCoverResolver by injectLazy()
+        private val getManga: GetManga by injectLazy()
 
         override fun create(data: MangaCover, options: Options, imageLoader: ImageLoader): Fetcher {
             return MangaCoverFetcher(
@@ -368,8 +385,11 @@ class MangaCoverFetcher(
                 options = options,
                 coverFileProvider = coverCache::getCoverFile,
                 customCoverFileLazy = lazy { coverCache.getCustomCoverFile(data.mangaId) },
-                diskCacheKeyProvider = { effectiveUrl -> "manga;${data.mangaId};$effectiveUrl;${data.lastModified}" },
+                diskCacheKeyProvider = { effectiveUrl, lastModified ->
+                    "manga;${data.mangaId};$effectiveUrl;${lastModified ?: data.lastModified}"
+                },
                 metadataCoverUrlProvider = { metadataCoverResolver.resolveMangaCoverUrl(data.mangaId) },
+                dbCoverProvider = { getManga.await(data.mangaId)?.let { it.thumbnailUrl to it.coverLastModified } },
                 sourceLazy = lazy { sourceManager.get(data.sourceId) as? HttpSource },
                 callFactoryLazy = callFactoryLazy,
                 imageLoader = imageLoader,

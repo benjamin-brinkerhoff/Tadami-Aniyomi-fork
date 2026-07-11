@@ -34,6 +34,7 @@ import eu.kanade.presentation.entries.components.aurora.rememberAuroraPosterColo
 import eu.kanade.presentation.entries.components.aurora.resolveAuroraPosterScrimBrush
 import eu.kanade.presentation.entries.components.aurora.shouldDrawAuroraPosterBlurOverlay
 import eu.kanade.presentation.theme.AuroraTheme
+import eu.kanade.tachiyomi.data.coil.AuroraPosterRequest
 import eu.kanade.tachiyomi.util.debugTitleCoverFlow
 import eu.kanade.tachiyomi.util.previewTitleCoverUrl
 import kotlinx.coroutines.flow.collectLatest
@@ -63,22 +64,14 @@ fun FullscreenPosterBackground(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val placeholderPainter = rememberAuroraCoverPlaceholderPainter(AuroraCoverPlaceholderVariant.Wide)
-    val posterCover = remember(
-        anime.id,
-        anime.source,
-        anime.favorite,
-        anime.thumbnailUrl,
-        anime.coverLastModified,
-        resolvedCoverUrl,
-        resolvedCoverUrlFallback,
-    ) {
-        anime.asAnimeCover().copy(
-            url = resolvedCoverUrl?.takeIf { it.isNotBlank() }
-                ?: resolvedCoverUrlFallback?.takeIf { it.isNotBlank() }
-                ?: anime.thumbnailUrl,
+    val posterRequest = remember(resolvedCoverUrl, resolvedCoverUrlFallback, refererUrl, anime.thumbnailUrl) {
+        AuroraPosterRequest(
+            primaryUrl = resolvedCoverUrl?.takeIf { it.isNotBlank() },
+            fallbackUrl = resolvedCoverUrlFallback?.takeIf { it.isNotBlank() } ?: anime.thumbnailUrl,
+            refererUrl = refererUrl?.takeIf { it.isNotBlank() },
         )
     }
-    val posterModel = posterCover.url
+    val posterModel = posterRequest.primaryUrl ?: posterRequest.fallbackUrl
     val posterColorFilter = rememberAuroraPosterColorFilter()
 
     val hasScrolledAway = firstVisibleItemIndex > 0 || scrollOffset > 100
@@ -136,18 +129,19 @@ fun FullscreenPosterBackground(
             val backgroundSpec = remember(
                 anime.id,
                 anime.coverLastModified,
-                posterCover,
+                posterRequest,
                 containerWidthPx,
-                containerHeightPx,
             ) {
+                val baseCacheKey = "anime-bg;${anime.id};${anime.coverLastModified};" +
+                    posterRequest.primaryUrl.orEmpty()
                 auroraPosterBackgroundSpec(
-                    baseCacheKey = "anime-bg;${anime.id};${anime.coverLastModified};${posterCover.url.orEmpty()}",
+                    baseCacheKey = baseCacheKey,
                     containerWidthPx = containerWidthPx,
                     containerHeightPx = containerHeightPx,
                 )
             }
             val backgroundRequest = remember(
-                posterCover,
+                posterRequest,
                 placeholderCover,
                 previousSuccessfulBackgroundSpec?.memoryCacheKey,
                 backgroundSpec.memoryCacheKey,
@@ -156,7 +150,7 @@ fun FullscreenPosterBackground(
             ) {
                 buildAuroraPosterBackgroundRequest(
                     context = context,
-                    data = posterCover,
+                    data = posterRequest,
                     spec = backgroundSpec,
                     containerWidthPx = containerWidthPx,
                     containerHeightPx = containerHeightPx,
@@ -170,13 +164,13 @@ fun FullscreenPosterBackground(
                 placeholderPainter = placeholderPainter,
             )
             LaunchedEffect(
-                posterCover.url,
+                posterRequest.primaryUrl,
                 placeholderPosterUrl,
                 backgroundSpec.memoryCacheKey,
                 previousSuccessfulBackgroundSpec?.memoryCacheKey,
             ) {
                 val fallbackKey = "anime;${anime.id};$placeholderPosterUrl;${anime.coverLastModified}"
-                val debugMessage = "request poster=${previewTitleCoverUrl(posterCover.url)} " +
+                val debugMessage = "request poster=${previewTitleCoverUrl(posterRequest.primaryUrl)} " +
                     "placeholder=${previewTitleCoverUrl(placeholderPosterUrl)} " +
                     "memoryKey=${backgroundSpec.memoryCacheKey} " +
                     "placeholderKey=${previousSuccessfulBackgroundSpec?.memoryCacheKey ?: fallbackKey}"
@@ -193,7 +187,7 @@ fun FullscreenPosterBackground(
                     debugTitleCoverFlow(
                         scope = "anime-bg",
                         message = "painterState=${state::class.simpleName} poster=${previewTitleCoverUrl(
-                            posterCover.url,
+                            posterRequest.primaryUrl,
                         )} memoryKey=${backgroundSpec.memoryCacheKey}",
                     )
                 }

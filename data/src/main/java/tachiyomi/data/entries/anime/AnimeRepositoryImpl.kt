@@ -243,7 +243,50 @@ class AnimeRepositoryImpl(
                     )
                     updated
                 } else {
-                    local
+                    val newThumbnailUrl = if (local.thumbnailUrl.isNullOrBlank()) {
+                        anime.thumbnailUrl
+                    } else {
+                        local.thumbnailUrl
+                    }
+                    if (newThumbnailUrl != local.thumbnailUrl) {
+                        val updated = local.copy(thumbnailUrl = newThumbnailUrl)
+                        db.animesQueries.update(
+                            source = updated.source,
+                            url = updated.url,
+                            artist = updated.artist,
+                            author = updated.author,
+                            description = updated.description,
+                            notes = updated.notes,
+                            genre = updated.genre?.let(StringListColumnAdapter::encode),
+                            title = updated.title,
+                            status = updated.status,
+                            thumbnailUrl = updated.thumbnailUrl,
+                            backgroundUrl = updated.backgroundUrl,
+                            favorite = updated.favorite,
+                            pinned = updated.pinned,
+                            lastUpdate = updated.lastUpdate,
+                            nextUpdate = updated.nextUpdate,
+                            calculateInterval = updated.fetchInterval.toLong(),
+                            initialized = updated.initialized,
+                            viewer = updated.viewerFlags,
+                            episodeFlags = updated.episodeFlags,
+                            coverLastModified = updated.coverLastModified,
+                            backgroundLastModified = updated.backgroundLastModified,
+                            dateAdded = updated.dateAdded,
+                            animeId = updated.id,
+                            updateStrategy = AnimeUpdateStrategyColumnAdapter.encode(updated.updateStrategy),
+                            version = updated.version,
+                            isSyncing = 0,
+                            fetchType = FetchTypeColumnAdapter.encode(updated.fetchType),
+                            parentId = updated.parentId,
+                            seasonFlags = updated.seasonFlags,
+                            seasonNumber = updated.seasonNumber,
+                            seasonSourceOrder = updated.seasonSourceOrder,
+                        )
+                        updated
+                    } else {
+                        local
+                    }
                 }
             }
         }

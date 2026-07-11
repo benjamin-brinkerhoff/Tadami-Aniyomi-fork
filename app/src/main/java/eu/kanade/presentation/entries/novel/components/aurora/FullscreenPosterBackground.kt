@@ -38,6 +38,7 @@ import eu.kanade.presentation.entries.components.aurora.resolveAuroraPosterScrim
 import eu.kanade.presentation.entries.components.aurora.shouldDrawAuroraPosterBlurOverlay
 import eu.kanade.presentation.novel.sourceAwareNovelCoverModel
 import eu.kanade.presentation.theme.AuroraTheme
+import eu.kanade.tachiyomi.data.coil.AuroraPosterRequest
 import eu.kanade.tachiyomi.util.debugTitleCoverFlow
 import eu.kanade.tachiyomi.util.previewTitleCoverUrl
 import eu.kanade.tachiyomi.util.previewTitleCoverValue
@@ -66,7 +67,12 @@ fun FullscreenPosterBackground(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val placeholderPainter = rememberAuroraCoverPlaceholderPainter(AuroraCoverPlaceholderVariant.Wide)
-    val posterModel = resolvedCoverUrl?.takeIf { it.isNotBlank() } ?: sourceAwareNovelCoverModel(novel)
+    val posterRequest = remember(resolvedCoverUrl, novel.thumbnailUrl) {
+        AuroraPosterRequest(
+            primaryUrl = resolvedCoverUrl?.takeIf { it.isNotBlank() },
+            fallbackUrl = novel.thumbnailUrl,
+        )
+    }
     val placeholderCover = remember(
         novel.id,
         novel.source,
@@ -76,10 +82,7 @@ fun FullscreenPosterBackground(
     ) {
         sourceAwareNovelCoverModel(novel)
     }
-    val isPosterLoadable = when (posterModel) {
-        is String -> posterModel.isNotBlank()
-        else -> true
-    }
+    val isPosterLoadable = !posterRequest.primaryUrl.isNullOrBlank() || !posterRequest.fallbackUrl.isNullOrBlank()
     val colors = AuroraTheme.colors
     val hasScrolledAway = firstVisibleItemIndex > 0 || scrollOffset > 100
 
@@ -161,7 +164,7 @@ fun FullscreenPosterBackground(
 
         if (isPosterLoadable) {
             val backgroundRequest = remember(
-                posterModel,
+                posterRequest,
                 placeholderCover,
                 previousSuccessfulBackgroundSpec?.memoryCacheKey,
                 backgroundSpec.memoryCacheKey,
@@ -170,7 +173,7 @@ fun FullscreenPosterBackground(
             ) {
                 buildAuroraPosterBackgroundRequest(
                     context = context,
-                    data = posterModel,
+                    data = posterRequest,
                     spec = backgroundSpec,
                     containerWidthPx = containerWidthPx,
                     containerHeightPx = containerHeightPx,
@@ -184,13 +187,13 @@ fun FullscreenPosterBackground(
                 placeholderPainter = placeholderPainter,
             )
             LaunchedEffect(
-                posterModel,
+                posterRequest,
                 resolvedCoverUrl,
                 backgroundSpec.memoryCacheKey,
                 previousSuccessfulBackgroundSpec?.memoryCacheKey,
             ) {
                 val fallbackKey = "novel;${novel.id};${novel.thumbnailUrl};${novel.coverLastModified}"
-                val debugMessage = "request poster=${previewTitleCoverValue(posterModel)} " +
+                val debugMessage = "request poster=${previewTitleCoverValue(posterRequest)} " +
                     "resolved=${previewTitleCoverUrl(resolvedCoverUrl)} " +
                     "memoryKey=${backgroundSpec.memoryCacheKey} " +
                     "placeholderKey=${previousSuccessfulBackgroundSpec?.memoryCacheKey ?: fallbackKey}"
@@ -207,7 +210,7 @@ fun FullscreenPosterBackground(
                     debugTitleCoverFlow(
                         scope = "novel-bg",
                         message = "painterState=${state::class.simpleName} poster=${previewTitleCoverValue(
-                            posterModel,
+                            posterRequest,
                         )} memoryKey=${backgroundSpec.memoryCacheKey}",
                     )
                 }

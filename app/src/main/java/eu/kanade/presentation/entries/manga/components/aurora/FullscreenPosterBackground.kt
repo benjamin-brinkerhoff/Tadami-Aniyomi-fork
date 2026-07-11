@@ -35,6 +35,7 @@ import eu.kanade.presentation.entries.components.aurora.rememberAuroraPosterColo
 import eu.kanade.presentation.entries.components.aurora.resolveAuroraPosterScrimBrush
 import eu.kanade.presentation.entries.components.aurora.shouldDrawAuroraPosterBlurOverlay
 import eu.kanade.presentation.theme.AuroraTheme
+import eu.kanade.tachiyomi.data.coil.AuroraPosterRequest
 import eu.kanade.tachiyomi.util.debugTitleCoverFlow
 import eu.kanade.tachiyomi.util.previewTitleCoverUrl
 import kotlinx.coroutines.flow.collectLatest
@@ -65,26 +66,14 @@ fun FullscreenPosterBackground(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val placeholderPainter = rememberAuroraCoverPlaceholderPainter(AuroraCoverPlaceholderVariant.Wide)
-    val posterCover = remember(
-        manga.id,
-        manga.source,
-        manga.favorite,
-        manga.thumbnailUrl,
-        manga.coverLastModified,
-        resolvedCoverUrl,
-        resolvedCoverUrlFallback,
-    ) {
-        MangaCover(
-            mangaId = manga.id,
-            sourceId = manga.source,
-            isMangaFavorite = manga.favorite,
-            url = resolvedCoverUrl?.takeIf { it.isNotBlank() }
-                ?: resolvedCoverUrlFallback?.takeIf { it.isNotBlank() }
-                ?: manga.thumbnailUrl,
-            lastModified = manga.coverLastModified,
+    val posterRequest = remember(resolvedCoverUrl, resolvedCoverUrlFallback, refererUrl, manga.thumbnailUrl) {
+        AuroraPosterRequest(
+            primaryUrl = resolvedCoverUrl?.takeIf { it.isNotBlank() },
+            fallbackUrl = resolvedCoverUrlFallback?.takeIf { it.isNotBlank() } ?: manga.thumbnailUrl,
+            refererUrl = refererUrl?.takeIf { it.isNotBlank() },
         )
     }
-    val posterModel = posterCover.url
+    val posterModel = posterRequest.primaryUrl ?: posterRequest.fallbackUrl
     val posterColorFilter = rememberAuroraPosterColorFilter()
 
     val hasScrolledAway = firstVisibleItemIndex > 0 || scrollOffset > 100
@@ -163,7 +152,7 @@ fun FullscreenPosterBackground(
 
         if (posterModel != null) {
             val backgroundRequest = remember(
-                posterCover,
+                posterRequest,
                 placeholderCover,
                 previousSuccessfulBackgroundSpec?.memoryCacheKey,
                 backgroundSpec.memoryCacheKey,
@@ -172,7 +161,7 @@ fun FullscreenPosterBackground(
             ) {
                 buildAuroraPosterBackgroundRequest(
                     context = context,
-                    data = posterCover,
+                    data = posterRequest,
                     spec = backgroundSpec,
                     containerWidthPx = containerWidthPx,
                     containerHeightPx = containerHeightPx,
@@ -186,13 +175,13 @@ fun FullscreenPosterBackground(
                 placeholderPainter = placeholderPainter,
             )
             LaunchedEffect(
-                posterCover.url,
+                posterRequest.primaryUrl,
                 placeholderPosterUrl,
                 backgroundSpec.memoryCacheKey,
                 previousSuccessfulBackgroundSpec?.memoryCacheKey,
             ) {
                 val fallbackKey = "manga;${manga.id};$placeholderPosterUrl;${manga.coverLastModified}"
-                val debugMessage = "request poster=${previewTitleCoverUrl(posterCover.url)} " +
+                val debugMessage = "request poster=${previewTitleCoverUrl(posterRequest.primaryUrl)} " +
                     "placeholder=${previewTitleCoverUrl(placeholderPosterUrl)} " +
                     "memoryKey=${backgroundSpec.memoryCacheKey} " +
                     "placeholderKey=${previousSuccessfulBackgroundSpec?.memoryCacheKey ?: fallbackKey}"
@@ -209,7 +198,7 @@ fun FullscreenPosterBackground(
                     debugTitleCoverFlow(
                         scope = "manga-bg",
                         message = "painterState=${state::class.simpleName} poster=${previewTitleCoverUrl(
-                            posterCover.url,
+                            posterRequest.primaryUrl,
                         )} memoryKey=${backgroundSpec.memoryCacheKey}",
                     )
                 }

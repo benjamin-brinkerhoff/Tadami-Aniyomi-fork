@@ -31,6 +31,7 @@ import okio.buffer
 import okio.sink
 import okio.source
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.domain.entries.novel.interactor.GetNovel
 import tachiyomi.domain.entries.novel.model.NovelCover
 import tachiyomi.domain.source.novel.service.NovelSourceManager
 import uy.kohesive.injekt.injectLazy
@@ -43,7 +44,8 @@ class NovelCoverFetcher(
     private val sourceSiteUrlLazy: Lazy<String?>,
     private val coverFileLazy: Lazy<File?>,
     private val customCoverFileLazy: Lazy<File>,
-    private val diskCacheKeyLazy: Lazy<String>,
+    private val diskCacheKeyProvider: (String?, Long?) -> String,
+    private val dbCoverProvider: suspend () -> Pair<String?, Long>? = { null },
     private val pluginHeadersProvider: suspend () -> Map<String, String>,
     private val callFactoryLazy: Lazy<Call.Factory>,
     private val imageLoader: ImageLoader,
@@ -51,8 +53,7 @@ class NovelCoverFetcher(
         NovelPluginImageResolver::resolve,
 ) : Fetcher {
 
-    private val diskCacheKey: String
-        get() = diskCacheKeyLazy.value
+    private lateinit var diskCacheKey: String
 
     override suspend fun fetch(): FetchResult {
         val customCoverFile = customCoverFileLazy.value
@@ -61,16 +62,28 @@ class NovelCoverFetcher(
                 scope = "novel-fetcher",
                 message = "custom-cover-hit file=${customCoverFile.name}",
             )
+            diskCacheKey = diskCacheKeyProvider(data.url, null)
             return fileLoader(customCoverFile)
         }
-        val rawUrl = data.url?.takeIf { it.isNotBlank() }
-            ?: throw IOException("No cover URL specified for novel ${data.novelId}")
+        var rawUrl = data.url?.takeIf { it.isNotBlank() }
+        var lastModified: Long? = null
+
+        if (rawUrl.isNullOrBlank()) {
+            val dbResult = dbCoverProvider()
+            if (dbResult != null) {
+                rawUrl = dbResult.first
+                lastModified = dbResult.second
+            }
+        }
+
+        diskCacheKey = diskCacheKeyProvider(rawUrl, lastModified)
         debugTitleCoverFlow(
             scope = "novel-fetcher",
             message = "fetch url=${previewTitleCoverUrl(
                 rawUrl,
             )} diskCacheKey=$diskCacheKey isLibrary=${data.isNovelFavorite}",
         )
+        if (rawUrl.isNullOrBlank()) throw IOException("No cover URL specified for novel ${data.novelId}")
         return when (getResourceType(rawUrl)) {
             Type.URL -> httpLoader(rawUrl)
             Type.PLUGIN_IMAGE -> pluginImageLoader(rawUrl)
@@ -331,21 +344,19 @@ class NovelCoverFetcher(
 
         private val coverCache: NovelCoverCache by injectLazy()
         private val sourceManager: NovelSourceManager by injectLazy()
+        private val getNovel: GetNovel by injectLazy()
 
         override fun create(data: NovelCover, options: Options, imageLoader: ImageLoader): Fetcher? {
-            // Return null for non-library entries without a URL. Library entries may still
-            // have a custom local cover, so keep the fetcher available for them.
-            if (data.url.isNullOrBlank() && !data.isNovelFavorite) return null
             return NovelCoverFetcher(
                 data = data,
                 options = options,
                 sourceSiteUrlLazy = lazy { (sourceManager.get(data.sourceId) as? NovelSiteSource)?.siteUrl },
                 coverFileLazy = lazy { coverCache.getCoverFile(data.url).takeIf { data.isNovelFavorite } },
                 customCoverFileLazy = lazy { coverCache.getCustomCoverFile(data.novelId) },
-                diskCacheKeyLazy = lazy {
-                    imageLoader.components.key(data, options)
-                        ?: "novel-cover:${data.novelId}:${data.url.orEmpty()}"
+                diskCacheKeyProvider = { effectiveUrl, lastModified ->
+                    "novel;${data.novelId};$effectiveUrl;${lastModified ?: data.lastModified}"
                 },
+                dbCoverProvider = { getNovel.await(data.novelId)?.let { it.thumbnailUrl to it.coverLastModified } },
                 pluginHeadersProvider = {
                     (sourceManager.get(data.sourceId) as? NovelImageRequestSource)
                         ?.getImageRequestHeaders()

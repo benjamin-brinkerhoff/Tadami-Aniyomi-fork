@@ -86,7 +86,7 @@ class NovelCoverFetcherTest {
                 sourceSiteUrlLazy = lazy { null },
                 coverFileLazy = lazy { null },
                 customCoverFileLazy = lazy { tempDir.resolve("custom_cover_plugin.jpg").toFile() },
-                diskCacheKeyLazy = lazy { "novel-plugin-image-test" },
+                diskCacheKeyProvider = { effectiveUrl, lastModified -> "novel-plugin-image-test" },
                 pluginHeadersProvider = { emptyMap() },
                 callFactoryLazy = lazy {
                     object : Call.Factory {
@@ -144,7 +144,7 @@ class NovelCoverFetcherTest {
                 sourceSiteUrlLazy = lazy { "https://example.org" },
                 coverFileLazy = lazy { error("library cover cache should not be queried before custom cover") },
                 customCoverFileLazy = lazy { customCoverFile },
-                diskCacheKeyLazy = lazy { "novel-custom-cover-test" },
+                diskCacheKeyProvider = { effectiveUrl, lastModified -> "novel-custom-cover-test" },
                 pluginHeadersProvider = { emptyMap() },
                 callFactoryLazy = lazy {
                     object : Call.Factory {
@@ -198,7 +198,7 @@ class NovelCoverFetcherTest {
                 sourceSiteUrlLazy = lazy { "https://example.org" },
                 coverFileLazy = lazy { coverCache.getCoverFile(data.url) },
                 customCoverFileLazy = lazy { tempDir.resolve("custom_cover_library.jpg").toFile() },
-                diskCacheKeyLazy = lazy { "novel-cover-test" },
+                diskCacheKeyProvider = { effectiveUrl, lastModified -> "novel-cover-test" },
                 pluginHeadersProvider = { emptyMap() },
                 callFactoryLazy = lazy {
                     object : Call.Factory {
@@ -273,5 +273,65 @@ class NovelCoverFetcherTest {
 
         assertEquals("no-store", networkRequest.header("Cache-Control"))
         assertEquals("no-cache, only-if-cached", offlineRequest.header("Cache-Control"))
+    }
+
+    @Test
+    fun `fetch falls back to database when remote url is missing`() = runTest {
+        val context = mockk<android.content.Context>(relaxed = true)
+        val imageLoader = mockk<ImageLoader>(relaxed = true)
+        val tempFile = tempDir.resolve("db_fallback_image.png").toFile()
+        tempFile.writeText("fake-bytes")
+
+        val data = NovelCover(
+            novelId = 15L,
+            sourceId = 77L,
+            isNovelFavorite = false,
+            url = null,
+            lastModified = 0L,
+        )
+        val options = Options(
+            context = context,
+            size = Size.ORIGINAL,
+            scale = Scale.FIT,
+            precision = Precision.EXACT,
+            diskCacheKey = "novel-db-fallback-test",
+            fileSystem = FileSystem.SYSTEM,
+            memoryCachePolicy = CachePolicy.ENABLED,
+            diskCachePolicy = CachePolicy.ENABLED,
+            networkCachePolicy = CachePolicy.ENABLED,
+            extras = Extras.EMPTY,
+        )
+
+        var dbProviderCalled = false
+
+        val result = NovelCoverFetcher(
+            data = data,
+            options = options,
+            sourceSiteUrlLazy = lazy { "https://example.org" },
+            coverFileLazy = lazy { null },
+            customCoverFileLazy = lazy { tempDir.resolve("custom_cover_db.jpg").toFile() },
+            diskCacheKeyProvider = { effectiveUrl, lastModified ->
+                "novel;${data.novelId};$effectiveUrl;${lastModified ?: data.lastModified}"
+            },
+            dbCoverProvider = {
+                dbProviderCalled = true
+                "file://${tempFile.absolutePath}" to 999L
+            },
+            pluginHeadersProvider = { emptyMap() },
+            callFactoryLazy = lazy {
+                object : Call.Factory {
+                    override fun newCall(request: Request): Call {
+                        error("network should not be called for file urls")
+                    }
+                }
+            },
+            imageLoader = imageLoader,
+        ).fetch()
+
+        assertTrue(dbProviderCalled)
+        assertTrue(result is SourceFetchResult)
+        result as SourceFetchResult
+        assertEquals(DataSource.DISK, result.dataSource)
+        assertEquals(tempFile.toOkioPath(), result.source.file())
     }
 }
