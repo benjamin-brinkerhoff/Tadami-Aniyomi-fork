@@ -279,18 +279,30 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
         // Page is transition page - preload allowed
         page ?: return true
 
-        // Initial opening is a programmatic selection. Do not pull another chapter until the user moves.
-        currentPage ?: return false
+        val current = currentPage
+        if (current == null) {
+            // Initial opening. Allow preload if the first page is already in the preload range.
+            return true
+        }
 
         // Allow preload for
         // 1. Going to next chapter from chapter transition
         // 2. Going between pages of same chapter
         // 3. Next chapter page
         return when (page.chapter) {
-            (currentPage as? ChapterTransition.Next)?.to -> true
-            (currentPage as? ReaderPage)?.chapter -> true
+            (current as? ChapterTransition.Next)?.to -> true
+            (current as? ReaderPage)?.chapter -> true
             adapter.nextTransition?.to -> true
             else -> false
+        }
+    }
+
+    private fun checkAndPreload(page: ReaderPage, allowPreload: Boolean) {
+        val pages = page.chapter.pages ?: return
+        val inPreloadRange = pages.size - page.number < ReaderPreloadManager.nextChapterPreloadThreshold
+        if (config.preloadNextChapter && inPreloadRange && allowPreload && page.chapter == adapter.currentChapter) {
+            logcat { "Request preload next chapter because we're at page ${page.number} of ${pages.size}" }
+            adapter.nextTransition?.to?.let(activity::requestPreloadChapter)
         }
     }
 
@@ -311,12 +323,7 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
             return
         }
 
-        // Preload next chapter once we're within the last dynamic pages of the current chapter
-        val inPreloadRange = pages.size - page.number < ReaderPreloadManager.nextChapterPreloadThreshold
-        if (config.preloadNextChapter && inPreloadRange && allowPreload && page.chapter == adapter.currentChapter) {
-            logcat { "Request preload next chapter because we're at page ${page.number} of ${pages.size}" }
-            adapter.nextTransition?.to?.let(activity::requestPreloadChapter)
-        }
+        checkAndPreload(page, allowPreload)
     }
 
     /**
@@ -352,10 +359,9 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
      * Sets the active [chapters] on this pager.
      */
     private fun setChaptersInternal(chapters: ViewerChapters) {
-        val forceTransition = config.alwaysShowChapterTransition ||
-            adapter.items.getOrNull(
-                pager.currentItem,
-            ) is ChapterTransition
+        // The setting controls whether to show the info screen. We do not force the info screen just because
+        // the previous current item was a transition (this was causing it to show for 1-page chapters etc even when disabled).
+        val forceTransition = config.alwaysShowChapterTransition
         adapter.setChapters(chapters, forceTransition)
 
         // Layout the pager once a chapter is being set
@@ -364,6 +370,15 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
             val pages = chapters.currChapter.pages ?: return
             moveToPage(pages[min(chapters.currChapter.requestedPage, pages.lastIndex)])
             pager.isVisible = true
+        } else {
+            pager.post {
+                onPageChange(pager.currentItem)
+            }
+        }
+
+        val page = currentPage as? ReaderPage
+        if (page != null && page.chapter == adapter.currentChapter) {
+            checkAndPreload(page, allowPreload = true)
         }
     }
 
@@ -410,9 +425,15 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
                 pager.setCurrentItem(pager.currentItem + 1, config.usePageTransitions)
             }
         } else {
-            // Already at the last item — user is swiping into void.
-            // Fire the meltdown counter so gesture-based overscroll is tracked.
-            activity.onMeltdownTransitionActivated()
+            // At the end of the current list.
+            // If there is a logical next chapter, request its preload (so switching can happen when it loads).
+            // Only fire meltdown if there is truly no next (the "no more chapters" case).
+            val next = adapter.nextTransition?.to
+            if (next != null) {
+                activity.requestPreloadChapter(next)
+            } else {
+                activity.onMeltdownTransitionActivated()
+            }
         }
     }
 

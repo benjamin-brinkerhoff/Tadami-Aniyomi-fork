@@ -228,8 +228,11 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
         // Page is transition page - preload allowed
         page ?: return true
 
-        // Initial opening is a programmatic selection. Do not pull another chapter until the user scrolls.
-        currentPage ?: return false
+        val current = currentPage
+        if (current == null) {
+            // Initial opening. Allow preload if the first page is already in the preload range.
+            return true
+        }
 
         val nextItem = adapter.items.getOrNull(adapter.items.size - 1)
         val nextChapter = (nextItem as? ChapterTransition.Next)?.to ?: (nextItem as? ReaderPage)?.chapter
@@ -238,7 +241,7 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
         // 1. Going between pages of same chapter
         // 2. Next chapter page
         return when (page.chapter) {
-            (currentPage as? ReaderPage)?.chapter -> true
+            (current as? ReaderPage)?.chapter -> true
             nextChapter -> true
             else -> false
         }
@@ -319,6 +322,20 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
         return recycler.scaleX > 1f
     }
 
+    private fun checkAndPreload(page: ReaderPage, allowPreload: Boolean) {
+        val pages = page.chapter.pages ?: return
+        val inPreloadRange = pages.size - page.number < ReaderPreloadManager.nextChapterPreloadThreshold
+        if (config.preloadNextChapter && inPreloadRange && allowPreload && page.chapter == adapter.currentChapter) {
+            logcat { "Request preload next chapter because we're at page ${page.number} of ${pages.size}" }
+            val nextItem = adapter.items.getOrNull(adapter.items.size - 1)
+            val transitionChapter = (nextItem as? ChapterTransition.Next)?.to ?: (nextItem as? ReaderPage)?.chapter
+            if (transitionChapter != null) {
+                logcat { "Requesting to preload chapter ${transitionChapter.chapter.chapter_number}" }
+                activity.requestPreloadChapter(transitionChapter)
+            }
+        }
+    }
+
     /**
      * Called from the RecyclerView listener when a [page] is marked as active. It notifies the
      * activity of the change and requests the preload of the next chapter if this is the last page.
@@ -328,17 +345,7 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
         logcat { "onPageSelected: ${page.number}/${pages.size}" }
         activity.onPageSelected(page)
 
-        // Preload next chapter once we're within the last dynamic pages of the current chapter
-        val inPreloadRange = pages.size - page.number < ReaderPreloadManager.nextChapterPreloadThreshold
-        if (config.preloadNextChapter && inPreloadRange && allowPreload && page.chapter == adapter.currentChapter) {
-            logcat { "Request preload next chapter because we're at page ${page.number} of ${pages.size}" }
-            val nextItem = adapter.items.getOrNull(adapter.items.size - 1)
-            val transitionChapter = (nextItem as? ChapterTransition.Next)?.to ?: (nextItem as?ReaderPage)?.chapter
-            if (transitionChapter != null) {
-                logcat { "Requesting to preload chapter ${transitionChapter.chapter.chapter_number}" }
-                activity.requestPreloadChapter(transitionChapter)
-            }
-        }
+        checkAndPreload(page, allowPreload)
     }
 
     /**
@@ -360,7 +367,8 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
      * Tells this viewer to set the given [chapters] as active.
      */
     override fun setChapters(chapters: ViewerChapters) {
-        val forceTransition = config.alwaysShowChapterTransition || currentPage is ChapterTransition
+        // Setting controls the info screen display. Do not force it based on previously being on a transition item.
+        val forceTransition = config.alwaysShowChapterTransition
         adapter.setChapters(chapters, forceTransition)
 
         if (recycler.isGone) {
@@ -368,6 +376,15 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
             val pages = chapters.currChapter.pages ?: return
             moveToPage(pages[min(chapters.currChapter.requestedPage, pages.lastIndex)])
             recycler.isVisible = true
+        } else {
+            recycler.post {
+                onScrolled()
+            }
+        }
+
+        val page = currentPage as? ReaderPage
+        if (page != null && page.chapter == adapter.currentChapter) {
+            checkAndPreload(page, allowPreload = true)
         }
     }
 

@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.webtoon
 
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.LinearLayout
@@ -65,6 +66,12 @@ class WebtoonTransitionHolder(
      */
     fun bind(transition: ChapterTransition) {
         transitionView.bind(transition, viewer.downloadManager, viewer.activity.viewModel.manga)
+
+        if (!viewer.config.alwaysShowChapterTransition && transition.to != null) {
+            // Setting disabled: do not display the intermediate info screen with prev/next chapter details.
+            // The structural item remains so swipes can cross chapters and trigger loading.
+            transitionView.visibility = View.GONE
+        }
 
         transition.to?.let { observeStatus(it, transition) }
     }

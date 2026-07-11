@@ -62,6 +62,12 @@ class PagerTransitionHolder(
         addView(transitionView)
         addView(pagesContainer)
 
+        if (!viewer.config.alwaysShowChapterTransition && transition.to != null) {
+            // Setting disabled: suppress display of the info screen (chapter names, "previous/next", etc.)
+            // but keep the item in the pager for navigation/swipe to trigger chapter switch and preload.
+            transitionView.visibility = View.GONE
+        }
+
         transitionView.bind(transition, viewer.downloadManager, viewer.activity.viewModel.manga)
 
         transition.to?.let(::observeStatus)
