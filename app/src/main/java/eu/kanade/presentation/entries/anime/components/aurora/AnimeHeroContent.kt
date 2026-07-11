@@ -1,29 +1,14 @@
 package eu.kanade.presentation.entries.anime.components.aurora
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.RecordVoiceOver
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -40,14 +25,12 @@ import eu.kanade.presentation.entries.components.aurora.AuroraHeroScaffold
 import eu.kanade.presentation.entries.components.aurora.AuroraHeroStatsRow
 import eu.kanade.presentation.entries.components.aurora.AuroraNotePreviewCard
 import eu.kanade.presentation.entries.components.aurora.AuroraTitleHeroActionButton
-import eu.kanade.presentation.entries.components.aurora.resolveAuroraHeroSecondaryButtonPalette
 import eu.kanade.presentation.entries.components.aurora.resolveAuroraHeroSecondaryMetaColor
 import eu.kanade.presentation.entries.components.aurora.resolveAuroraHeroTitleColor
 import eu.kanade.presentation.entries.translation.AuroraEntryTranslationState
 import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.LocalCoverTitleFontFamily
 import tachiyomi.domain.entries.anime.model.Anime
-import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.LocalAppHaptics
@@ -159,73 +142,20 @@ fun AnimeHeroContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            AuroraTitleHeroActionButton(
-                hasProgress = hasWatchingProgress,
-                onClick = {
-                    appHaptics.tap()
-                    onContinueWatching()
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(primaryActionLayoutSpec.heightDp.dp),
-                cornerRadius = 12.dp,
-                iconSize = 20.dp,
-                contentPadding = PaddingValues(horizontal = primaryActionLayoutSpec.horizontalPaddingDp.dp),
-                textSize = 15.sp,
-                textWeight = FontWeight.SemiBold,
-            )
-
-            if (onDubbingClicked != null) {
-                val dubbingPalette = resolveAuroraHeroSecondaryButtonPalette(
-                    colors = colors,
-                    isActive = selectedDubbing?.isNotBlank() == true,
-                )
-                Box(
-                    modifier = Modifier
-                        .width(100.dp)
-                        .height(primaryActionLayoutSpec.heightDp.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(dubbingPalette.containerColor)
-                        .border(
-                            width = 1.dp,
-                            color = dubbingPalette.borderColor,
-                            shape = RoundedCornerShape(12.dp),
-                        )
-                        .clickable {
-                            appHaptics.tap()
-                            onDubbingClicked()
-                        }
-                        .padding(horizontal = primaryActionLayoutSpec.horizontalPaddingDp.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Outlined.RecordVoiceOver,
-                            contentDescription = null,
-                            tint = dubbingPalette.contentColor,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = selectedDubbing?.takeIf { it.isNotBlank() }
-                                ?: stringResource(MR.strings.label_dubbing),
-                            color = dubbingPalette.contentColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-        }
+        AuroraTitleHeroActionButton(
+            hasProgress = hasWatchingProgress,
+            onClick = {
+                appHaptics.tap()
+                onContinueWatching()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            cornerRadius = 16.dp,
+            iconSize = 28.dp,
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            textSize = 18.sp,
+            textWeight = FontWeight.Bold,
+        )
     }
 }
