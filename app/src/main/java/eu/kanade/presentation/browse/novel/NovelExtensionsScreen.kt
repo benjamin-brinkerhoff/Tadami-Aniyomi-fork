@@ -542,7 +542,11 @@ private fun NovelExtensionItemRow(
         },
     ) {
         val context = LocalContext.current
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .padding(start = MaterialTheme.padding.medium)
+                .weight(1f),
+        ) {
             Text(
                 text = plugin.name,
                 maxLines = 1,
