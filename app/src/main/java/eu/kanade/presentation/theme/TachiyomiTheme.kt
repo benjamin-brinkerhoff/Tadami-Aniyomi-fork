@@ -100,12 +100,25 @@ private fun BaseTachiyomiTheme(
     content: @Composable () -> Unit,
 ) {
     val isEInkMode = eInkProfile.isEnabled
-    val colorScheme = getThemeColorScheme(
-        appTheme = appTheme,
-        isAmoled = isAmoled,
-        eInkProfile = eInkProfile,
-        isDark = isDark,
-    )
+    val colorScheme = if (appTheme == AppTheme.AURORA_PRIME) {
+        val context = LocalContext.current
+        val payload =
+            remember {
+                eu.kanade.domain.easteregg.aurora.AuroraQuest(
+                    context.applicationContext as android.app.Application,
+                ).unlockedPayload()
+            }
+        remember(payload, isDark, isAmoled) {
+            buildAuroraPrimeColorScheme(payload, isDark, isAmoled)
+        }
+    } else {
+        getThemeColorScheme(
+            appTheme = appTheme,
+            isAmoled = isAmoled,
+            eInkProfile = eInkProfile,
+            isDark = isDark,
+        )
+    }
     val appFontFamily = rememberAppFontFamily(appUiFontId)
     val coverTitleFontFamily = rememberAppFontFamily(coverTitleFontId)
     val typography = remember(appFontFamily) {
@@ -218,3 +231,61 @@ private val colorSchemes: Map<AppTheme, BaseColorScheme> = mapOf(
     AppTheme.EVENT_HORIZON to EventHorizonColorScheme,
     AppTheme.VOID_RED to VoidRedColorScheme,
 )
+
+private fun buildAuroraPrimeColorScheme(
+    payload: eu.kanade.domain.easteregg.aurora.AuroraPayload?,
+    isDark: Boolean,
+    isAmoled: Boolean,
+): ColorScheme {
+    fun parseColor(hex: String?, fallback: Color): Color {
+        if (hex == null) return fallback
+        return runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(fallback)
+    }
+
+    val primaryColor = parseColor(payload?.themeColors?.get("primary"), Color(0xFF64FFDA))
+    val secondaryColor = parseColor(payload?.themeColors?.get("secondary"), Color(0xFF7C4DFF))
+    val accentColor = parseColor(payload?.themeColors?.get("accent"), Color(0xFFFF6E9C))
+    val backgroundColor = parseColor(payload?.themeColors?.get("background"), Color(0xFF050B14))
+    val surfaceColor = parseColor(payload?.themeColors?.get("surface"), Color(0xFF0A1626))
+
+    val baseScheme = androidx.compose.material3.darkColorScheme(
+        primary = primaryColor,
+        onPrimary = Color.Black,
+        primaryContainer = primaryColor.copy(alpha = 0.2f),
+        onPrimaryContainer = primaryColor,
+        secondary = secondaryColor,
+        onSecondary = Color.White,
+        secondaryContainer = secondaryColor.copy(alpha = 0.2f),
+        onSecondaryContainer = secondaryColor,
+        tertiary = accentColor,
+        onTertiary = Color.Black,
+        tertiaryContainer = accentColor.copy(alpha = 0.2f),
+        onTertiaryContainer = accentColor,
+        background = if (isAmoled) Color.Black else backgroundColor,
+        onBackground = Color(0xFFDCEBFF),
+        surface = if (isAmoled) Color.Black else surfaceColor,
+        onSurface = Color(0xFFDCEBFF),
+        surfaceVariant = surfaceColor.copy(alpha = 0.8f),
+        onSurfaceVariant = Color(0xCCDCEBFF),
+        surfaceTint = primaryColor,
+        outline = primaryColor.copy(alpha = 0.5f),
+        outlineVariant = primaryColor.copy(alpha = 0.2f),
+    )
+
+    return if (isAmoled) {
+        baseScheme.copy(
+            background = Color.Black,
+            onBackground = Color.White,
+            surface = Color.Black,
+            onSurface = Color.White,
+            surfaceVariant = Color(0xFF0C0C0C),
+            surfaceContainerLowest = Color(0xFF0C0C0C),
+            surfaceContainerLow = Color(0xFF0C0C0C),
+            surfaceContainer = Color(0xFF0C0C0C),
+            surfaceContainerHigh = Color(0xFF131313),
+            surfaceContainerHighest = Color(0xFF1B1B1B),
+        )
+    } else {
+        baseScheme
+    }
+}

@@ -174,6 +174,35 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         // SY <--
         if (isMainProcess) {
             Injekt.importModule(AppModule(this))
+
+            // Setup Aurora easter egg unlock hook
+            eu.kanade.domain.easteregg.aurora.AuroraEchoBus.onUnlocked = { payload ->
+                achievementScope.launch {
+                    val repo = Injekt
+                        .get<tachiyomi.domain.achievement.repository.AchievementRepository>()
+                    val pointsManager = Injekt
+                        .get<tachiyomi.data.achievement.handler.PointsManager>()
+                    val userProfileManager = Injekt
+                        .get<tachiyomi.data.achievement.UserProfileManager>()
+                    val activityDataRepository = Injekt
+                        .get<tachiyomi.domain.achievement.repository.ActivityDataRepository>()
+
+                    repo.insertOrUpdateProgress(
+                        tachiyomi.domain.achievement.model.AchievementProgress.createStandard(
+                            achievementId = "aurora_heart",
+                            progress = 1,
+                            maxProgress = 1,
+                            isUnlocked = true,
+                            unlockedAt = System.currentTimeMillis(),
+                        ),
+                    )
+                    pointsManager.addPoints(payload.bonusPoints ?: 0)
+                    pointsManager.incrementUnlocked()
+                    activityDataRepository.recordAchievementUnlock()
+
+                    userProfileManager.unlockTheme("AURORA_PRIME")
+                }
+            }
         }
         SingletonImageLoader.setUnsafe { context -> newImageLoader(context) }
 

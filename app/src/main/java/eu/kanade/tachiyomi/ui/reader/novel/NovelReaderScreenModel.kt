@@ -1831,6 +1831,11 @@ class NovelReaderScreenModel(
             )
 
             if (nextUpdate.emitReadEvent) {
+                if (eu.kanade.domain.easteregg.aurora.AuroraNight.isVeilThin()) {
+                    val manager = Injekt.get<eu.kanade.domain.easteregg.aurora.AuroraHeartManager>()
+                    manager.registerNightAction()
+                    manager.revealHint()
+                }
                 eventBus?.tryEmit(
                     AchievementEvent.NovelChapterRead(
                         novelId = nextUpdate.novelId,

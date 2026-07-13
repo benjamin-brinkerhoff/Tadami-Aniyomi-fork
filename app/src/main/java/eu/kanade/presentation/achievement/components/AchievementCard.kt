@@ -21,7 +21,13 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -29,16 +35,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import eu.kanade.presentation.achievement.utils.AchievementRevealHelper
+import eu.kanade.presentation.easteregg.aurora.AuroraCodexScreen
 import eu.kanade.presentation.theme.AuroraTheme
 import tachiyomi.domain.achievement.model.Achievement
 import tachiyomi.domain.achievement.model.AchievementProgress
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /**
  * Aurora-themed Achievement Card with glassmorphism and neon effects
@@ -53,11 +65,101 @@ fun AchievementCard(
     val colors = AuroraTheme.colors
     val isUnlocked = progress?.isUnlocked == true
 
+    val context = LocalContext.current
+    val manager = remember { Injekt.get<eu.kanade.domain.easteregg.aurora.AuroraHeartManager>() }
+    val managerState by manager.state.collectAsState()
+    val isAuroraHeart = achievement.id == "aurora_heart"
+
+    val payload = remember(managerState.unlocked) { manager.unlockedPayload() }
+    var showCodexDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // Авто-открытие только ОДИН РАЗ на этап -- теперь через centralized manager
+    LaunchedEffect(managerState.stageIndex, managerState.hintRevealed) {
+        if (isAuroraHeart && !managerState.unlocked && manager.currentRiddle() != null) {
+            if (manager.shouldAutoShowRiddleForCurrentStage() && !showCodexDialog) {
+                manager.requestAutoShowForAchievements()
+                // mark now centralized inside requestAutoShowForAchievements for browse one-time
+            }
+        }
+    }
+
+    val displayName = remember(achievement, progress, managerState, payload) {
+        if (isAuroraHeart) {
+            when {
+                managerState.unlocked && payload != null -> payload.achievementTitle ?: "Сердце Авроры"
+                managerState.stageIndex > 0 -> "Сердце Авроры"
+                managerState.hintRevealed -> "???"
+                else -> "???"
+            }
+        } else {
+            AchievementRevealHelper.getDisplayName(achievement, progress)
+        }
+    }
+
+    val vaguePrefix = stringResource(AYMR.strings.achievement_hint_vague_prefix)
+    val directPrefix = stringResource(AYMR.strings.achievement_hint_direct_prefix)
+    val obviousPrefix = stringResource(AYMR.strings.achievement_hint_obvious_prefix)
+    val cluePrefix = stringResource(AYMR.strings.achievement_clue_prefix)
+
+    val displayDesc =
+        remember(
+            achievement,
+            progress,
+            managerState,
+            payload,
+            vaguePrefix,
+            directPrefix,
+            obviousPrefix,
+            cluePrefix,
+        ) {
+            if (isAuroraHeart) {
+                when {
+                    managerState.unlocked && payload != null ->
+                        payload.achievementDescription
+                            ?: "Скрыто северным сиянием"
+                    else -> "Скрыто северным сиянием"
+                }
+            } else {
+                if (achievement.isHidden && !isUnlocked) {
+                    AchievementRevealHelper.getDisplayDescription(
+                        achievement = achievement,
+                        progress = progress,
+                        vaguePrefix = vaguePrefix,
+                        directPrefix = directPrefix,
+                        obviousPrefix = obviousPrefix,
+                        cluePrefix = cluePrefix,
+                    )
+                } else {
+                    achievement.description
+                }
+            }
+        }
+
+    val customIsUnlocked = if (isAuroraHeart) managerState.unlocked else isUnlocked
+
+    val cardClick = {
+        if (isAuroraHeart) {
+            val hasActiveRiddle = !managerState.unlocked && manager.currentRiddle() != null
+            if (managerState.unlocked) {
+                // Полностью пройден — показываем архив + возможность пережить финал
+                showCodexDialog = true
+            } else if (hasActiveRiddle || managerState.hintRevealed) {
+                // Есть активная загадка — request to centralized (overlay will show the host)
+                manager.requestAutoShowForAchievements()
+            }
+        } else {
+            onClick()
+        }
+    }
+
+    val points = if (isAuroraHeart) (payload?.bonusPoints ?: 0) else achievement.points
+
     // Flat layout with a top hairline border
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = cardClick)
             .drawBehind {
                 // Top hairline divider
                 drawLine(
@@ -74,14 +176,14 @@ fun AchievementCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Achievement Icon with hexagonal shape
-            if (achievement.isHidden && !isUnlocked) {
+            if (achievement.isHidden && !customIsUnlocked && (!isAuroraHeart || !managerState.hintRevealed)) {
                 HiddenAchievementIcon(
                     modifier = Modifier.size(48.dp),
                 )
             } else {
                 AchievementIcon(
                     achievement = achievement,
-                    isUnlocked = isUnlocked,
+                    isUnlocked = customIsUnlocked,
                     modifier = Modifier.size(48.dp),
                     size = 48.dp,
                     useHexagonShape = true,
@@ -100,8 +202,8 @@ fun AchievementCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = AchievementRevealHelper.getDisplayName(achievement, progress),
-                        color = if (isUnlocked) colors.textPrimary else colors.textSecondary.copy(alpha = 0.8f),
+                        text = displayName,
+                        color = if (customIsUnlocked) colors.textPrimary else colors.textSecondary.copy(alpha = 0.8f),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -109,10 +211,10 @@ fun AchievementCard(
                     )
 
                     // Points Reward
-                    if (achievement.points > 0) {
+                    if (points > 0) {
                         Text(
-                            text = "+${achievement.points} XP",
-                            color = if (isUnlocked) colors.accent else colors.textSecondary.copy(alpha = 0.5f),
+                            text = "+$points XP",
+                            color = if (customIsUnlocked) colors.accent else colors.textSecondary.copy(alpha = 0.5f),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -122,23 +224,10 @@ fun AchievementCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Description
-                val displayDesc = if (achievement.isHidden && !isUnlocked) {
-                    AchievementRevealHelper.getDisplayDescription(
-                        achievement = achievement,
-                        progress = progress,
-                        vaguePrefix = stringResource(AYMR.strings.achievement_hint_vague_prefix),
-                        directPrefix = stringResource(AYMR.strings.achievement_hint_direct_prefix),
-                        obviousPrefix = stringResource(AYMR.strings.achievement_hint_obvious_prefix),
-                        cluePrefix = stringResource(AYMR.strings.achievement_clue_prefix),
-                    )
-                } else {
-                    achievement.description
-                }
-
                 if (!displayDesc.isNullOrBlank()) {
                     Text(
                         text = displayDesc,
-                        color = colors.textSecondary.copy(alpha = if (isUnlocked) 0.8f else 0.5f),
+                        color = colors.textSecondary.copy(alpha = if (customIsUnlocked) 0.8f else 0.5f),
                         fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -147,7 +236,7 @@ fun AchievementCard(
                 }
 
                 // Thin neon progress line (if locked and progress exists)
-                if (!isUnlocked && achievement.threshold != null && progress != null) {
+                if (!customIsUnlocked && achievement.threshold != null && progress != null && !isAuroraHeart) {
                     Spacer(modifier = Modifier.height(8.dp))
                     ThinNeonProgressBar(
                         progress = progress.progress,
@@ -157,7 +246,7 @@ fun AchievementCard(
             }
 
             // Unlocked Checkmark indicator on the right
-            if (isUnlocked) {
+            if (customIsUnlocked) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Icon(
                     imageVector = Icons.Default.Check,
@@ -166,6 +255,23 @@ fun AchievementCard(
                     modifier = Modifier.size(18.dp),
                 )
             }
+        }
+    }
+
+    if (showCodexDialog) {
+        Dialog(
+            onDismissRequest = { showCodexDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            AuroraCodexScreen(
+                firstRiddle = manager.firstRiddle(),
+                entries = manager.codex(),
+                payload = manager.unlockedPayload(),
+                onReplay = {
+                    manager.unlockedPayload()?.let(eu.kanade.domain.easteregg.aurora.AuroraEchoBus::emitUnlocked)
+                },
+                onClose = { showCodexDialog = false },
+            )
         }
     }
 }

@@ -1,5 +1,5 @@
 {
-  "version": 19,
+  "version": 20,
   "achievements": [
     {
       "id": "first_chapter",
@@ -2948,6 +2948,23 @@
         }
       ],
       "hint": "The world had turned into a crypt where the remnants of human will clung vainly to their fragile, worn-out bodies. On the cooling screen, the scar of an empty line throbbed faintly—a lock leading straight into the dead void of the Chambers of Guf. One had only to entrust to this darkness the name of that triad-completing crushing for which the blood of Antarctica was once spilled, and bones and thoughts turned into a single boiling crimson sludge. The walls of consciousness collapsed, drowning in the pain of others, and the convulsing transmitter was stripped of its carrier frequency forever."
+    },
+    {
+      "id": "aurora_heart",
+      "type": "secret",
+      "category": "secret",
+      "threshold": 1,
+      "points": 0,
+      "title": "???",
+      "description": "Скрыто северным сиянием",
+      "is_hidden": true,
+      "is_secret": true,
+      "rarity": "mythic",
+      "tags": [
+        "secret",
+        "secret"
+      ],
+      "season": null
     }
   ]
 }

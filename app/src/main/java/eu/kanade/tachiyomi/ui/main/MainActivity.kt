@@ -459,6 +459,8 @@ class MainActivity : BaseActivity() {
                                         .background(MaterialTheme.colorScheme.surfaceContainer),
                                 )
                             }
+                            // Aurora easter egg overlay
+                            eu.kanade.presentation.easteregg.aurora.AuroraEchoOverlay()
                         }
                     }
 
