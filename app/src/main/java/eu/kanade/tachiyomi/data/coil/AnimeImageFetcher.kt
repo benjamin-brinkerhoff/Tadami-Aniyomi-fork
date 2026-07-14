@@ -75,7 +75,14 @@ class AnimeImageFetcher(
             }
         }
 
-        var effectiveUrl = metadataCoverUrlProvider()?.takeIf { it.isNotBlank() } ?: url
+        // Metadata covers are only maintained for library entries; skip the
+        // per-cover metadata DB lookup for browse/search items.
+        val metadataCoverUrl = if (isLibraryAnime) {
+            metadataCoverUrlProvider()?.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
+        var effectiveUrl = metadataCoverUrl ?: url
         var lastModified: Long? = null
 
         if (effectiveUrl.isNullOrBlank()) {
@@ -215,7 +222,7 @@ class AnimeImageFetcher(
         val response = client.newCall(newRequest(url)).await()
         if (!response.isSuccessful && response.code != HTTP_NOT_MODIFIED) {
             response.close()
-            throw IOException(response.message)
+            throw IOException("HTTP ${response.code}: ${response.message.ifBlank { "No response message" }}")
         }
         return response
     }
