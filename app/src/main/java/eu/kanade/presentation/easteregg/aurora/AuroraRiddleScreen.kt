@@ -61,7 +61,7 @@ import kotlinx.coroutines.delay
  *    препинания — текст читается как закадровый голос;
  *  - подсказка проявляется только после окончания печати.
  *
- * Долгое нажатие на карточку — сигильная панель.
+ * Долгое нажатие на карточку — «Созвездие» (ввод ответа).
  * Хостить через Dialog(usePlatformDefaultWidth = false).
  * @param onPhrase прокинь в AuroraQuest.offer() в launchIO.
  */
@@ -74,23 +74,34 @@ fun AuroraRiddleScreen(
     onPhrase: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    var showSigilPad by remember { mutableStateOf(false) }
+    var showConstellation by remember { mutableStateOf(false) }
     var replayKey by remember { mutableIntStateOf(0) }
     val view = LocalView.current
+    val reducedMotion = rememberAuroraReducedMotion()
 
     // Экран просыпается из темноты
     val awake = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        awake.animateTo(1f, tween(1400, easing = FastOutSlowInEasing))
+        if (reducedMotion) {
+            awake.snapTo(1f)
+        } else {
+            awake.animateTo(1f, tween(1400, easing = FastOutSlowInEasing))
+        }
     }
 
     // Сияние «дышит»
-    val breath by rememberInfiniteTransition(label = "breath").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(7000), RepeatMode.Reverse),
-        label = "breathValue",
-    )
+    // «Дыхание» сияния — один медленный цикл (7 с).
+    // При reduced motion — статичная середина вдоха, никакой анимации.
+    val breath by if (reducedMotion) {
+        remember { mutableStateOf(0.35f) }
+    } else {
+        rememberInfiniteTransition(label = "breath").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(7000), RepeatMode.Reverse),
+            label = "breathValue",
+        )
+    }
 
     // Построчный фейд-ин текста:
     val translatedRiddle = remember(riddle) {
@@ -106,6 +117,11 @@ fun AuroraRiddleScreen(
     }
 
     LaunchedEffect(lines, replayKey) {
+        if (reducedMotion) {
+            // Reduced motion: текст виден сразу, без построчного проявления
+            lineAlphas.forEach { animatable -> animatable.snapTo(1f) }
+            return@LaunchedEffect
+        }
         lineAlphas.forEach { animatable -> animatable.snapTo(0f) }
         delay(if (replayKey == 0) 900L else 300L) // дать экрану проснуться
         lineAlphas.forEach { animatable ->
@@ -154,11 +170,13 @@ fun AuroraRiddleScreen(
                 .background(Color.Black),
         )
 
-        // Синкай-слои: сумеречный «час кого-то» у горизонта дышит вместе
+        // Синкай-слои: сумеречный «час кого-то» у горизонта дышит вмест��
         // с сиянием, парящие пылинки света и редкая одинокая комета.
-        KatawareDokiVeil(alpha = (0.16f + 0.10f * breath) * awake.value)
-        AuroraLightMotes(count = 18, alpha = 0.35f * awake.value)
-        AuroraCometShower(alpha = 0.8f * awake.value, periodSeconds = 12f)
+        if (!reducedMotion) {
+            KatawareDokiVeil(alpha = (0.16f + 0.10f * breath) * awake.value)
+            AuroraLightMotes(count = 18, alpha = 0.35f * awake.value)
+            AuroraCometShower(alpha = 0.8f * awake.value, periodSeconds = 12f)
+        }
 
         IconButton(
             onClick = onBack,
@@ -263,7 +281,7 @@ fun AuroraRiddleScreen(
                             onClick = { /* ничего: карточка молчит */ },
                             onLongClick = {
                                 AuroraSensory.seal(view)
-                                showSigilPad = true
+                                showConstellation = true
                             },
                         )
                         .semantics { contentDescription = translatedRiddle }
@@ -316,13 +334,13 @@ fun AuroraRiddleScreen(
         }
     }
 
-    if (showSigilPad) {
-        AuroraSigilPad(
+    if (showConstellation) {
+        AuroraConstellationPad(
             onSigil = { cells ->
-                showSigilPad = false
+                showConstellation = false
                 AuroraChannels.sigil(cells)?.let(onPhrase)
             },
-            onDismiss = { showSigilPad = false },
+            onDismiss = { showConstellation = false },
         )
     }
 }
