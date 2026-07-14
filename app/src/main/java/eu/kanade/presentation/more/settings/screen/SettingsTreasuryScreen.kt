@@ -1782,7 +1782,7 @@ private fun TreasuryThemeSelector(
             theme = AppTheme.AURORA_PRIME,
             rarity = AYMR.strings.treasury_exclusive_rarity_mythic,
             tagline = AYMR.strings.treasury_tagline_aurora_prime,
-            accentColor = Color(0xFF3DDC97),  // Prime greenish (matches actual Aurora Prime primary)
+            accentColor = Color(0xFF3DDC97), // Prime greenish (matches actual Aurora Prime primary)
             isSecret = true,
         ),
     )
@@ -1973,7 +1973,14 @@ private fun TreasuryThemePoster(
                         ),
                 )
                 if (!isUnlocked) {
-                    val veilText = if (isSecretLocked) null else (spec.lockedRiddle?.let { stringResource(it) } ?: achievementTitle)
+                    val veilText = if (isSecretLocked) {
+                        null
+                    } else {
+                        (
+                            spec.lockedRiddle?.let { stringResource(it) }
+                                ?: achievementTitle
+                            )
+                    }
                     TreasuryLockVeil(achievementTitle = veilText)
                 }
             }
@@ -2644,7 +2651,7 @@ private fun TreasuryArtifactShard(
             )
             .semantics(mergeDescendants = true) {
                 contentDescription =
-                    "${effectiveTitle}, " +
+                    "$effectiveTitle, " +
                     if (isActive) {
                         activeDesc
                     } else if (isUnlocked) {
