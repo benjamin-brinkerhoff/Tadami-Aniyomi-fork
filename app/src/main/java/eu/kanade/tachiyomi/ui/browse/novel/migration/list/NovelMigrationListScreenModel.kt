@@ -1,16 +1,16 @@
-package eu.kanade.tachiyomi.ui.browse.manga.migration.list
+package eu.kanade.tachiyomi.ui.browse.novel.migration.list
 
 import androidx.compose.runtime.Immutable
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import eu.kanade.domain.entries.manga.interactor.MigrateMangaUseCase
-import eu.kanade.domain.entries.manga.model.toSManga
+import eu.kanade.domain.entries.novel.interactor.MigrateNovelUseCase
+import eu.kanade.domain.entries.novel.model.toSNovel
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.data.library.updateerror.LibraryUpdateErrorMedia
 import eu.kanade.tachiyomi.data.library.updateerror.LibraryUpdateErrorStore
-import eu.kanade.tachiyomi.source.CatalogueSource
-import eu.kanade.tachiyomi.ui.browse.manga.migration.MangaMigrationFlags
-import eu.kanade.tachiyomi.ui.browse.manga.migration.list.search.SmartSourceSearchEngine
+import eu.kanade.tachiyomi.novelsource.NovelCatalogueSource
+import eu.kanade.tachiyomi.ui.browse.novel.migration.NovelMigrationFlags
+import eu.kanade.tachiyomi.ui.browse.novel.migration.list.search.SmartNovelSourceSearchEngine
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -24,50 +24,50 @@ import kotlinx.coroutines.flow.update
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.util.lang.launchIO
-import tachiyomi.domain.entries.manga.interactor.GetManga
-import tachiyomi.domain.entries.manga.model.Manga
-import tachiyomi.domain.items.chapter.interactor.GetChaptersByMangaId
-import tachiyomi.domain.items.chapter.model.Chapter
-import tachiyomi.domain.source.manga.service.MangaSourceManager
+import tachiyomi.domain.entries.novel.interactor.GetNovel
+import tachiyomi.domain.entries.novel.model.Novel
+import tachiyomi.domain.items.novelchapter.model.NovelChapter
+import tachiyomi.domain.items.novelchapter.repository.NovelChapterRepository
+import tachiyomi.domain.source.novel.service.NovelSourceManager
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-class MigrationListScreenModel(
-    mangaIds: Collection<Long>,
+class NovelMigrationListScreenModel(
+    novelIds: Collection<Long>,
     private val sourceIds: Collection<Long>,
     private val extraSearchQuery: String?,
     val sourcePreferences: SourcePreferences = Injekt.get(),
-    private val sourceManager: MangaSourceManager = Injekt.get(),
-    private val getManga: GetManga = Injekt.get(),
-    private val getChaptersByMangaId: GetChaptersByMangaId = Injekt.get(),
-    private val migrateManga: MigrateMangaUseCase = MigrateMangaUseCase(),
+    private val sourceManager: NovelSourceManager = Injekt.get(),
+    private val getNovel: GetNovel = Injekt.get(),
+    private val novelChapterRepository: NovelChapterRepository = Injekt.get(),
+    private val migrateNovel: MigrateNovelUseCase = MigrateNovelUseCase(),
     private val preferenceStore: PreferenceStore = Injekt.get(),
-) : StateScreenModel<MigrationListScreenModel.State>(State()) {
+) : StateScreenModel<NovelMigrationListScreenModel.State>(State()) {
 
     val items
         get() = state.value.items
 
     private val migrateFlags: Preference<Int> by lazy {
-        preferenceStore.getInt("migrate_flags", Int.MAX_VALUE)
+        preferenceStore.getInt("migrate_flags_novel", Int.MAX_VALUE)
     }
 
     private var migrateJob: Job? = null
     private var searchJob: Job? = null
-    private var allItems: List<MigratingManga> = emptyList()
+    private var allItems: List<MigratingNovel> = emptyList()
     private val cancelledSearchIds = mutableSetOf<Long>()
 
     init {
         screenModelScope.launchIO {
-            val items = mangaIds
+            val items = novelIds
                 .map { id ->
                     async {
-                        val manga = getManga.await(id) ?: return@async null
+                        val novel = getNovel.await(id) ?: return@async null
                         val chapterInfo = getChapterInfo(id)
-                        MigratingManga(
-                            manga = manga,
+                        MigratingNovel(
+                            novel = novel,
                             chapterCount = chapterInfo.chapterCount,
                             latestChapter = chapterInfo.latestChapter,
-                            source = sourceManager.getOrStub(manga.source).name,
+                            source = sourceManager.getOrStub(novel.source).name,
                         )
                     }
                 }
@@ -84,7 +84,7 @@ class MigrationListScreenModel(
     }
 
     private suspend fun getChapterInfo(id: Long): ChapterInfo {
-        val chapters: List<Chapter> = getChaptersByMangaId.await(id)
+        val chapters: List<NovelChapter> = novelChapterRepository.getChapterByNovelId(id)
         return ChapterInfo(
             latestChapter = chapters.maxOfOrNull { it.chapterNumber },
             chapterCount = chapters.size,
@@ -92,11 +92,11 @@ class MigrationListScreenModel(
     }
 
     private suspend fun getChapterInfo(
-        source: CatalogueSource,
-        manga: Manga,
+        source: NovelCatalogueSource,
+        novel: Novel,
     ): ChapterInfo {
         return try {
-            source.getChapterList(manga.toSManga()).let { chapters ->
+            source.getChapterList(novel.toSNovel()).let { chapters ->
                 ChapterInfo(
                     latestChapter = chapters.maxOfOrNull { it.chapter_number.toDouble() },
                     chapterCount = chapters.size,
@@ -123,7 +123,7 @@ class MigrationListScreenModel(
             it.copy(
                 items = searchItems.toImmutableList(),
                 finishedCount = searchItems.count { item -> item.searchResult != SearchResult.Searching },
-                migrationComplete = isMigrationSearchComplete(searchItems),
+                migrationComplete = isNovelMigrationSearchComplete(searchItems),
             )
         }
         searchJob = screenModelScope.launchIO {
@@ -135,7 +135,7 @@ class MigrationListScreenModel(
         }
     }
 
-    private suspend fun runSearches(items: List<MigratingManga>) {
+    private suspend fun runSearches(items: List<MigratingNovel>) {
         val sources = getEnabledSources()
         val strategy = sourcePreferences.migrationStrategy()
         val useDeepSearch = sourcePreferences.migrationSearchKeywords().get()
@@ -145,9 +145,9 @@ class MigrationListScreenModel(
 
         var currentItems = items
         items.forEach { item ->
-            if (item.manga.id in cancelledSearchIds) {
+            if (item.novel.id in cancelledSearchIds) {
                 currentItems = currentItems.map { current ->
-                    if (current.manga.id == item.manga.id) {
+                    if (current.novel.id == item.novel.id) {
                         current.copy(searchResult = SearchResult.NotFound, searchLabel = null)
                     } else {
                         current
@@ -158,14 +158,14 @@ class MigrationListScreenModel(
             }
 
             val result = searchSource(
-                manga = item.manga,
+                novel = item.novel,
                 sources = sources,
                 strategy = strategy,
                 useDeepSearch = useDeepSearch,
                 useAutoMetadata = useAutoMetadata,
                 onProgress = { label ->
                     currentItems = currentItems.map { current ->
-                        if (current.manga.id == item.manga.id) {
+                        if (current.novel.id == item.novel.id) {
                             current.copy(searchLabel = label)
                         } else {
                             current
@@ -174,9 +174,9 @@ class MigrationListScreenModel(
                     publishSearchItems(currentItems, hideNotFound, onlyNewChapters)
                 },
             )
-            if (item.manga.id in cancelledSearchIds) {
+            if (item.novel.id in cancelledSearchIds) {
                 currentItems = currentItems.map { current ->
-                    if (current.manga.id == item.manga.id) {
+                    if (current.novel.id == item.novel.id) {
                         current.copy(searchResult = SearchResult.NotFound, searchLabel = null)
                     } else {
                         current
@@ -191,7 +191,7 @@ class MigrationListScreenModel(
                 else -> item.copy(
                     searchLabel = null,
                     searchResult = SearchResult.Success(
-                        manga = result.manga,
+                        novel = result.novel,
                         source = result.source.name,
                         chapterCount = result.chapterInfo.chapterCount,
                         latestChapter = result.chapterInfo.latestChapter,
@@ -200,7 +200,7 @@ class MigrationListScreenModel(
             }
 
             currentItems = currentItems.map { current ->
-                if (current.manga.id == item.manga.id) updatedItem else current
+                if (current.novel.id == item.novel.id) updatedItem else current
             }
 
             publishSearchItems(currentItems, hideNotFound, onlyNewChapters)
@@ -208,18 +208,18 @@ class MigrationListScreenModel(
     }
 
     private fun publishSearchItems(
-        items: List<MigratingManga>,
+        items: List<MigratingNovel>,
         hideNotFound: Boolean,
         onlyNewChapters: Boolean,
     ) {
         allItems = items
-        val visibleItems = visibleMigrationItems(
+        val visibleItems = visibleNovelMigrationItems(
             items = items,
             hideNotFound = hideNotFound,
             onlyNewChapters = onlyNewChapters,
         ).toImmutableList()
         val finishedCount = visibleItems.count { it.searchResult != SearchResult.Searching }
-        val migrationComplete = isMigrationSearchComplete(visibleItems)
+        val migrationComplete = isNovelMigrationSearchComplete(visibleItems)
 
         mutableState.update { state ->
             state.copy(
@@ -231,24 +231,24 @@ class MigrationListScreenModel(
     }
 
     private suspend fun searchSource(
-        manga: Manga,
-        sources: List<CatalogueSource>,
+        novel: Novel,
+        sources: List<NovelCatalogueSource>,
         strategy: SourcePreferences.MigrationStrategy,
         useDeepSearch: Boolean,
         useAutoMetadata: Boolean,
         onProgress: (String?) -> Unit,
-    ): MigrationSearchCandidate? {
-        val searchParams = buildMigrationSearchParams(
-            manga = manga,
+    ): NovelMigrationSearchCandidate? {
+        val searchParams = buildNovelMigrationSearchParams(
+            novel = novel,
             manualExtraSearchQuery = extraSearchQuery,
             useAutoMetadata = useAutoMetadata,
         )
-        val searchEngine = SmartSourceSearchEngine(searchParams)
+        val searchEngine = SmartNovelSourceSearchEngine(searchParams)
 
         return when (strategy) {
             SourcePreferences.MigrationStrategy.FIRST_SOURCE -> {
                 searchSourceSequentially(
-                    manga = manga,
+                    novel = novel,
                     sources = sources,
                     searchEngine = searchEngine,
                     useDeepSearch = useDeepSearch,
@@ -257,7 +257,7 @@ class MigrationListScreenModel(
             }
             SourcePreferences.MigrationStrategy.MOST_CHAPTERS -> {
                 searchSourceByMostChapters(
-                    manga = manga,
+                    novel = novel,
                     sources = sources,
                     searchEngine = searchEngine,
                     useDeepSearch = useDeepSearch,
@@ -268,17 +268,17 @@ class MigrationListScreenModel(
     }
 
     private suspend fun searchSourceSequentially(
-        manga: Manga,
-        sources: List<CatalogueSource>,
-        searchEngine: SmartSourceSearchEngine,
+        novel: Novel,
+        sources: List<NovelCatalogueSource>,
+        searchEngine: SmartNovelSourceSearchEngine,
         useDeepSearch: Boolean,
         onProgress: (String?) -> Unit,
-    ): MigrationSearchCandidate? {
+    ): NovelMigrationSearchCandidate? {
         for ((index, source) in sources.withIndex()) {
             currentCoroutineContext().ensureActive()
             onProgress(source.name)
             val result = searchSourceInCatalogue(
-                manga = manga,
+                novel = novel,
                 source = source,
                 sourceIndex = index,
                 searchEngine = searchEngine,
@@ -291,18 +291,18 @@ class MigrationListScreenModel(
     }
 
     private suspend fun searchSourceByMostChapters(
-        manga: Manga,
-        sources: List<CatalogueSource>,
-        searchEngine: SmartSourceSearchEngine,
+        novel: Novel,
+        sources: List<NovelCatalogueSource>,
+        searchEngine: SmartNovelSourceSearchEngine,
         useDeepSearch: Boolean,
         onProgress: (String?) -> Unit,
-    ): MigrationSearchCandidate? = kotlinx.coroutines.supervisorScope {
+    ): NovelMigrationSearchCandidate? = kotlinx.coroutines.supervisorScope {
         onProgress("${sources.size} sources")
         val candidates = sources.mapIndexed { index, source ->
             async {
                 currentCoroutineContext().ensureActive()
                 searchSourceInCatalogue(
-                    manga = manga,
+                    novel = novel,
                     source = source,
                     sourceIndex = index,
                     searchEngine = searchEngine,
@@ -311,45 +311,45 @@ class MigrationListScreenModel(
             }
         }.awaitAll().filterNotNull()
 
-        selectMigrationSearchCandidate(
+        selectNovelMigrationSearchCandidate(
             candidates = candidates,
             strategy = SourcePreferences.MigrationStrategy.MOST_CHAPTERS,
         )
     }
 
     private suspend fun searchSourceInCatalogue(
-        manga: Manga,
-        source: CatalogueSource,
+        novel: Novel,
+        source: NovelCatalogueSource,
         sourceIndex: Int,
-        searchEngine: SmartSourceSearchEngine,
+        searchEngine: SmartNovelSourceSearchEngine,
         useDeepSearch: Boolean,
-    ): MigrationSearchCandidate? {
+    ): NovelMigrationSearchCandidate? {
         currentCoroutineContext().ensureActive()
-        val result = searchEngine.regularSearch(source, manga.title)
-            ?: if (useDeepSearch) searchEngine.deepSearch(source, manga.title) else null
+        val result = searchEngine.regularSearch(source, novel.title)
+            ?: if (useDeepSearch) searchEngine.deepSearch(source, novel.title) else null
         currentCoroutineContext().ensureActive()
         if (result == null) return null
-        if (result.url == manga.url && result.source == manga.source) return null
+        if (result.url == novel.url && result.source == novel.source) return null
 
         val chapterInfo = getChapterInfo(source, result)
         currentCoroutineContext().ensureActive()
-        return MigrationSearchCandidate(
+        return NovelMigrationSearchCandidate(
             sourceIndex = sourceIndex,
             source = source,
-            manga = result,
+            novel = result,
             chapterInfo = chapterInfo,
         )
     }
 
-    private fun getEnabledSources(): List<CatalogueSource> {
+    private fun getEnabledSources(): List<NovelCatalogueSource> {
         if (sourceIds.isNotEmpty()) {
             val byId = sourceManager.getCatalogueSources().associateBy { it.id }
             return sourceIds.mapNotNull { byId[it] }
         }
 
         val enabledLanguages = sourcePreferences.enabledLanguages().get()
-        val disabledSources = sourcePreferences.disabledMangaSources().get()
-        val pinnedSources = sourcePreferences.pinnedMangaSources().get()
+        val disabledSources = sourcePreferences.disabledNovelSources().get()
+        val pinnedSources = sourcePreferences.pinnedNovelSources().get()
 
         return sourceManager.getCatalogueSources()
             .filter { it.lang in enabledLanguages && "${it.id}" !in disabledSources }
@@ -361,12 +361,12 @@ class MigrationListScreenModel(
             )
     }
 
-    fun migrateMangas() {
-        migrateMangas(replace = true)
+    fun migrateNovels() {
+        migrateNovels(replace = true)
     }
 
-    fun copyMangas() {
-        migrateMangas(replace = false)
+    fun copyNovels() {
+        migrateNovels(replace = false)
     }
 
     fun showMigrateDialog(copy: Boolean) {
@@ -375,7 +375,7 @@ class MigrationListScreenModel(
                 dialog = Dialog.Migrate(
                     copy = copy,
                     totalCount = state.items.size,
-                    skippedCount = migrationSkippedCount(state.items),
+                    skippedCount = novelMigrationSkippedCount(state.items),
                 ),
             )
         }
@@ -398,30 +398,30 @@ class MigrationListScreenModel(
         startSearches(resetResults = true)
     }
 
-    fun migrateNow(mangaId: Long, replace: Boolean) {
+    fun migrateNow(novelId: Long, replace: Boolean) {
         screenModelScope.launchIO {
-            val item = items.find { it.manga.id == mangaId } ?: return@launchIO
-            val target = (item.searchResult as? SearchResult.Success)?.manga ?: return@launchIO
-            val flags = getMigrationFlags(item.manga)
-            migrateManga.migrateManga(item.manga, target, replace, flags)
-            markUpdateErrorResolved(item.manga.id, replace)
-            removeManga(item)
+            val item = items.find { it.novel.id == novelId } ?: return@launchIO
+            val target = (item.searchResult as? SearchResult.Success)?.novel ?: return@launchIO
+            val flags = getMigrationFlags(item.novel)
+            migrateNovel.migrateNovel(item.novel, target, replace, flags)
+            markUpdateErrorResolved(item.novel.id, replace)
+            removeNovel(item)
         }
     }
 
-    fun useMangaForMigration(current: Long, target: Long) {
+    fun useNovelForMigration(current: Long, target: Long) {
         screenModelScope.launchIO {
             cancelledSearchIds += current
-            if (allItems.none { it.manga.id == current }) return@launchIO
-            val targetManga = getManga.await(target) ?: return@launchIO
-            val source = sourceManager.get(targetManga.source) as? CatalogueSource ?: return@launchIO
-            val chapterInfo = getChapterInfo(source, targetManga)
+            if (allItems.none { it.novel.id == current }) return@launchIO
+            val targetNovel = getNovel.await(target) ?: return@launchIO
+            val source = sourceManager.get(targetNovel.source) as? NovelCatalogueSource ?: return@launchIO
+            val chapterInfo = getChapterInfo(source, targetNovel)
             val updatedItems = allItems.map { item ->
-                if (item.manga.id == current) {
+                if (item.novel.id == current) {
                     item.copy(
                         searchLabel = null,
                         searchResult = SearchResult.Success(
-                            manga = targetManga,
+                            novel = targetNovel,
                             source = source.name,
                             chapterCount = chapterInfo.chapterCount,
                             latestChapter = chapterInfo.latestChapter,
@@ -439,10 +439,10 @@ class MigrationListScreenModel(
         }
     }
 
-    fun cancelSearch(mangaId: Long) {
-        cancelledSearchIds += mangaId
+    fun cancelSearch(novelId: Long) {
+        cancelledSearchIds += novelId
         val updatedItems = allItems.map { item ->
-            if (item.manga.id == mangaId && item.searchResult == SearchResult.Searching) {
+            if (item.novel.id == novelId && item.searchResult == SearchResult.Searching) {
                 item.copy(searchResult = SearchResult.NotFound, searchLabel = null)
             } else {
                 item
@@ -455,32 +455,32 @@ class MigrationListScreenModel(
         )
     }
 
-    fun removeManga(mangaId: Long) {
+    fun removeNovel(novelId: Long) {
         screenModelScope.launchIO {
-            val item = items.find { it.manga.id == mangaId } ?: return@launchIO
-            removeManga(item)
+            val item = items.find { it.novel.id == novelId } ?: return@launchIO
+            removeNovel(item)
         }
     }
 
-    private fun migrateMangas(replace: Boolean) {
+    private fun migrateNovels(replace: Boolean) {
         migrateJob = screenModelScope.launchIO {
             val items = state.value.items
-            val migratedItems = mutableListOf<MigratingManga>()
+            val migratedItems = mutableListOf<MigratingNovel>()
             mutableState.update { it.copy(isMigrating = true, migrationProgress = 0f, dialog = null) }
 
             try {
                 items.forEachIndexed { index, item ->
-                    val target = (item.searchResult as? SearchResult.Success)?.manga ?: return@forEachIndexed
-                    val flags = getMigrationFlags(item.manga)
-                    migrateManga.migrateManga(item.manga, target, replace, flags)
-                    markUpdateErrorResolved(item.manga.id, replace)
+                    val target = (item.searchResult as? SearchResult.Success)?.novel ?: return@forEachIndexed
+                    val flags = getMigrationFlags(item.novel)
+                    migrateNovel.migrateNovel(item.novel, target, replace, flags)
+                    markUpdateErrorResolved(item.novel.id, replace)
                     migratedItems += item
                     mutableState.update {
                         it.copy(migrationProgress = ((index + 1).toFloat() / items.size).coerceAtMost(1f))
                     }
                 }
             } finally {
-                removeMigratedManga(migratedItems)
+                removeMigratedNovel(migratedItems)
                 mutableState.update { it.copy(isMigrating = false, dialog = null) }
                 migrateJob = null
             }
@@ -489,13 +489,11 @@ class MigrationListScreenModel(
 
     /**
      * Computes the effective migration flags for a single entry without writing the narrowed
-     * bitmap back to preferences. Persisting the per-entry bitmap would permanently drop flags
-     * that merely don't apply to that particular entry (e.g. custom cover, delete downloaded)
-     * and the narrowing would compound across entries during bulk migration.
+     * bitmap back to preferences.
      */
-    private fun getMigrationFlags(manga: Manga): Int {
-        val applicableFlags = MangaMigrationFlags.getFlags(manga, migrateFlags.get())
-        return MangaMigrationFlags.getSelectedFlagsBitMap(
+    private fun getMigrationFlags(novel: Novel): Int {
+        val applicableFlags = NovelMigrationFlags.getFlags(novel, migrateFlags.get())
+        return NovelMigrationFlags.getSelectedFlagsBitMap(
             selectedFlags = applicableFlags.map { it.isDefaultSelected },
             flags = applicableFlags,
         )
@@ -507,29 +505,29 @@ class MigrationListScreenModel(
         mutableState.update { it.copy(isMigrating = false) }
     }
 
-    private fun markUpdateErrorResolved(mangaId: Long, replace: Boolean) {
+    private fun markUpdateErrorResolved(novelId: Long, replace: Boolean) {
         if (!replace) return
         LibraryUpdateErrorStore.markResolved(
-            media = LibraryUpdateErrorMedia.Manga,
-            entryId = mangaId,
+            media = LibraryUpdateErrorMedia.Novel,
+            entryId = novelId,
         )
     }
 
-    private fun removeManga(item: MigratingManga) {
-        removeMigratedManga(listOf(item))
+    private fun removeNovel(item: MigratingNovel) {
+        removeMigratedNovel(listOf(item))
     }
 
-    private fun removeMigratedManga(items: Collection<MigratingManga>) {
+    private fun removeMigratedNovel(items: Collection<MigratingNovel>) {
         if (items.isEmpty()) return
-        val migratedIds = items.mapTo(mutableSetOf()) { it.manga.id }
-        allItems = allItems.filterNot { it.manga.id in migratedIds }
+        val migratedIds = items.mapTo(mutableSetOf()) { it.novel.id }
+        allItems = allItems.filterNot { it.novel.id in migratedIds }
         mutableState.update { state ->
-            val updatedItems = state.items.filterNot { it.manga.id in migratedIds }.toPersistentList()
+            val updatedItems = state.items.filterNot { it.novel.id in migratedIds }.toPersistentList()
             val finishedCount = updatedItems.count { it.searchResult != SearchResult.Searching }
             state.copy(
                 items = updatedItems,
                 finishedCount = finishedCount,
-                migrationComplete = isMigrationSearchComplete(updatedItems),
+                migrationComplete = isNovelMigrationSearchComplete(updatedItems),
             )
         }
     }
@@ -547,8 +545,8 @@ class MigrationListScreenModel(
     )
 
     @Immutable
-    data class MigratingManga(
-        val manga: Manga,
+    data class MigratingNovel(
+        val novel: Novel,
         val chapterCount: Int,
         val latestChapter: Double?,
         val source: String,
@@ -560,7 +558,7 @@ class MigrationListScreenModel(
         data object Searching : SearchResult
         data object NotFound : SearchResult
         data class Success(
-            val manga: Manga,
+            val novel: Novel,
             val source: String,
             val chapterCount: Int,
             val latestChapter: Double?,
@@ -581,7 +579,7 @@ class MigrationListScreenModel(
     @Immutable
     data class State(
         val isLoading: Boolean = true,
-        val items: ImmutableList<MigratingManga> = persistentListOf(),
+        val items: ImmutableList<MigratingNovel> = persistentListOf(),
         val finishedCount: Int = 0,
         val migrationComplete: Boolean = false,
         val isMigrating: Boolean = false,

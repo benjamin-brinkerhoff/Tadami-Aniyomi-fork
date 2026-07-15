@@ -140,11 +140,11 @@ import eu.kanade.tachiyomi.data.download.novel.NovelTranslatedDownloadFormat
 import eu.kanade.tachiyomi.data.library.anime.AnimeLibraryUpdateJob
 import eu.kanade.tachiyomi.data.library.manga.MangaLibraryUpdateJob
 import eu.kanade.tachiyomi.data.library.novel.NovelLibraryUpdateJob
-import eu.kanade.tachiyomi.ui.browse.anime.migration.search.MigrateAnimeSearchScreen
+import eu.kanade.tachiyomi.ui.browse.anime.migration.config.AnimeMigrationConfigScreen
 import eu.kanade.tachiyomi.ui.browse.anime.source.globalsearch.GlobalAnimeSearchScreen
 import eu.kanade.tachiyomi.ui.browse.manga.migration.config.MigrationConfigScreen
 import eu.kanade.tachiyomi.ui.browse.manga.source.globalsearch.GlobalMangaSearchScreen
-import eu.kanade.tachiyomi.ui.browse.novel.migration.search.MigrateNovelSearchScreen
+import eu.kanade.tachiyomi.ui.browse.novel.migration.config.NovelMigrationConfigScreen
 import eu.kanade.tachiyomi.ui.browse.novel.source.globalsearch.GlobalNovelSearchScreen
 import eu.kanade.tachiyomi.ui.category.CategoriesTab
 import eu.kanade.tachiyomi.ui.entries.anime.AnimeScreen
@@ -1036,11 +1036,11 @@ data object AnimeLibraryTab : Tab {
                             onDownloadClicked = screenModel::runDownloadActionSelection
                                 .takeIf { state.selection.fastAll { !it.anime.isLocal() } },
                             onMigrateClicked = {
-                                val animeId = state.selection.single().anime.id
+                                val selectedAnimeIds = state.selection.map { it.anime.id }
                                 screenModel.clearSelection()
-                                navigator.push(MigrateAnimeSearchScreen(animeId))
+                                navigator.push(AnimeMigrationConfigScreen(selectedAnimeIds))
                             }.takeIf {
-                                state.selection.size == 1 && state.selection.single().anime.id > 0L
+                                state.selection.isNotEmpty() && state.selection.fastAll { it.anime.id > 0L }
                             },
                             onDeleteClicked = screenModel::openDeleteAnimeDialog,
                             isManga = false,
@@ -1103,10 +1103,8 @@ data object AnimeLibraryTab : Tab {
                             onMigrateClicked = {
                                 val selectionIds = novelState.selection.map { it.id }
                                 novelScreenModel?.clearSelection()
-                                if (selectionIds.size == 1) {
-                                    navigator.push(MigrateNovelSearchScreen(selectionIds.single()))
-                                }
-                            }.takeIf { novelState.selection.size == 1 },
+                                navigator.push(NovelMigrationConfigScreen(selectionIds))
+                            }.takeIf { novelState.selection.isNotEmpty() },
                             onTranslatedDownloadClicked = {
                                 showNovelTranslatedDownloadDialog = true
                             }.takeIf { isNovelTranslatorEnabled },
