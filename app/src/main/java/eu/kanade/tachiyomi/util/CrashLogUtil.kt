@@ -21,8 +21,12 @@ import java.time.ZoneId
 
 class CrashLogUtil(
     private val context: Context,
-    private val mangaExtensionManager: MangaExtensionManager? = runCatching { Injekt.get<MangaExtensionManager>() }.getOrNull(),
-    private val animeExtensionManager: AnimeExtensionManager? = runCatching { Injekt.get<AnimeExtensionManager>() }.getOrNull(),
+    private val mangaExtensionManager: MangaExtensionManager? = runCatching {
+        Injekt.get<MangaExtensionManager>()
+    }.getOrNull(),
+    private val animeExtensionManager: AnimeExtensionManager? = runCatching {
+        Injekt.get<AnimeExtensionManager>()
+    }.getOrNull(),
     private val networkPreferences: NetworkPreferences? = runCatching { Injekt.get<NetworkPreferences>() }.getOrNull(),
 ) {
 
