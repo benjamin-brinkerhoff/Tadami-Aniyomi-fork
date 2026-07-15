@@ -12,12 +12,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.rememberScreenModel
@@ -43,10 +52,12 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.components.AppBar
+import eu.kanade.tachiyomi.util.system.LocaleHelper
 import tachiyomi.data.anixart.AnixartMatcher
 import tachiyomi.data.anixart.AnixartSourceHints
 import tachiyomi.data.shikimori.ShikimoriImportMediaType
 import tachiyomi.data.shikimori.ShikimoriImportStatus
+import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
 import eu.kanade.presentation.util.Screen as ParentScreen
@@ -64,6 +75,43 @@ class ShikimoriImportScreen : ParentScreen() {
                 AppBar(
                     title = stringResource(AYMR.strings.shikimori_import_title),
                     navigateUp = navigator::pop,
+                    actions = {
+                        val pickState = state as? ShikimoriImportScreenModel.State.PickSources
+                        if (pickState != null) {
+                            var menuExpanded by remember { mutableStateOf(false) }
+                            Box {
+                                IconButton(onClick = { menuExpanded = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = null)
+                                }
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false },
+                                ) {
+                                    val context = LocalContext.current
+                                    val allLangs = remember(pickState.sources) {
+                                        pickState.sources.map { it.lang }.distinct().sorted()
+                                    }
+                                    allLangs.forEach { lang ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Checkbox(
+                                                        checked = lang in pickState.enabledLanguages,
+                                                        onCheckedChange = null,
+                                                        modifier = Modifier.padding(end = 8.dp),
+                                                    )
+                                                    Text(LocaleHelper.getSourceDisplayName(lang, context))
+                                                }
+                                            },
+                                            onClick = {
+                                                model.toggleLanguageEnabled(lang)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
                 )
             },
         ) { padding ->
@@ -164,6 +212,30 @@ class ShikimoriImportScreen : ParentScreen() {
         s: ShikimoriImportScreenModel.State.PickSources,
         model: ShikimoriImportScreenModel,
     ) {
+        val filteredSources = remember(s.sources, s.searchQuery, s.enabledLanguages) {
+            s.sources.filter {
+                it.lang in s.enabledLanguages && (
+                    s.searchQuery.isBlank() ||
+                        it.name.contains(s.searchQuery, ignoreCase = true) ||
+                        it.lang.contains(s.searchQuery, ignoreCase = true)
+                    )
+            }
+        }
+
+        val groupedSources = remember(filteredSources) {
+            filteredSources.groupBy { it.lang }
+        }
+
+        val sortedLangs = remember(groupedSources) {
+            groupedSources.keys.sortedWith { lang1, lang2 ->
+                when {
+                    lang1 == "" && lang2 != "" -> 1
+                    lang2 == "" && lang1 != "" -> -1
+                    else -> lang1.compareTo(lang2)
+                }
+            }
+        }
+
         Column(Modifier.fillMaxSize()) {
             LazyColumn(Modifier.weight(1f)) {
                 if (s.largeImport) {
@@ -200,25 +272,83 @@ class ShikimoriImportScreen : ParentScreen() {
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                items(s.sources, key = { it.id }) { src ->
-                    val warning = src.recommendation == AnixartSourceHints.Recommendation.WARNING
-                    ListItem(
-                        headlineContent = { Text(src.name) },
-                        supportingContent = if (warning) {
-                            {
-                                Text(
-                                    stringResource(AYMR.strings.anixart_import_source_warning),
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
+                item {
+                    OutlinedTextField(
+                        value = s.searchQuery,
+                        onValueChange = { model.search(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text(stringResource(MR.strings.action_search)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = null,
+                            )
+                        },
+                        trailingIcon = {
+                            if (s.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { model.search("") }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = null,
+                                    )
+                                }
                             }
-                        } else {
-                            null
                         },
-                        leadingContent = {
-                            Checkbox(checked = src.selected, onCheckedChange = { model.toggleSource(src.id) })
-                        },
+                        singleLine = true,
                     )
+                }
+                if (sortedLangs.isEmpty() && s.searchQuery.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(MR.strings.no_results_found),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                sortedLangs.forEach { lang ->
+                    val sources = groupedSources[lang] ?: emptyList()
+                    val isCollapsed = lang in s.collapsedLanguages
+                    val allSelected = sources.all { it.selected }
+
+                    item(key = "lang-header-$lang") {
+                        SourceHeader(
+                            language = lang,
+                            isCollapsed = isCollapsed,
+                            onToggleCollapse = { model.toggleLanguage(lang) },
+                            allSelected = allSelected,
+                            onToggleSelectAll = { select -> model.toggleLanguageSources(lang, select) },
+                        )
+                    }
+
+                    if (!isCollapsed) {
+                        items(sources, key = { "src-${it.id}" }) { src ->
+                            val warning = src.recommendation == AnixartSourceHints.Recommendation.WARNING
+                            ListItem(
+                                headlineContent = { Text(src.name) },
+                                supportingContent = if (warning) {
+                                    {
+                                        Text(
+                                            stringResource(AYMR.strings.anixart_import_source_warning),
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
+                                leadingContent = {
+                                    Checkbox(checked = src.selected, onCheckedChange = { model.toggleSource(src.id) })
+                                },
+                                modifier = Modifier.padding(start = 16.dp),
+                            )
+                        }
+                    }
                 }
                 item {
                     Text(
@@ -246,6 +376,44 @@ class ShikimoriImportScreen : ParentScreen() {
             ) {
                 Text(stringResource(AYMR.strings.anixart_import_start_matching))
             }
+        }
+    }
+
+    @Composable
+    private fun SourceHeader(
+        language: String,
+        isCollapsed: Boolean,
+        onToggleCollapse: () -> Unit,
+        allSelected: Boolean,
+        onToggleSelectAll: (Boolean) -> Unit,
+        modifier: Modifier = Modifier,
+    ) {
+        val context = LocalContext.current
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggleCollapse)
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 8.dp,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = allSelected,
+                onCheckedChange = onToggleSelectAll,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            Text(
+                text = LocaleHelper.getSourceDisplayName(language, context),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = if (isCollapsed) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 
