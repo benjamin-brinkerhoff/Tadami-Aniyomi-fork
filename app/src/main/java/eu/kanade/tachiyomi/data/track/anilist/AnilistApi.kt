@@ -7,6 +7,8 @@ import eu.kanade.tachiyomi.data.database.models.manga.MangaTrack
 import eu.kanade.tachiyomi.data.track.anilist.dto.ALAddEntryResult
 import eu.kanade.tachiyomi.data.track.anilist.dto.ALAnime
 import eu.kanade.tachiyomi.data.track.anilist.dto.ALCurrentUserResult
+import eu.kanade.tachiyomi.data.track.anilist.dto.ALImportListEntry
+import eu.kanade.tachiyomi.data.track.anilist.dto.ALImportListResult
 import eu.kanade.tachiyomi.data.track.anilist.dto.ALManga
 import eu.kanade.tachiyomi.data.track.anilist.dto.ALMangaSingleMediaResult
 import eu.kanade.tachiyomi.data.track.anilist.dto.ALOAuth
@@ -560,6 +562,64 @@ class AnilistApi(val client: OkHttpClient, interceptor: AnilistInterceptor) {
                         val viewer = it.data.viewer
                         Pair(viewer.id, viewer.mediaListOptions.scoreFormat)
                     }
+            }
+        }
+    }
+
+    /**
+     * Fetches every custom list entry for [userId] and [mediaType]
+     * (`ANIME` / `MANGA`) via a single MediaListCollection query.
+     * Used by the AniList library import wizard.
+     */
+    suspend fun getUserMediaList(userId: Int, mediaType: String): List<ALImportListEntry> {
+        return withIOContext {
+            val query = """
+            |query ImportList(${'$'}userId: Int, ${'$'}type: MediaType) {
+                |MediaListCollection(userId: ${'$'}userId, type: ${'$'}type) {
+                    |lists {
+                        |entries {
+                            |id
+                            |status
+                            |scoreRaw: score(format: POINT_100)
+                            |progress
+                            |media {
+                                |id
+                                |title {
+                                    |romaji
+                                    |english
+                                |}
+                                |episodes
+                                |chapters
+                                |coverImage {
+                                    |large
+                                |}
+                            |}
+                        |}
+                    |}
+                |}
+            |}
+            |
+            """.trimMargin()
+            val payload = buildJsonObject {
+                put("query", query)
+                putJsonObject("variables") {
+                    put("userId", userId)
+                    put("type", mediaType)
+                }
+            }
+            with(json) {
+                authClient.newCall(
+                    POST(
+                        API_URL,
+                        body = payload.toString().toRequestBody(jsonMime),
+                    ),
+                )
+                    .awaitSuccess()
+                    .parseAs<ALImportListResult>()
+                    .data.mediaListCollection
+                    ?.lists
+                    .orEmpty()
+                    .flatMap { it.entries }
             }
         }
     }

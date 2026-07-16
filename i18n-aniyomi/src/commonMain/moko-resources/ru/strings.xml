@@ -2627,6 +2627,18 @@
     <string name="shikimori_import_manual_search">Искать вручную</string>
     <string name="shikimori_import_manual_search_title">Поиск в источниках</string>
     <string name="shikimori_import_manual_search_hint">Введите название так же, как в каталоге источника</string>
+    <!-- AniList import -->
+    <string name="anilist_import_title">Импорт из AniList</string>
+    <string name="anilist_import_summary">Импорт списков аниме и манги из AniList в библиотеку</string>
+    <string name="anilist_import_not_logged_in">Сначала войдите в AniList в настройках отслеживания</string>
+    <string name="anilist_import_empty_anime">Ваш список аниме на AniList пуст</string>
+    <string name="anilist_import_empty_manga">Ваш список манги на AniList пуст</string>
+    <string name="anilist_import_report">Добавлено %1$d, уже в библиотеке %2$d, ошибок %3$d, привязано к AniList %4$d</string>
+    <string name="anilist_import_error_network">Не удалось загрузить ваш список AniList. Проверьте подключение и попробуйте снова.</string>
+    <string name="anilist_import_error_rate_limited">Достигнут лимит запросов AniList. Подождите минуту и попробуйте снова.</string>
+    <string name="anilist_import_error_canceled">Импорт отменён</string>
+    <string name="anilist_import_error_failed">Импорт не удался</string>
+    <string name="anilist_import_background_started">Импорт продолжается в фоне. По завершении придёт уведомление.</string>
     <!-- Time Paradox Achievement -->
     <string name="achievement_time_paradox_title">Временной парадокс</string>
     <string name="achievement_time_paradox_desc">Почитайте или посмотрите что-то ровно в 11:11</string>

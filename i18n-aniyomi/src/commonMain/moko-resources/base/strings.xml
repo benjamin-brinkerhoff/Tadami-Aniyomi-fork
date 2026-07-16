@@ -2608,6 +2608,18 @@
     <string name="shikimori_import_manual_search">Search manually</string>
     <string name="shikimori_import_manual_search_title">Search in sources</string>
     <string name="shikimori_import_manual_search_hint">Enter the title as you would in the source catalogue</string>
+    <!-- AniList import -->
+    <string name="anilist_import_title">Import from AniList</string>
+    <string name="anilist_import_summary">Import your AniList anime and manga lists into the library</string>
+    <string name="anilist_import_not_logged_in">Log in to AniList in Tracking settings first</string>
+    <string name="anilist_import_empty_anime">Your AniList anime list is empty</string>
+    <string name="anilist_import_empty_manga">Your AniList manga list is empty</string>
+    <string name="anilist_import_report">Added %1$d, already in library %2$d, failed %3$d, AniList bound %4$d</string>
+    <string name="anilist_import_error_network">Could not load your AniList list. Check your connection and try again.</string>
+    <string name="anilist_import_error_rate_limited">AniList rate limit reached. Wait a minute and try again.</string>
+    <string name="anilist_import_error_canceled">Import canceled</string>
+    <string name="anilist_import_error_failed">Import failed</string>
+    <string name="anilist_import_background_started">Import continues in the background. You will get a notification when it finishes.</string>
     <!-- Time Paradox Achievement -->
     <string name="achievement_time_paradox_title">Time Paradox</string>
     <string name="achievement_time_paradox_desc">Read or watch at exactly 11:11</string>

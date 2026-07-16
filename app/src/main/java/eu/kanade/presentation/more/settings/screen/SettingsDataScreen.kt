@@ -75,6 +75,7 @@ import eu.kanade.presentation.more.settings.screen.data.CloudSyncOptionsScreen
 import eu.kanade.presentation.more.settings.screen.data.CreateBackupScreen
 import eu.kanade.presentation.more.settings.screen.data.RestoreBackupScreen
 import eu.kanade.presentation.more.settings.screen.data.StorageInfo
+import eu.kanade.presentation.more.settings.screen.anilist.AnilistImportScreen
 import eu.kanade.presentation.more.settings.screen.shikimori.ShikimoriImportScreen
 import eu.kanade.presentation.more.settings.widget.BasePreferenceWidget
 import eu.kanade.presentation.more.settings.widget.PrefsHorizontalPadding
@@ -779,6 +780,12 @@ object SettingsDataScreen : SearchableSettings {
                     subtitle = stringResource(AYMR.strings.shikimori_import_summary),
                     icon = Icons.Outlined.CloudDownload,
                     onClick = { navigator.push(ShikimoriImportScreen()) },
+                ),
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(AYMR.strings.anilist_import_title),
+                    subtitle = stringResource(AYMR.strings.anilist_import_summary),
+                    icon = Icons.Outlined.CloudDownload,
+                    onClick = { navigator.push(AnilistImportScreen()) },
                 ),
             ),
         )
