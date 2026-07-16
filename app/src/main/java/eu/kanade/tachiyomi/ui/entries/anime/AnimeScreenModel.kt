@@ -568,6 +568,7 @@ class AnimeScreenModel(
                             anime = anime,
                             episodes = episodes.toEpisodeListItems(anime),
                             seasons = seasons.toAnimeSeasonItems(),
+                            episodeSourcePreview = null, // real persisted data arrived, clear preview
                         )
                     }
                     if (metadataChanged) {
@@ -591,15 +592,12 @@ class AnimeScreenModel(
             } else {
                 getAnimeAndEpisodesAndSeasons.awaitEpisodes(animeId)
             }
-            val start = System.currentTimeMillis()
+            // Cheap path: list visible immediately, expensive FS "is downloaded" checks deferred.
+            // Real download states arrive via async hydrate below + observeDownloads().
             val episodes = if (anime.fetchType == FetchType.Seasons) {
                 emptyList()
             } else {
-                rawEpisodes.toEpisodeListItems(anime)
-            }
-            val loadMs = System.currentTimeMillis() - start
-            logcat(LogPriority.DEBUG) {
-                "TADAMI_PERF_ANIME_TITLE db-loaded+items id=$animeId episodes=${episodes.size} took=${loadMs}ms"
+                rawEpisodes.toEpisodeListItemsCheap(anime)
             }
 
             val seasons = if (anime.fetchType == FetchType.Episodes) {
@@ -647,6 +645,22 @@ class AnimeScreenModel(
                     },
                 )
             }
+
+            // Hydrate real download states asynchronously so the episode list appears immediately (cheap path).
+            // Individual updates continue to come via observeDownloads().
+            if (anime.fetchType != FetchType.Seasons) {
+                screenModelScope.launchIO {
+                    val hydrated = rawEpisodes.toEpisodeListItems(anime)
+                    updateSuccessState { current ->
+                        if (current.anime.id == anime.id) {
+                            current.copy(episodes = hydrated)
+                        } else {
+                            current
+                        }
+                    }
+                }
+            }
+
             screenModelScope.launchIO {
                 basePreferences.downloadedOnly().changes()
                     .collectLatest { downloadedOnly ->
@@ -1098,6 +1112,25 @@ class AnimeScreenModel(
         }
     }
 
+    /** Cheap version for initial state: defers expensive FS isDownloaded checks so the list appears immediately. */
+    private fun List<Episode>.toEpisodeListItemsCheap(anime: Anime): List<EpisodeList.Item> {
+        val isLocal = anime.isLocal()
+        return map { episode ->
+            val activeDownload = if (isLocal) null else downloadManager.getQueuedDownloadOrNull(episode.id)
+            val downloadState = when {
+                activeDownload != null -> activeDownload.status
+                isLocal -> AnimeDownload.State.DOWNLOADED
+                else -> AnimeDownload.State.NOT_DOWNLOADED
+            }
+            EpisodeList.Item(
+                episode = episode,
+                downloadState = downloadState,
+                downloadProgress = activeDownload?.progress ?: 0,
+                selected = episode.id in selectedEpisodeIds,
+            )
+        }
+    }
+
     private fun List<SeasonAnime>.toAnimeSeasonItems(): List<AnimeSeasonItem> {
         return map { seasonAnime ->
             AnimeSeasonItem(
@@ -1141,12 +1174,64 @@ class AnimeScreenModel(
         startTorrentServerIfNeeded(source)
         val episodes = source.getEpisodeList(anime.toSAnime())
 
+        // Display-only preview: the list becomes visible right after parse (before full sync cost).
+        // Real episodes (with persisted ids) come via the DB flow later.
+        // Only for this screen's anime, never for season sub-fetches.
+        if (anime.id == animeId) {
+            val previewItems = episodes.mapIndexed { idx, sEp ->
+                val dummy = Episode(
+                    id = -(1000000000L + idx),
+                    animeId = anime.id,
+                    seen = false,
+                    bookmark = false,
+                    fillermark = sEp.fillermark,
+                    lastSecondSeen = 0L,
+                    totalSeconds = 0L,
+                    dateFetch = 0L,
+                    sourceOrder = idx.toLong(),
+                    url = sEp.url,
+                    name = sEp.name,
+                    dateUpload = sEp.date_upload,
+                    episodeNumber = sEp.episode_number.toDouble(),
+                    scanlator = sEp.scanlator,
+                    summary = sEp.summary,
+                    previewUrl = sEp.preview_url,
+                    lastModifiedAt = 0L,
+                    version = 0L,
+                )
+                EpisodeList.Item(
+                    episode = dummy,
+                    downloadState = AnimeDownload.State.NOT_DOWNLOADED,
+                    downloadProgress = 0,
+                    selected = false,
+                )
+            }
+            updateSuccessState { current ->
+                if (current.anime.id == animeId) {
+                    current.copy(episodeSourcePreview = previewItems)
+                } else {
+                    current
+                }
+            }
+        }
+
         val newEpisodes = syncEpisodesWithSource.await(
             episodes,
             anime,
             source,
             manualFetch,
         )
+
+        // Clear preview once real synced data is persisted (the DB flow also clears it).
+        if (anime.id == animeId) {
+            updateSuccessState { current ->
+                if (current.anime.id == animeId) {
+                    current.copy(episodeSourcePreview = null)
+                } else {
+                    current
+                }
+            }
+        }
 
         // Дозаполняем previewUrl из внешних метаданных (TMDB/Kitsu/AniList/Jikan/Simkl/Shikimori)
         screenModelScope.launchIO {
@@ -2258,6 +2343,11 @@ class AnimeScreenModel(
             val scrollIndex: Int = 0,
             val scrollOffset: Int = 0,
             val suggestions: SuggestionState = SuggestionState.Idle,
+            /**
+             * Display-only preview from source list (after getEpisodeList, before full sync).
+             * Real persisted episodes come via the DB flow.
+             */
+            val episodeSourcePreview: List<EpisodeList.Item>? = null,
         ) : State {
 
             val processedSeasons by lazy {
@@ -2265,7 +2355,8 @@ class AnimeScreenModel(
             }
 
             val processedEpisodes by lazy {
-                episodes.applyFilters(anime).toList()
+                val displayEpisodes = episodeSourcePreview ?: episodes
+                displayEpisodes.applyFilters(anime).toList()
             }
 
             val targetEpisodeIndex by lazy {
