@@ -890,6 +890,10 @@
     <string name="novel_download_all">Скачать все главы</string>
     <string name="novel_download_not_downloaded">Скачать не скачанные главы</string>
     <string name="novel_download_choose_chapters">Выбрать главы</string>
+    <string name="novel_download_section_quick_range">Быстрый диапазон</string>
+    <string name="novel_download_section_more_options">Ещё</string>
+    <string name="novel_download_chip_chapter">глава</string>
+    <string name="novel_download_chip_chapters">глав</string>
     <string name="novel_download_select_chapters_title">Выбор глав для скачивания</string>
     <string name="novel_download_no_available">Нет доступных глав для скачивания</string>
     <string name="novel_export_as_epub">Экспорт в EPUB</string>

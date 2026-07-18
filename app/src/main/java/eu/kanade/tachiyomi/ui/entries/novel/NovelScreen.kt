@@ -41,6 +41,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FilterList
@@ -1124,152 +1125,14 @@ internal fun NovelBatchDownloadDialog(
     onSelectChapters: () -> Unit,
     onActionSelected: (NovelDownloadAction, Int) -> Unit,
 ) {
-    var customCount by remember { mutableStateOf("20") }
-    val colorScheme = MaterialTheme.colorScheme
-    val accentColor = colorScheme.primary
-    val onAccentColor = colorScheme.onPrimary
-
-    Dialog(onDismissRequest = onDismissRequest) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = colorScheme.surfaceContainerHigh,
-        ) {
-            Box(
-                modifier = Modifier
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.14f),
-                                Color.Transparent,
-                            ),
-                            radius = 900f,
-                        ),
-                    )
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(AYMR.strings.novel_batch_download_title),
-                        color = colorScheme.onSurface,
-                        style = MaterialTheme.typography.titleSmall,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    val actionItems = listOf(
-                        DownloadActionItem(
-                            icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                            label = stringResource(AYMR.strings.novel_download_next_1),
-                            badgeText = "1",
-                            onClick = { onActionSelected(NovelDownloadAction.NEXT, 1) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                            label = stringResource(AYMR.strings.novel_download_next_5),
-                            badgeText = "5",
-                            onClick = { onActionSelected(NovelDownloadAction.NEXT, 5) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                            label = stringResource(AYMR.strings.novel_download_next_10),
-                            badgeText = "10",
-                            onClick = { onActionSelected(NovelDownloadAction.NEXT, 10) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.Visibility,
-                            label = stringResource(AYMR.strings.action_download_unread),
-                            onClick = { onActionSelected(NovelDownloadAction.UNREAD, 0) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.DoneAll,
-                            label = stringResource(AYMR.strings.novel_download_all),
-                            onClick = { onActionSelected(NovelDownloadAction.ALL, 0) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.Download,
-                            label = stringResource(AYMR.strings.novel_download_not_downloaded),
-                            onClick = { onActionSelected(NovelDownloadAction.NOT_DOWNLOADED, 0) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.FilterList,
-                            label = stringResource(AYMR.strings.novel_download_choose_chapters),
-                            onClick = onSelectChapters,
-                        ),
-                    )
-
-                    Column(modifier = Modifier.padding(top = 10.dp)) {
-                        actionItems.forEachIndexed { index, item ->
-                            DownloadActionRow(item)
-                            if (index != actionItems.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 32.dp),
-                                    color = colorScheme.outlineVariant.copy(alpha = 0.65f),
-                                )
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedTextField(
-                            value = customCount,
-                            onValueChange = { customCount = it.filter(Char::isDigit) },
-                            label = {
-                                Text(
-                                    text = stringResource(AYMR.strings.novel_download_custom_count),
-                                    color = colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                        )
-                        Button(
-                            onClick = {
-                                val amount = customCount.toIntOrNull()?.coerceAtLeast(1) ?: return@Button
-                                onActionSelected(NovelDownloadAction.NEXT, amount)
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = accentColor,
-                                contentColor = onAccentColor,
-                            ),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp),
-                        ) {
-                            Text(
-                                text = stringResource(MR.strings.manga_download),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-
-                    TextButton(
-                        onClick = onDismissRequest,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(top = 4.dp),
-                    ) {
-                        Text(
-                            text = stringResource(MR.strings.action_cancel),
-                            color = accentColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-            }
-        }
-    }
+    NovelAuroraDownloadSheet(
+        title = stringResource(AYMR.strings.novel_batch_download_title),
+        selectChaptersLabel = stringResource(AYMR.strings.novel_download_choose_chapters),
+        onDismissRequest = onDismissRequest,
+        onSelectChapters = onSelectChapters,
+        onActionSelected = onActionSelected,
+        formatHeader = null,
+    )
 }
 
 @Composable
@@ -1278,201 +1141,410 @@ internal fun NovelTranslatedDownloadDialog(
     onSelectChapters: (NovelTranslatedDownloadFormat) -> Unit,
     onActionSelected: (NovelDownloadAction, Int, NovelTranslatedDownloadFormat) -> Unit,
 ) {
-    var customCount by remember { mutableStateOf("20") }
     var format by remember { mutableStateOf(NovelTranslatedDownloadFormat.TXT) }
-    val colorScheme = MaterialTheme.colorScheme
-    val accentColor = colorScheme.primary
-    val onAccentColor = colorScheme.onPrimary
+    NovelAuroraDownloadSheet(
+        title = stringResource(AYMR.strings.novel_translated_download_title),
+        selectChaptersLabel = stringResource(AYMR.strings.novel_translated_download_choose_chapters),
+        onDismissRequest = onDismissRequest,
+        onSelectChapters = { onSelectChapters(format) },
+        onActionSelected = { action, amount -> onActionSelected(action, amount, format) },
+        formatHeader = {
+            NovelTranslatedDownloadFormatSelector(
+                format = format,
+                onFormatSelected = { format = it },
+            )
+        },
+    )
+}
 
-    Dialog(onDismissRequest = onDismissRequest) {
-        Surface(
+/**
+ * Selection model for download sheet: nothing runs until the user taps Download
+ * (except Cancel). Quick chips and More options are mutually exclusive.
+ */
+private sealed class NovelDownloadScope {
+    data class Next(val amount: Int) : NovelDownloadScope()
+    data object Unread : NovelDownloadScope()
+    data object All : NovelDownloadScope()
+    data object NotDownloaded : NovelDownloadScope()
+    data object SelectChapters : NovelDownloadScope()
+}
+
+/**
+ * Variant B: AdaptiveSheet + quick-range chips (1/5/10) + selectable more options + footer CTA.
+ * Shared by batch download and translated-download dialogs.
+ */
+@Composable
+private fun NovelAuroraDownloadSheet(
+    title: String,
+    selectChaptersLabel: String,
+    onDismissRequest: () -> Unit,
+    onSelectChapters: () -> Unit,
+    onActionSelected: (NovelDownloadAction, Int) -> Unit,
+    formatHeader: (@Composable () -> Unit)?,
+) {
+    var customCount by remember { mutableStateOf("20") }
+    var scope by remember { mutableStateOf<NovelDownloadScope>(NovelDownloadScope.Next(20)) }
+    val colors = AuroraTheme.colors
+    val appHaptics = LocalAppHaptics.current
+    val supportsBlurBehind = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !colors.isEInk
+    var sheetReveal by remember { mutableFloatStateOf(0f) }
+    val accent = if (colors.isEInk) colors.textPrimary else colors.accent
+    val selectedChipAmount = (scope as? NovelDownloadScope.Next)?.amount?.takeIf { it in setOf(1, 5, 10) }
+
+    AdaptiveSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = when {
+            colors.isEInk -> MaterialTheme.colorScheme.surfaceContainerHigh
+            !supportsBlurBehind -> colors.surface
+            colors.isDark -> Color.Black.copy(alpha = 0.70f)
+            else -> Color.White.copy(alpha = 0.88f)
+        },
+        scrimAlpha = if (supportsBlurBehind) 0f else 0.5f,
+        onRevealChange = { sheetReveal = it },
+    ) {
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        val revealState = rememberUpdatedState(sheetReveal)
+
+        DisposableEffect(window, supportsBlurBehind) {
+            val w = window
+            if (w != null && supportsBlurBehind) {
+                w.setBackgroundDrawable(ColorDrawable(AndroidColor.TRANSPARENT))
+                w.setDimAmount(0f)
+                w.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                w.attributes = w.attributes.apply { blurBehindRadius = 0 }
+            }
+            onDispose {
+                if (w != null && supportsBlurBehind) {
+                    w.attributes = w.attributes.apply { blurBehindRadius = 0 }
+                    w.setDimAmount(0f)
+                    w.clearFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                }
+            }
+        }
+
+        LaunchedEffect(window, supportsBlurBehind) {
+            val w = window ?: return@LaunchedEffect
+            if (!supportsBlurBehind) return@LaunchedEffect
+            snapshotFlow { revealState.value.coerceIn(0f, 1f) }
+                .map { reveal -> (reveal * 20f).roundToInt().coerceIn(0, 20) }
+                .distinctUntilChanged()
+                .collect { step -> applyAuroraSheetWindowFx(w, step / 20f) }
+        }
+
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = colorScheme.surfaceContainerHigh,
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.14f),
-                                Color.Transparent,
-                            ),
-                            radius = 900f,
-                        ),
-                    )
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(AYMR.strings.novel_translated_download_title),
-                        color = colorScheme.onSurface,
-                        style = MaterialTheme.typography.titleSmall,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 36.dp, height = 4.dp)
+                    .clip(CircleShape)
+                    .background(colors.textPrimary.copy(alpha = if (colors.isDark) 0.18f else 0.14f)),
+            )
 
-                    NovelTranslatedDownloadFormatSelector(
-                        format = format,
-                        onFormatSelected = { format = it },
-                        modifier = Modifier.padding(top = 10.dp),
-                    )
+            Text(
+                text = title,
+                color = colors.textPrimary,
+                style = MaterialTheme.typography.titleSmall,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp, bottom = 4.dp),
+            )
 
-                    val actionItems = listOf(
-                        DownloadActionItem(
-                            icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                            label = stringResource(AYMR.strings.novel_download_next_1),
-                            badgeText = "1",
-                            onClick = { onActionSelected(NovelDownloadAction.NEXT, 1, format) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                            label = stringResource(AYMR.strings.novel_download_next_5),
-                            badgeText = "5",
-                            onClick = { onActionSelected(NovelDownloadAction.NEXT, 5, format) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.AutoMirrored.Outlined.ArrowForward,
-                            label = stringResource(AYMR.strings.novel_download_next_10),
-                            badgeText = "10",
-                            onClick = { onActionSelected(NovelDownloadAction.NEXT, 10, format) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.Visibility,
-                            label = stringResource(AYMR.strings.action_download_unread),
-                            onClick = { onActionSelected(NovelDownloadAction.UNREAD, 0, format) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.DoneAll,
-                            label = stringResource(AYMR.strings.novel_download_all),
-                            onClick = { onActionSelected(NovelDownloadAction.ALL, 0, format) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.Download,
-                            label = stringResource(AYMR.strings.novel_download_not_downloaded),
-                            onClick = { onActionSelected(NovelDownloadAction.NOT_DOWNLOADED, 0, format) },
-                        ),
-                        DownloadActionItem(
-                            icon = Icons.Outlined.FilterList,
-                            label = stringResource(AYMR.strings.novel_translated_download_choose_chapters),
-                            onClick = { onSelectChapters(format) },
-                        ),
-                    )
-
-                    Column(modifier = Modifier.padding(top = 10.dp)) {
-                        actionItems.forEachIndexed { index, item ->
-                            DownloadActionRow(item)
-                            if (index != actionItems.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 32.dp),
-                                    color = colorScheme.outlineVariant.copy(alpha = 0.65f),
-                                )
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedTextField(
-                            value = customCount,
-                            onValueChange = { customCount = it.filter(Char::isDigit) },
-                            label = {
-                                Text(
-                                    text = stringResource(AYMR.strings.novel_download_custom_count),
-                                    color = colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                        )
-                        Button(
-                            onClick = {
-                                val amount = customCount.toIntOrNull()?.coerceAtLeast(1) ?: return@Button
-                                onActionSelected(NovelDownloadAction.NEXT, amount, format)
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = accentColor,
-                                contentColor = onAccentColor,
-                            ),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 10.dp),
-                        ) {
-                            Text(
-                                text = stringResource(MR.strings.manga_download),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-
-                    TextButton(
-                        onClick = onDismissRequest,
-                        modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .padding(top = 4.dp),
-                    ) {
-                        Text(
-                            text = stringResource(MR.strings.action_cancel),
-                            color = accentColor,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
+            if (formatHeader != null) {
+                Box(modifier = Modifier.padding(top = 10.dp)) {
+                    formatHeader()
                 }
             }
+
+            Text(
+                text = stringResource(AYMR.strings.novel_download_section_quick_range).uppercase(),
+                color = accent.copy(alpha = if (colors.isEInk) 1f else 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.1.sp,
+                modifier = Modifier.padding(top = 14.dp, bottom = 8.dp, start = 2.dp),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(1, 5, 10).forEach { amount ->
+                    NovelDownloadRangeChip(
+                        amount = amount,
+                        selected = selectedChipAmount == amount,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            appHaptics.tap()
+                            customCount = amount.toString()
+                            scope = NovelDownloadScope.Next(amount)
+                        },
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(AYMR.strings.novel_download_section_more_options).uppercase(),
+                color = accent.copy(alpha = if (colors.isEInk) 1f else 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.1.sp,
+                modifier = Modifier.padding(top = 16.dp, bottom = 4.dp, start = 2.dp),
+            )
+
+            val moreOptions = listOf(
+                Triple(
+                    NovelDownloadScope.Unread,
+                    Icons.Outlined.Visibility,
+                    stringResource(AYMR.strings.action_download_unread),
+                ),
+                Triple(
+                    NovelDownloadScope.All,
+                    Icons.Outlined.DoneAll,
+                    stringResource(AYMR.strings.novel_download_all),
+                ),
+                Triple(
+                    NovelDownloadScope.NotDownloaded,
+                    Icons.Outlined.Download,
+                    stringResource(AYMR.strings.novel_download_not_downloaded),
+                ),
+                Triple(
+                    NovelDownloadScope.SelectChapters,
+                    Icons.Outlined.FilterList,
+                    selectChaptersLabel,
+                ),
+            )
+            moreOptions.forEach { (option, icon, label) ->
+                NovelDownloadOptionRow(
+                    icon = icon,
+                    label = label,
+                    checked = scope == option,
+                    onClick = {
+                        appHaptics.tap()
+                        scope = option
+                    },
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val fieldColors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = colors.textPrimary,
+                    unfocusedTextColor = colors.textPrimary,
+                    focusedBorderColor = accent.copy(alpha = 0.55f),
+                    unfocusedBorderColor = colors.textPrimary.copy(alpha = 0.18f),
+                    focusedLabelColor = accent,
+                    unfocusedLabelColor = colors.textSecondary,
+                    cursorColor = accent,
+                )
+                OutlinedTextField(
+                    value = customCount,
+                    onValueChange = { raw ->
+                        customCount = raw.filter(Char::isDigit)
+                        val amount = customCount.toIntOrNull()?.coerceAtLeast(1)
+                        if (amount != null) {
+                            scope = NovelDownloadScope.Next(amount)
+                        }
+                    },
+                    label = {
+                        Text(text = stringResource(AYMR.strings.novel_download_custom_count))
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = fieldColors,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(accent)
+                        .clickable {
+                            appHaptics.tap()
+                            when (val current = scope) {
+                                is NovelDownloadScope.Next -> {
+                                    val amount = customCount.toIntOrNull()?.coerceAtLeast(1)
+                                        ?: current.amount
+                                    onActionSelected(NovelDownloadAction.NEXT, amount)
+                                }
+                                NovelDownloadScope.Unread ->
+                                    onActionSelected(NovelDownloadAction.UNREAD, 0)
+                                NovelDownloadScope.All ->
+                                    onActionSelected(NovelDownloadAction.ALL, 0)
+                                NovelDownloadScope.NotDownloaded ->
+                                    onActionSelected(NovelDownloadAction.NOT_DOWNLOADED, 0)
+                                NovelDownloadScope.SelectChapters -> onSelectChapters()
+                            }
+                        }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(MR.strings.manga_download),
+                        color = if (colors.isEInk) colors.background else colors.textOnAccent,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(MR.strings.action_cancel),
+                color = colors.textSecondary,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable {
+                        appHaptics.tap()
+                        onDismissRequest()
+                    }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
 
-private data class DownloadActionItem(
-    val icon: ImageVector,
-    val label: String,
-    val badgeText: String? = null,
-    val onClick: () -> Unit,
-)
+@Composable
+private fun NovelDownloadRangeChip(
+    amount: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AuroraTheme.colors
+    val accent = if (colors.isEInk) colors.textPrimary else colors.accent
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                if (selected) {
+                    if (colors.isEInk) colors.textPrimary.copy(alpha = 0.12f) else accent.copy(alpha = 0.14f)
+                } else {
+                    colors.textPrimary.copy(alpha = if (colors.isDark) 0.055f else 0.045f)
+                },
+                shape,
+            )
+            .border(
+                1.dp,
+                if (selected) {
+                    accent.copy(alpha = if (colors.isEInk) 1f else 0.40f)
+                } else {
+                    colors.textPrimary.copy(alpha = if (colors.isDark) 0.10f else 0.08f)
+                },
+                shape,
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 14.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = amount.toString(),
+            color = colors.textPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 22.sp,
+        )
+        Text(
+            text = if (amount == 1) {
+                stringResource(AYMR.strings.novel_download_chip_chapter)
+            } else {
+                stringResource(AYMR.strings.novel_download_chip_chapters)
+            },
+            color = if (selected) colors.textPrimary.copy(alpha = 0.85f) else colors.textSecondary,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+        Box(
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .size(width = 22.dp, height = 2.dp)
+                .clip(CircleShape)
+                .background(accent.copy(alpha = if (selected) 0.9f else 0.35f)),
+        )
+    }
+}
 
 @Composable
-private fun DownloadActionRow(item: DownloadActionItem) {
-    val colorScheme = MaterialTheme.colorScheme
+private fun NovelDownloadOptionRow(
+    icon: ImageVector,
+    label: String,
+    checked: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = AuroraTheme.colors
+    val accent = if (colors.isEInk) colors.textPrimary else colors.accent
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = item.onClick)
-            .padding(vertical = 10.dp),
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = item.icon,
-            contentDescription = null,
-            tint = colorScheme.onSurface,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(modifier = Modifier.width(10.dp))
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .background(
+                    colors.textPrimary.copy(alpha = if (colors.isDark) 0.06f else 0.05f),
+                    CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (checked) accent else colors.textSecondary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = item.label,
-            color = colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyLarge,
+            text = label,
+            color = colors.textPrimary,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal,
             modifier = Modifier.weight(1f),
         )
-        item.badgeText?.let { badge ->
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = colorScheme.primary.copy(alpha = 0.14f),
-            ) {
-                Text(
-                    text = badge,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.dp),
+        // Checkbox-style indicator: empty frame / filled check (selection only, no fire).
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .then(
+                    if (checked) {
+                        Modifier.background(accent, RoundedCornerShape(7.dp))
+                    } else {
+                        Modifier.border(
+                            1.6.dp,
+                            colors.textSecondary.copy(alpha = 0.55f),
+                            RoundedCornerShape(7.dp),
+                        )
+                    },
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (checked) {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = null,
+                    tint = if (colors.isEInk) colors.background else colors.textOnAccent,
+                    modifier = Modifier.size(14.dp),
                 )
             }
         }

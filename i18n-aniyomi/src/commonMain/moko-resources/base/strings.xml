@@ -1199,6 +1199,10 @@
     <string name="novel_download_all">Download all chapters</string>
     <string name="novel_download_not_downloaded">Download not downloaded chapters</string>
     <string name="novel_download_choose_chapters">Select chapters</string>
+    <string name="novel_download_section_quick_range">Quick range</string>
+    <string name="novel_download_section_more_options">More options</string>
+    <string name="novel_download_chip_chapter">chapter</string>
+    <string name="novel_download_chip_chapters">chapters</string>
     <string name="novel_download_select_chapters_title">Select chapters to download</string>
     <string name="novel_download_no_available">No chapters available to download</string>
     <string name="novel_export_as_epub">Export as EPUB</string>
