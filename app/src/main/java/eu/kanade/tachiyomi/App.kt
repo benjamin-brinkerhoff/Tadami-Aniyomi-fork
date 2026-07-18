@@ -38,6 +38,7 @@ import eu.kanade.domain.tutorial.model.TutorialMode
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.setAppCompatDelegateThemeMode
 import eu.kanade.presentation.achievement.components.AchievementBannerManager
+import eu.kanade.presentation.components.CoverReloadSignal
 import eu.kanade.presentation.tutorial.CoachTipRegistry
 import eu.kanade.tachiyomi.crash.CrashActivity
 import eu.kanade.tachiyomi.crash.GlobalExceptionHandler
@@ -76,14 +77,18 @@ import eu.kanade.tachiyomi.ui.base.delegate.SecureActivityDelegate
 import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.GLUtil
 import eu.kanade.tachiyomi.util.system.WebViewUtil
+import eu.kanade.tachiyomi.util.system.activeNetworkState
 import eu.kanade.tachiyomi.util.system.animatorDurationScale
 import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.isPreviewBuildType
+import eu.kanade.tachiyomi.util.system.networkStateFlow
 import eu.kanade.tachiyomi.util.system.notify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import logcat.AndroidLogcatLogger
@@ -206,6 +211,23 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             }
         }
         SingletonImageLoader.setUnsafe { context -> newImageLoader(context) }
+
+        if (isMainProcess) {
+            applicationScope.launch {
+                var wasOnline = runCatching { activeNetworkState().isOnline }.getOrDefault(true)
+                runCatching {
+                    networkStateFlow()
+                        .map { it.isOnline }
+                        .distinctUntilChanged()
+                        .collect { online ->
+                            if (online && !wasOnline) {
+                                CoverReloadSignal.bump()
+                            }
+                            wasOnline = online
+                        }
+                }
+            }
+        }
 
         if (isMainProcess) {
             Handler(Looper.getMainLooper()).post {

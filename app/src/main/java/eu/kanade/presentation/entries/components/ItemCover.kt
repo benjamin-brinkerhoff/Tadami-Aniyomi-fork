@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
+import eu.kanade.presentation.components.CoverReloadSignal
 import eu.kanade.presentation.components.buildAuroraCoverImageRequest
 import eu.kanade.presentation.components.rememberThemeAwareCoverErrorPainter
 import eu.kanade.presentation.entries.components.aurora.rememberAuroraPosterColorFilter
@@ -63,7 +64,8 @@ enum class ItemCover(val ratio: Float) {
         val context = LocalContext.current
 
         if (isLoadableCoverData(model)) {
-            val coverRequest = remember(context, model) {
+            val coverReloadTick = CoverReloadSignal.tick.value
+            val coverRequest = remember(context, model, coverReloadTick) {
                 buildAuroraCoverImageRequest(context, model)
             }
             // Don't pass a `placeholder` painter directly: Coil's transformOf()

@@ -63,6 +63,7 @@ import coil3.compose.AsyncImage
 import com.tadami.aurora.R
 import eu.kanade.domain.ui.model.HomeHeroCtaMode
 import eu.kanade.presentation.components.AuroraCard
+import eu.kanade.presentation.components.CoverReloadSignal
 import eu.kanade.presentation.components.AuroraCoverPlaceholderVariant
 import eu.kanade.presentation.components.auroraMenuRimLightBrush
 import eu.kanade.presentation.components.buildAuroraCoverImageRequest
@@ -240,7 +241,8 @@ internal fun HeroSection(
     ) {
         val fallbackPainter = rememberThemeAwareCoverErrorPainter(variant = AuroraCoverPlaceholderVariant.Wide)
         val heroContext = LocalContext.current
-        val heroCoverRequest = remember(heroContext, hero.coverData) {
+        val heroCoverReloadTick = CoverReloadSignal.tick.value
+        val heroCoverRequest = remember(heroContext, hero.coverData, heroCoverReloadTick) {
             buildAuroraCoverImageRequest(heroContext, hero.coverData)
         }
         AsyncImage(
@@ -701,7 +703,8 @@ internal fun HomeHubRecentPosterCard(
                     ),
             ) {
                 val posterContext = LocalContext.current
-                val posterCoverRequest = remember(posterContext, coverData) {
+                val posterCoverReloadTick = CoverReloadSignal.tick.value
+                val posterCoverRequest = remember(posterContext, coverData, posterCoverReloadTick) {
                     buildAuroraCoverImageRequest(posterContext, coverData)
                 }
                 AsyncImage(
