@@ -145,6 +145,16 @@ fun AuroraCapsuleTabs(
         ) {
             val count = titles.size.coerceAtLeast(1)
             val segmentPx = with(density) { maxWidth.toPx() / count }
+            val segmentWidth = maxWidth / count
+            // Long locales (e.g. RU "Сортировка") + 4 equal segments need tighter type.
+            val labelSize = when {
+                count >= 4 && segmentWidth < 64.dp -> 9.5.sp
+                count >= 4 && segmentWidth < 76.dp -> 10.sp
+                count >= 4 && segmentWidth < 88.dp -> 10.5.sp
+                segmentWidth < 72.dp -> 10.sp
+                else -> 11.5.sp
+            }
+            val labelHPad = if (count >= 4 || segmentWidth < 76.dp) 1.dp else 2.dp
             val targetLeft = segmentPx * safeIndex
             val targetRight = targetLeft + segmentPx
 
@@ -212,7 +222,7 @@ fun AuroraCapsuleTabs(
                                     indication = null,
                                     interactionSource = remember { MutableInteractionSource() },
                                 ) { onSelect(index) }
-                                .padding(vertical = 8.dp, horizontal = 2.dp),
+                                .padding(vertical = 8.dp, horizontal = labelHPad),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
@@ -223,7 +233,7 @@ fun AuroraCapsuleTabs(
                                     colors.isDark -> colors.textPrimary.copy(alpha = 0.65f)
                                     else -> colors.textSecondary
                                 },
-                                fontSize = 11.5.sp,
+                                fontSize = labelSize,
                                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                                 maxLines = 1,
                                 softWrap = false,
