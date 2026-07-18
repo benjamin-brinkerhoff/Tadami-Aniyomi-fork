@@ -25,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -200,7 +199,8 @@ fun NovelReaderSettingsDialog(
                     selectedIndex = pagerState.currentPage,
                     onSelect = { scope.launch { pagerState.animateScrollToPage(it) } },
                 )
-                HorizontalDivider(color = auroraRimColor())
+                // No divider under tabs — glass cards already separate content; a rim line
+                // reads as a flat "belt" between the capsule tabs and the first section.
                 HorizontalPager(
                     modifier = Modifier.heightIn(max = pageMaxHeight),
                     state = pagerState,

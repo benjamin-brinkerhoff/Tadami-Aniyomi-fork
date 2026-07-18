@@ -86,7 +86,6 @@ fun GeneralTab(
     var pageTurnTuningExpanded by rememberSaveable(settings.pageReader, settings.pageTransitionStyle) {
         mutableStateOf(false)
     }
-    val surfaceStrategy = remember { resolveNovelReaderSettingsSurfaceStrategy() }
 
     @Composable
     fun rendererSubtitle(
@@ -106,8 +105,9 @@ fun GeneralTab(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        // Scope control — same compact pattern as manga series override:
+        // section title names the scope; state lives in the toggle subtitle only.
         AuroraGlassSection(title = stringResource(AYMR.strings.novel_reader_settings_title)) {
-            // Compact: editing-state hint folded into the switch subtitle.
             AuroraToggleRow(
                 label = stringResource(AYMR.strings.novel_reader_override_source),
                 subtitle = if (overrideEnabled) {
@@ -124,11 +124,6 @@ fun GeneralTab(
                     }
                 },
             )
-            if (surfaceStrategy.globalOnlyFamilies.isNotEmpty()) {
-                NovelGlassHint(
-                    text = stringResource(AYMR.strings.novel_reader_quick_dialog_global_policy_summary),
-                )
-            }
         }
 
         AuroraGlassSection(title = stringResource(AYMR.strings.novel_reader_section_reading_behavior)) {
