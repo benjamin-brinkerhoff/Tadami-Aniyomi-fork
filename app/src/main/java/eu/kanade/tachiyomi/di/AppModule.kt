@@ -800,6 +800,14 @@ class AppModule(val app: Application) : InjektModule {
                 preferences = get(),
             )
         }
+        addSingletonFactory {
+            eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker(
+                getMangaTracks = get(),
+                getAnimeTracks = get(),
+                getNovelTracks = get(),
+                trackerManager = get(),
+            )
+        }
 
         addSingletonFactory { ImageSaver(app) }
 

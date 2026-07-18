@@ -17,6 +17,8 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
 import eu.kanade.domain.base.BasePreferences
+import eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker
+import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
 import eu.kanade.domain.entries.anime.interactor.AnimeRatingFetcher
 import eu.kanade.domain.entries.anime.interactor.SetAnimeViewerFlags
 import eu.kanade.domain.entries.anime.interactor.SyncSeasonsWithSource
@@ -178,6 +180,7 @@ class AnimeScreenModel(
     internal val setAnimeViewerFlags: SetAnimeViewerFlags = Injekt.get(),
     private val preferenceStore: tachiyomi.core.common.preference.PreferenceStore = Injekt.get(),
     private val getAnimeMetadata: GetAnimeMetadata = Injekt.get(),
+    private val fetchEntryMetadataFromTracker: FetchEntryMetadataFromTracker = Injekt.get(),
     private val suggestionCoordinator: SuggestionCoordinator = Injekt.get(),
     private val sourcePreferences: SourcePreferences = Injekt.get(),
     private val torrentPreferences: TorrentPreferences = Injekt.get(),
@@ -712,6 +715,20 @@ class AnimeScreenModel(
             // Reload metadata after refreshing from source
             loadAnimeMetadata(successState?.anime?.id ?: return@launch)
         }
+    }
+
+    suspend fun fetchMetadataFromTracker(
+        trackerId: Long? = null,
+    ): TrackerMetadataFetchOutcome {
+        val anime = successState?.anime
+        val fallbackTitle = anime?.title?.takeIf { it.isNotBlank() }
+            ?: anime?.displayTitle
+            ?: ""
+        return fetchEntryMetadataFromTracker.fetchAnime(
+            animeId = animeId,
+            trackerId = trackerId,
+            fallbackTitle = fallbackTitle,
+        )
     }
 
     fun updateAnimeMetadata(

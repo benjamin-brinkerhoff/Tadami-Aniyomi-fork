@@ -700,6 +700,10 @@ class NovelScreen(
                 onReset = {
                     screenModel.resetNovelMetadata()
                 },
+                canFetchFromTracker = successState.trackingCount > 0,
+                onFetchFromTracker = { trackerId ->
+                    screenModel.fetchMetadataFromTracker(trackerId)
+                },
             )
         }
 

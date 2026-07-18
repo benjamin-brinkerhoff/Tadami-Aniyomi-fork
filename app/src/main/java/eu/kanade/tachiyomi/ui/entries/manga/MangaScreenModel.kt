@@ -16,6 +16,8 @@ import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
 import eu.kanade.domain.base.BasePreferences
+import eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker
+import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
 import eu.kanade.domain.entries.manga.interactor.GetExcludedScanlators
 import eu.kanade.domain.entries.manga.interactor.SetExcludedScanlators
 import eu.kanade.domain.entries.manga.interactor.SourceMangaRatingFetcher
@@ -155,6 +157,7 @@ class MangaScreenModel(
     private val mangaHistoryRepository: MangaHistoryRepository = Injekt.get(),
     private val filterChaptersForDownload: FilterChaptersForDownload = Injekt.get(),
     private val getMangaMetadata: GetMangaMetadata = Injekt.get(),
+    private val fetchEntryMetadataFromTracker: FetchEntryMetadataFromTracker = Injekt.get(),
     private val sourceMangaRatingFetcher: SourceMangaRatingFetcher = Injekt.get(),
     private val suggestionCoordinator: SuggestionCoordinator = Injekt.get(),
     private val sourcePreferences: SourcePreferences = Injekt.get(),
@@ -618,6 +621,21 @@ class MangaScreenModel(
                 }
             }
         }
+    }
+
+    suspend fun fetchMetadataFromTracker(
+        trackerId: Long? = null,
+    ): TrackerMetadataFetchOutcome {
+        // Prefer original source title for search; fall back to displayed title.
+        val manga = successState?.manga
+        val fallbackTitle = manga?.title?.takeIf { it.isNotBlank() }
+            ?: manga?.displayTitle
+            ?: ""
+        return fetchEntryMetadataFromTracker.fetchManga(
+            mangaId = mangaId,
+            trackerId = trackerId,
+            fallbackTitle = fallbackTitle,
+        )
     }
 
     fun resetMangaMetadata() {

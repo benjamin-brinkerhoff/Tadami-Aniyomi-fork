@@ -1246,6 +1246,15 @@
     <string name="status_on_hiatus">Приостановлено</string>
     <string name="status_unknown">Неизвестно</string>
     <string name="metadata_saved_successfully">Метаданные успешно сохранены</string>
+    <string name="action_fetch_from_tracker">Получить из трекера</string>
+    <string name="action_fetch_from_tracker_choose">Выберите трекер</string>
+    <string name="fetch_from_tracker_applied">Поля заполнены из %1$s. Проверьте и сохраните.</string>
+    <string name="fetch_from_tracker_no_linked">К этому тайтлу не привязан трекер</string>
+    <string name="fetch_from_tracker_not_logged_in">Трекер привязан, но вы не вошли в аккаунт</string>
+    <string name="fetch_from_tracker_no_results">Трекер не вернул результатов</string>
+    <string name="fetch_from_tracker_no_match">Не удалось найти этот тайтл в трекере</string>
+    <string name="fetch_from_tracker_empty">В трекере нет полезных метаданных для этого тайтла</string>
+    <string name="fetch_from_tracker_failed">Не удалось получить метаданные из трекера</string>
     <string name="suggestions_similar_titles">Похожие произведения</string>
     <string name="suggestions_group_top_picks">Лучшие варианты</string>
     <string name="suggestions_group_recommendation_databases">Базы рекомендаций</string>

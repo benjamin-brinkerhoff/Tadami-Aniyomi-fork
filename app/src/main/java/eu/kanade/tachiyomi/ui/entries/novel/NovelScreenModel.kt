@@ -11,6 +11,8 @@ import androidx.lifecycle.flowWithLifecycle
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.domain.base.BasePreferences
+import eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker
+import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
 import eu.kanade.domain.entries.novel.interactor.GetNovelExcludedScanlators
 import eu.kanade.domain.entries.novel.interactor.NovelRatingFetcher
 import eu.kanade.domain.entries.novel.interactor.SetNovelExcludedScanlators
@@ -197,6 +199,7 @@ class NovelScreenModel(
     private val novelRatingFetcher: NovelRatingFetcher = Injekt.get(),
     private val trackerManager: TrackerManager = Injekt.get(),
     private val getTracks: GetNovelTracks = Injekt.get(),
+    private val fetchEntryMetadataFromTracker: FetchEntryMetadataFromTracker = Injekt.get(),
     private val refreshNovelTracks: RefreshNovelTracks = Injekt.get(),
     private val trackNovelChapter: TrackNovelChapter = Injekt.get(),
     private val trackPreferences: TrackPreferences = Injekt.get(),
@@ -636,6 +639,20 @@ class NovelScreenModel(
                 }
             }
         }
+    }
+
+    suspend fun fetchMetadataFromTracker(
+        trackerId: Long? = null,
+    ): TrackerMetadataFetchOutcome {
+        val novel = successState?.novel
+        val fallbackTitle = novel?.title?.takeIf { it.isNotBlank() }
+            ?: novel?.displayTitle
+            ?: ""
+        return fetchEntryMetadataFromTracker.fetchNovel(
+            novelId = novelId,
+            trackerId = trackerId,
+            fallbackTitle = fallbackTitle,
+        )
     }
 
     fun updateNovelMetadata(

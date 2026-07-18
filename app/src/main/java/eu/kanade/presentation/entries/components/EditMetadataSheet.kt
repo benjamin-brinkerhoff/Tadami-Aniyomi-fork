@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -40,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -47,18 +49,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogWindowProvider
+import eu.kanade.domain.entries.metadata.TrackerMetadataDraft
+import eu.kanade.domain.entries.metadata.TrackerMetadataFetchError
+import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
+import eu.kanade.domain.entries.metadata.TrackerMetadataSource
 import eu.kanade.presentation.components.AdaptiveSheet
 import eu.kanade.presentation.components.applyAuroraSheetWindowFx
 import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.LocalAppHaptics
@@ -67,6 +76,9 @@ import kotlin.math.roundToInt
 /**
  * Edit Info — variant E3: flat compact AdaptiveSheet form.
  * Single scroll column, uppercase section labels, status chips, tags + sticky footer.
+ *
+ * When [canFetchFromTracker] is true, shows an "Import from tracker" action that fills
+ * the form from the linked tracker (does not auto-save).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -88,11 +100,15 @@ fun EditMetadataSheet(
         status: Long?,
     ) -> Unit,
     onReset: () -> Unit,
+    canFetchFromTracker: Boolean = false,
+    onFetchFromTracker: (suspend (trackerId: Long?) -> TrackerMetadataFetchOutcome)? = null,
 ) {
     val colors = AuroraTheme.colors
     val appHaptics = LocalAppHaptics.current
+    val context = LocalContext.current
     val accent = if (colors.isEInk) colors.textPrimary else colors.accent
     val supportsBlurBehind = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !colors.isEInk
+    val scope = rememberCoroutineScope()
     var sheetReveal by remember { mutableFloatStateOf(0f) }
 
     var title by remember { mutableStateOf(currentTitle) }
@@ -103,6 +119,71 @@ fun EditMetadataSheet(
     var status by remember { mutableStateOf(currentStatus) }
     var showResetDialog by remember { mutableStateOf(false) }
     var newTagText by remember { mutableStateOf("") }
+    var isFetchingFromTracker by remember { mutableStateOf(false) }
+    var fetchError by remember { mutableStateOf<String?>(null) }
+    var fetchHint by remember { mutableStateOf<String?>(null) }
+    var trackerPickerSources by remember { mutableStateOf<List<TrackerMetadataSource>?>(null) }
+
+    fun applyDraft(draft: TrackerMetadataDraft) {
+        draft.title?.let { title = it }
+        draft.author?.let { author = it }
+        draft.artist?.let { artist = it }
+        draft.description?.let { description = it }
+        draft.genres?.takeIf { it.isNotEmpty() }?.let { tagsList = it }
+        draft.status?.let { status = it }
+        fetchError = null
+        fetchHint = context.stringResource(
+            MR.strings.fetch_from_tracker_applied,
+            draft.trackerName,
+        )
+    }
+
+    fun errorMessage(error: TrackerMetadataFetchError): String = when (error) {
+        TrackerMetadataFetchError.NoLinkedTracks ->
+            context.stringResource(MR.strings.fetch_from_tracker_no_linked)
+        TrackerMetadataFetchError.TrackerNotLoggedIn ->
+            context.stringResource(MR.strings.fetch_from_tracker_not_logged_in)
+        TrackerMetadataFetchError.NoSearchResults ->
+            context.stringResource(MR.strings.fetch_from_tracker_no_results)
+        TrackerMetadataFetchError.NoRemoteMatch ->
+            context.stringResource(MR.strings.fetch_from_tracker_no_match)
+        TrackerMetadataFetchError.EmptyMetadata ->
+            context.stringResource(MR.strings.fetch_from_tracker_empty)
+        is TrackerMetadataFetchError.Unexpected ->
+            error.message?.takeIf { it.isNotBlank() }
+                ?: context.stringResource(MR.strings.fetch_from_tracker_failed)
+    }
+
+    fun handleOutcome(outcome: TrackerMetadataFetchOutcome) {
+        when (outcome) {
+            is TrackerMetadataFetchOutcome.Success -> applyDraft(outcome.draft)
+            is TrackerMetadataFetchOutcome.ChooseTracker -> {
+                trackerPickerSources = outcome.sources
+            }
+            is TrackerMetadataFetchOutcome.Error -> {
+                fetchError = errorMessage(outcome.error)
+                fetchHint = null
+            }
+        }
+    }
+
+    fun runFetch(trackerId: Long?) {
+        val fetch = onFetchFromTracker ?: return
+        if (isFetchingFromTracker) return
+        scope.launch {
+            isFetchingFromTracker = true
+            fetchError = null
+            fetchHint = null
+            try {
+                handleOutcome(fetch(trackerId))
+            } catch (e: Exception) {
+                fetchError = e.message?.takeIf { it.isNotBlank() }
+                    ?: context.stringResource(MR.strings.fetch_from_tracker_failed)
+            } finally {
+                isFetchingFromTracker = false
+            }
+        }
+    }
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = colors.textPrimary,
@@ -151,6 +232,62 @@ fun EditMetadataSheet(
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) {
+                    Text(
+                        text = stringResource(MR.strings.action_cancel),
+                        color = colors.textSecondary,
+                    )
+                }
+            },
+            containerColor = colors.surface,
+            shape = RoundedCornerShape(16.dp),
+        )
+    }
+
+    trackerPickerSources?.let { sources ->
+        AlertDialog(
+            onDismissRequest = { trackerPickerSources = null },
+            title = {
+                Text(
+                    text = stringResource(MR.strings.action_fetch_from_tracker_choose),
+                    color = colors.textPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    sources.forEach { source ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    appHaptics.tap()
+                                    trackerPickerSources = null
+                                    runFetch(source.trackerId)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                        ) {
+                            Text(
+                                text = source.trackerName,
+                                color = colors.textPrimary,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            if (source.remoteTitle.isNotBlank()) {
+                                Text(
+                                    text = source.remoteTitle,
+                                    color = colors.textSecondary,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { trackerPickerSources = null }) {
                     Text(
                         text = stringResource(MR.strings.action_cancel),
                         color = colors.textSecondary,
@@ -414,6 +551,57 @@ fun EditMetadataSheet(
                         color = if (colors.isEInk) colors.background else colors.textOnAccent,
                         fontWeight = FontWeight.SemiBold,
                         style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+
+            if (canFetchFromTracker && onFetchFromTracker != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(
+                            1.dp,
+                            accent.copy(alpha = if (isFetchingFromTracker) 0.25f else 0.45f),
+                            RoundedCornerShape(14.dp),
+                        )
+                        .clickable(enabled = !isFetchingFromTracker) {
+                            appHaptics.tap()
+                            runFetch(null)
+                        }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isFetchingFromTracker) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = accent,
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(MR.strings.action_fetch_from_tracker),
+                            color = accent,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+                fetchError?.let { message ->
+                    Text(
+                        text = message,
+                        color = colors.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                }
+                fetchHint?.let { message ->
+                    Text(
+                        text = message,
+                        color = colors.textSecondary,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
             }

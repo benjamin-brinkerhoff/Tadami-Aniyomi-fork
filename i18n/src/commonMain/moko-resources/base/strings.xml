@@ -1434,6 +1434,15 @@
     <string name="status_on_hiatus">On hiatus</string>
     <string name="status_unknown">Unknown</string>
     <string name="metadata_saved_successfully">Metadata saved successfully</string>
+    <string name="action_fetch_from_tracker">Import from tracker</string>
+    <string name="action_fetch_from_tracker_choose">Choose tracker</string>
+    <string name="fetch_from_tracker_applied">Fields filled from %1$s. Review and save.</string>
+    <string name="fetch_from_tracker_no_linked">No trackers linked to this title</string>
+    <string name="fetch_from_tracker_not_logged_in">Linked tracker is not logged in</string>
+    <string name="fetch_from_tracker_no_results">Tracker returned no results</string>
+    <string name="fetch_from_tracker_no_match">Could not find this title on the tracker</string>
+    <string name="fetch_from_tracker_empty">Tracker has no usable metadata for this title</string>
+    <string name="fetch_from_tracker_failed">Failed to fetch metadata from tracker</string>
     <string name="suggestions_similar_titles">Similar Titles</string>
     <string name="suggestions_group_top_picks">Top picks</string>
     <string name="suggestions_group_recommendation_databases">Recommendation databases</string>
