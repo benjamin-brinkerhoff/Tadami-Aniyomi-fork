@@ -541,6 +541,9 @@ private fun AuroraTabHeader(
                 AuroraTopBarTitleText(title = title)
             }
 
+            // Do not insert Spacer children here: Arrangement.spacedBy already puts 12.dp
+            // between siblings, so an extra Spacer would double-count (12 + width + 12).
+            // Extra gaps are applied as start padding on the next icon instead.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (currentTab?.searchEnabled == true) {
                     AuroraTopBarIconButton(
@@ -549,15 +552,25 @@ private fun AuroraTabHeader(
                         contentDescription = stringResource(MR.strings.action_search),
                         tint = if (highlightSearchAction) colors.accent else colors.textPrimary,
                     )
-
-                    if (extraSearchToActionsGap > 0.dp && iconActions.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(extraSearchToActionsGap))
-                    }
                 }
 
                 iconActions.forEachIndexed { index, appBarAction ->
-                    val buttonModifier = if (index > 0) {
-                        Modifier.padding(start = 4.dp)
+                    var startPadding = 0.dp
+                    if (
+                        index == 0 &&
+                        currentTab?.searchEnabled == true &&
+                        extraSearchToActionsGap > 0.dp
+                    ) {
+                        startPadding += extraSearchToActionsGap
+                    }
+                    if (index > 0) {
+                        startPadding += 4.dp
+                        if (iconActions[index - 1].title == extraActionGapAfterTitle) {
+                            startPadding += 4.dp
+                        }
+                    }
+                    val buttonModifier = if (startPadding > 0.dp) {
+                        Modifier.padding(start = startPadding)
                     } else {
                         Modifier
                     }
@@ -573,13 +586,6 @@ private fun AuroraTabHeader(
                         modifier = buttonModifier,
                         iconRotation = appBarAction.iconRotation,
                     )
-
-                    if (
-                        appBarAction.title == extraActionGapAfterTitle &&
-                        index < iconActions.lastIndex
-                    ) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
                 }
 
                 if (overflowActions.isNotEmpty()) {
