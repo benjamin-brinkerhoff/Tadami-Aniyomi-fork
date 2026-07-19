@@ -80,19 +80,30 @@ internal fun mapPublishingStatus(raw: String?): Long? {
     if (raw.isNullOrBlank()) return null
     val s = raw.trim().lowercase()
     return when {
-        s.contains("hiatus") || s.contains("on hold") || s.contains("on_hold") ||
+        s.contains("hiatus") ||
+            s.contains("on hold") ||
+            s.contains("on_hold") ||
             s.contains("paused") -> SManga.ON_HIATUS.toLong()
         s.contains("cancel") || s.contains("discontinu") || s.contains("dropped") ->
             SManga.CANCELLED.toLong()
-        s.contains("not_yet") || s.contains("not yet") || s.contains("upcoming") ||
-            s.contains("tba") || s.contains("announced") -> SManga.UNKNOWN.toLong()
+        s.contains("not_yet") ||
+            s.contains("not yet") ||
+            s.contains("upcoming") ||
+            s.contains("tba") ||
+            s.contains("announced") -> SManga.UNKNOWN.toLong()
         s.contains("publishing finished") || s.contains("publishing_finished") ->
             SManga.PUBLISHING_FINISHED.toLong()
         s.contains("licensed") -> SManga.LICENSED.toLong()
-        s.contains("complete") || s.contains("finished") || s.contains("ended") ||
+        s.contains("complete") ||
+            s.contains("finished") ||
+            s.contains("ended") ||
             s == "done" -> SManga.COMPLETED.toLong()
-        s.contains("releas") || s.contains("ongoing") || s.contains("publishing") ||
-            s.contains("airing") || s.contains("current") || s.contains("serializing") ->
+        s.contains("releas") ||
+            s.contains("ongoing") ||
+            s.contains("publishing") ||
+            s.contains("airing") ||
+            s.contains("current") ||
+            s.contains("serializing") ->
             SManga.ONGOING.toLong()
         else -> null
     }

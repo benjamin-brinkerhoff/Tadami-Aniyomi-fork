@@ -1,6 +1,5 @@
 package eu.kanade.presentation.components
 
-import android.graphics.Color as AndroidColor
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.view.Window
@@ -45,10 +44,11 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.LocalAppHaptics
+import kotlin.math.roundToInt
+import android.graphics.Color as AndroidColor
 
 object TabbedDialogPaddings {
     val Horizontal = 24.dp

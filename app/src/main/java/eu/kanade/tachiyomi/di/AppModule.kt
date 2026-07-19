@@ -17,8 +17,8 @@ import data.Mangas
 import dataanime.Animehistory
 import dataanime.Animes
 import dataanime.Episodes
-import datanovel.Novel_history
 import datanovel.Novel_chapters
+import datanovel.Novel_history
 import datanovel.Novels
 import eu.kanade.domain.extension.novel.interactor.TrustNovelExtension
 import eu.kanade.domain.sync.SyncPreferences

@@ -104,7 +104,9 @@ class FetchEntryMetadataFromTracker(
             ?: return TrackerMetadataFetchOutcome.Error(TrackerMetadataFetchError.NoLinkedTracks)
         val (ref, tracker) = pair
         val mangaTracker = tracker as? MangaTracker
-            ?: return TrackerMetadataFetchOutcome.Error(TrackerMetadataFetchError.Unexpected("Tracker does not support manga search"))
+            ?: return TrackerMetadataFetchOutcome.Error(
+                TrackerMetadataFetchError.Unexpected("Tracker does not support manga search"),
+            )
 
         return resolveMangaMetadata(
             service = mangaTracker,
@@ -145,7 +147,9 @@ class FetchEntryMetadataFromTracker(
             ?: return TrackerMetadataFetchOutcome.Error(TrackerMetadataFetchError.NoLinkedTracks)
         val (ref, tracker) = pair
         val animeTracker = tracker as? AnimeTracker
-            ?: return TrackerMetadataFetchOutcome.Error(TrackerMetadataFetchError.Unexpected("Tracker does not support anime search"))
+            ?: return TrackerMetadataFetchOutcome.Error(
+                TrackerMetadataFetchError.Unexpected("Tracker does not support anime search"),
+            )
 
         return resolveAnimeMetadata(
             service = animeTracker,

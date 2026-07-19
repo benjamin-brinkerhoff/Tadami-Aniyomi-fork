@@ -39,7 +39,9 @@ class NovelPluginImageFetcher(
         readPluginImageFromDiskCache(imageLoader, options, data.url)?.let { return it }
         val resolved = resolveNovelPluginImagePayload(data.url)
             ?: throw IOException("Failed to resolve plugin image: ${data.url}")
-        writePluginImageToDiskCache(imageLoader, options, data.url, resolved.bytes, resolved.mimeType)?.let { return it }
+        writePluginImageToDiskCache(imageLoader, options, data.url, resolved.bytes, resolved.mimeType)?.let {
+            return it
+        }
         return SourceFetchResult(
             source = ImageSource(
                 source = Buffer().write(resolved.bytes),

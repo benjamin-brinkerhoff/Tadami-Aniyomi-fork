@@ -16,8 +16,6 @@ import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
 import eu.kanade.domain.base.BasePreferences
-import eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker
-import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
 import eu.kanade.domain.entries.manga.interactor.GetExcludedScanlators
 import eu.kanade.domain.entries.manga.interactor.SetExcludedScanlators
 import eu.kanade.domain.entries.manga.interactor.SourceMangaRatingFetcher
@@ -25,6 +23,8 @@ import eu.kanade.domain.entries.manga.interactor.UpdateManga
 import eu.kanade.domain.entries.manga.model.chaptersFiltered
 import eu.kanade.domain.entries.manga.model.effectiveDownloadedFilter
 import eu.kanade.domain.entries.manga.model.toSManga
+import eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker
+import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
 import eu.kanade.domain.items.chapter.interactor.GetAvailableScanlators
 import eu.kanade.domain.items.chapter.interactor.GetScanlatorChapterCounts
 import eu.kanade.domain.items.chapter.interactor.SetReadStatus

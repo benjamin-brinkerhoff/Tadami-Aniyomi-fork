@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:max-line-length")
+
 package eu.kanade.tachiyomi.ui.reader.novel.dictionary
 
 import android.content.ClipData
@@ -5,8 +7,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -114,7 +116,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.jsoup.Jsoup
-import tachiyomi.core.common.i18n.stringResource as contextStringResource
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -123,6 +124,7 @@ import uy.kohesive.injekt.api.get
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Locale
+import tachiyomi.core.common.i18n.stringResource as contextStringResource
 
 /**
  * Full-screen dictionary history: personal vocabulary collected while reading novels.
@@ -409,300 +411,316 @@ private fun NovelDictionaryHistoryScreenContent(onBack: () -> Unit) {
 
     AuroraBackground {
         Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = colors.textPrimary,
-                        navigationIconContentColor = colors.textPrimary,
-                        actionIconContentColor = colors.textPrimary,
-                    ),
-                    title = {
-                        if (searchActive) {
-                            TextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .dictionaryGlass(
-                                        hazeState = hazeState,
-                                        colors = colors,
-                                        shape = HistoryPillShape,
-                                        tint = colors.surface.copy(alpha = if (colors.isDark) 0.50f else 0.58f),
-                                    ),
-                                placeholder = {
-                                    Text(
-                                        text = stringResource(AYMR.strings.novel_reader_dictionary_history_search_hint),
-                                        color = colors.textSecondary,
-                                    )
-                                },
-                                singleLine = true,
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.textPrimary),
-                                colors = TextFieldDefaults.colors(
-                                    focusedContainerColor = Color.Transparent,
-                                    unfocusedContainerColor = Color.Transparent,
-                                    disabledContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                    cursorColor = colors.accent,
-                                    focusedTextColor = colors.textPrimary,
-                                    unfocusedTextColor = colors.textPrimary,
-                                ),
-                            )
-                        } else {
-                            Column {
-                                Text(
-                                    text = stringResource(AYMR.strings.novel_reader_dictionary_history),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = colors.textPrimary,
-                                )
-                                if (allEntries.isNotEmpty()) {
-                                    Text(
-                                        text = stringResource(
-                                            AYMR.strings.novel_reader_dictionary_history_stats,
-                                            allEntries.size.toString(),
-                                            todayCount.toString(),
+            Scaffold(
+                containerColor = Color.Transparent,
+                topBar = {
+                    TopAppBar(
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            titleContentColor = colors.textPrimary,
+                            navigationIconContentColor = colors.textPrimary,
+                            actionIconContentColor = colors.textPrimary,
+                        ),
+                        title = {
+                            if (searchActive) {
+                                TextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .dictionaryGlass(
+                                            hazeState = hazeState,
+                                            colors = colors,
+                                            shape = HistoryPillShape,
+                                            tint = colors.surface.copy(alpha = if (colors.isDark) 0.50f else 0.58f),
                                         ),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = colors.textSecondary,
+                                    placeholder = {
+                                        Text(
+                                            text = stringResource(
+                                                AYMR.strings.novel_reader_dictionary_history_search_hint,
+                                            ),
+                                            color = colors.textSecondary,
+                                        )
+                                    },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = colors.textPrimary,
+                                    ),
+                                    colors = TextFieldDefaults.colors(
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        disabledContainerColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        cursorColor = colors.accent,
+                                        focusedTextColor = colors.textPrimary,
+                                        unfocusedTextColor = colors.textPrimary,
+                                    ),
+                                )
+                            } else {
+                                Column {
+                                    Text(
+                                        text = stringResource(AYMR.strings.novel_reader_dictionary_history),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colors.textPrimary,
                                     )
+                                    if (allEntries.isNotEmpty()) {
+                                        Text(
+                                            text = stringResource(
+                                                AYMR.strings.novel_reader_dictionary_history_stats,
+                                                allEntries.size.toString(),
+                                                todayCount.toString(),
+                                            ),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = colors.textSecondary,
+                                        )
+                                    }
                                 }
                             }
-                        }
-                    },
-                    navigationIcon = {
-                        AuroraIconCircleButton(
-                            hazeState = hazeState,
-                            onClick = {
-                                if (searchActive) {
-                                    searchActive = false
-                                    searchQuery = ""
-                                } else {
-                                    onBack()
-                                }
-                            },
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = null,
-                                tint = colors.textPrimary,
-                            )
-                        }
-                    },
-                    actions = {
-                        // Explicit gaps so circular glass backgrounds never overlap.
-                        Row(
-                            modifier = Modifier.padding(end = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                        },
+                        navigationIcon = {
                             AuroraIconCircleButton(
                                 hazeState = hazeState,
                                 onClick = {
-                                    if (searchActive) searchQuery = "" else searchActive = true
+                                    if (searchActive) {
+                                        searchActive = false
+                                        searchQuery = ""
+                                    } else {
+                                        onBack()
+                                    }
                                 },
                             ) {
                                 Icon(
-                                    imageVector = if (searchActive) Icons.Outlined.Close else Icons.Outlined.Search,
-                                    contentDescription = stringResource(
-                                        AYMR.strings.novel_reader_dictionary_history_search_hint,
-                                    ),
+                                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                    contentDescription = null,
                                     tint = colors.textPrimary,
                                 )
                             }
-                            Box {
+                        },
+                        actions = {
+                            // Explicit gaps so circular glass backgrounds never overlap.
+                            Row(
+                                modifier = Modifier.padding(end = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 AuroraIconCircleButton(
                                     hazeState = hazeState,
-                                    onClick = { menuExpanded = true },
+                                    onClick = {
+                                        if (searchActive) searchQuery = "" else searchActive = true
+                                    },
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.MoreVert,
-                                        contentDescription = null,
+                                        imageVector = if (searchActive) Icons.Outlined.Close else Icons.Outlined.Search,
+                                        contentDescription = stringResource(
+                                            AYMR.strings.novel_reader_dictionary_history_search_hint,
+                                        ),
                                         tint = colors.textPrimary,
                                     )
                                 }
-                            DropdownMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false },
-                            ) {
-                                Text(
-                                    text = stringResource(AYMR.strings.novel_reader_dictionary_history_sort),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = colors.textSecondary,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                )
-                                HistorySort.entries.forEach { sort ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = sortLabel(sort),
-                                                color = if (sortMode == sort) colors.accent else colors.textPrimary,
-                                                fontWeight = if (sortMode == sort) FontWeight.SemiBold else FontWeight.Normal,
-                                            )
-                                        },
-                                        onClick = {
-                                            sortMode = sort
-                                            menuExpanded = false
-                                        },
-                                    )
-                                }
-                                HorizontalDivider(color = colors.divider.copy(alpha = 0.6f))
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = stringResource(AYMR.strings.novel_reader_dictionary_history_clear),
-                                            color = colors.error,
-                                        )
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Delete,
-                                            contentDescription = null,
-                                            tint = colors.error,
-                                        )
-                                    },
-                                    onClick = {
-                                        menuExpanded = false
-                                        showClearConfirm = true
-                                    },
-                                )
-                            }
-                            }
-                        }
-                    },
-                )
-            },
-            floatingActionButton = {
-                if (reviewQueue.isNotEmpty() && !searchActive && !overlayOpen) {
-                    DictionaryReviewFab(
-                        hazeState = hazeState,
-                        label = stringResource(
-                            AYMR.strings.novel_reader_dictionary_history_review_fab,
-                            reviewQueue.size.toString(),
-                        ),
-                        onClick = { showReview = true },
-                    )
-                }
-            },
-        ) { paddingValues ->
-            // Haze source: ambient aurora + list content feed blur for glass surfaces.
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .hazeSource(hazeState),
-            ) {
-                if (allEntries.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(top = 4.dp, bottom = 12.dp)
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        HistoryFilter.entries.forEach { filter ->
-                            HistoryPillChip(
-                                hazeState = hazeState,
-                                label = filterLabel(filter),
-                                selected = filterMode == filter,
-                                onClick = {
-                                    filterMode = if (filterMode == filter) HistoryFilter.ALL else filter
-                                },
-                            )
-                        }
-                        availableLanguages.forEach { lang ->
-                            HistoryPillChip(
-                                hazeState = hazeState,
-                                label = lang.uppercase(),
-                                selected = languageFilter == lang,
-                                onClick = {
-                                    languageFilter = if (languageFilter == lang) null else lang
-                                },
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                }
-
-                if (filteredEntries.isEmpty()) {
-                    HistoryEmptyState(hazeState = hazeState, modifier = Modifier.fillMaxSize())
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 108.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        if (sortMode == HistorySort.RECENT) {
-                            val groups = filteredEntries.groupBy { startOfDay(it.lastLookupAt) }
-                            groups.forEach { (dayStart, groupEntries) ->
-                                stickyHeader(key = "header_$dayStart") {
-                                    HistoryDayHeader(
+                                Box {
+                                    AuroraIconCircleButton(
                                         hazeState = hazeState,
-                                        label = dayLabel(dayStart, todayStart),
-                                        count = groupEntries.size,
-                                    )
+                                        onClick = { menuExpanded = true },
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.MoreVert,
+                                            contentDescription = null,
+                                            tint = colors.textPrimary,
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuExpanded,
+                                        onDismissRequest = { menuExpanded = false },
+                                    ) {
+                                        Text(
+                                            text = stringResource(AYMR.strings.novel_reader_dictionary_history_sort),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = colors.textSecondary,
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        )
+                                        HistorySort.entries.forEach { sort ->
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(
+                                                        text = sortLabel(sort),
+                                                        color = if (sortMode ==
+                                                            sort
+                                                        ) {
+                                                            colors.accent
+                                                        } else {
+                                                            colors.textPrimary
+                                                        },
+                                                        fontWeight = if (sortMode == sort) {
+                                                            FontWeight.SemiBold
+                                                        } else {
+                                                            FontWeight.Normal
+                                                        },
+                                                    )
+                                                },
+                                                onClick = {
+                                                    sortMode = sort
+                                                    menuExpanded = false
+                                                },
+                                            )
+                                        }
+                                        HorizontalDivider(color = colors.divider.copy(alpha = 0.6f))
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = stringResource(
+                                                        AYMR.strings.novel_reader_dictionary_history_clear,
+                                                    ),
+                                                    color = colors.error,
+                                                )
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Delete,
+                                                    contentDescription = null,
+                                                    tint = colors.error,
+                                                )
+                                            },
+                                            onClick = {
+                                                menuExpanded = false
+                                                showClearConfirm = true
+                                            },
+                                        )
+                                    }
                                 }
+                            }
+                        },
+                    )
+                },
+                floatingActionButton = {
+                    if (reviewQueue.isNotEmpty() && !searchActive && !overlayOpen) {
+                        DictionaryReviewFab(
+                            hazeState = hazeState,
+                            label = stringResource(
+                                AYMR.strings.novel_reader_dictionary_history_review_fab,
+                                reviewQueue.size.toString(),
+                            ),
+                            onClick = { showReview = true },
+                        )
+                    }
+                },
+            ) { paddingValues ->
+                // Haze source: ambient aurora + list content feed blur for glass surfaces.
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .hazeSource(hazeState),
+                ) {
+                    if (allEntries.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(top = 4.dp, bottom = 12.dp)
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            HistoryFilter.entries.forEach { filter ->
+                                HistoryPillChip(
+                                    hazeState = hazeState,
+                                    label = filterLabel(filter),
+                                    selected = filterMode == filter,
+                                    onClick = {
+                                        filterMode = if (filterMode == filter) HistoryFilter.ALL else filter
+                                    },
+                                )
+                            }
+                            availableLanguages.forEach { lang ->
+                                HistoryPillChip(
+                                    hazeState = hazeState,
+                                    label = lang.uppercase(),
+                                    selected = languageFilter == lang,
+                                    onClick = {
+                                        languageFilter = if (languageFilter == lang) null else lang
+                                    },
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                    }
+
+                    if (filteredEntries.isEmpty()) {
+                        HistoryEmptyState(hazeState = hazeState, modifier = Modifier.fillMaxSize())
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 108.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            if (sortMode == HistorySort.RECENT) {
+                                val groups = filteredEntries.groupBy { startOfDay(it.lastLookupAt) }
+                                groups.forEach { (dayStart, groupEntries) ->
+                                    stickyHeader(key = "header_$dayStart") {
+                                        HistoryDayHeader(
+                                            hazeState = hazeState,
+                                            label = dayLabel(dayStart, todayStart),
+                                            count = groupEntries.size,
+                                        )
+                                    }
+                                    items(
+                                        count = groupEntries.size,
+                                        key = { index ->
+                                            val entry = groupEntries[index]
+                                            "entry_${entry.term}_${entry.language.orEmpty()}"
+                                        },
+                                    ) { index ->
+                                        HistoryRow(
+                                            hazeState = hazeState,
+                                            entry = groupEntries[index],
+                                            todayStart = todayStart,
+                                            onClick = { detailEntry = groupEntries[index] },
+                                            onToggleFavorite = { toggleFavorite(groupEntries[index]) },
+                                            onDelete = { deleteEntry(groupEntries[index]) },
+                                        )
+                                    }
+                                }
+                            } else {
                                 items(
-                                    count = groupEntries.size,
+                                    count = filteredEntries.size,
                                     key = { index ->
-                                        val entry = groupEntries[index]
+                                        val entry = filteredEntries[index]
                                         "entry_${entry.term}_${entry.language.orEmpty()}"
                                     },
                                 ) { index ->
                                     HistoryRow(
                                         hazeState = hazeState,
-                                        entry = groupEntries[index],
+                                        entry = filteredEntries[index],
                                         todayStart = todayStart,
-                                        onClick = { detailEntry = groupEntries[index] },
-                                        onToggleFavorite = { toggleFavorite(groupEntries[index]) },
-                                        onDelete = { deleteEntry(groupEntries[index]) },
+                                        onClick = { detailEntry = filteredEntries[index] },
+                                        onToggleFavorite = { toggleFavorite(filteredEntries[index]) },
+                                        onDelete = { deleteEntry(filteredEntries[index]) },
                                     )
                                 }
-                            }
-                        } else {
-                            items(
-                                count = filteredEntries.size,
-                                key = { index ->
-                                    val entry = filteredEntries[index]
-                                    "entry_${entry.term}_${entry.language.orEmpty()}"
-                                },
-                            ) { index ->
-                                HistoryRow(
-                                    hazeState = hazeState,
-                                    entry = filteredEntries[index],
-                                    todayStart = todayStart,
-                                    onClick = { detailEntry = filteredEntries[index] },
-                                    onToggleFavorite = { toggleFavorite(filteredEntries[index]) },
-                                    onDelete = { deleteEntry(filteredEntries[index]) },
-                                )
                             }
                         }
                     }
                 }
             }
-        }
 
-        if (showReview && reviewQueue.isNotEmpty()) {
-            FlashcardReviewOverlay(
-                hazeState = hazeState,
-                queue = reviewQueue,
-                onAnswer = { entry, known ->
-                    scope.launch(Dispatchers.IO) {
-                        runCatching {
-                            NovelDictionaryHistory.recordReview(context, entry.term, entry.language, known)
+            if (showReview && reviewQueue.isNotEmpty()) {
+                FlashcardReviewOverlay(
+                    hazeState = hazeState,
+                    queue = reviewQueue,
+                    onAnswer = { entry, known ->
+                        scope.launch(Dispatchers.IO) {
+                            runCatching {
+                                NovelDictionaryHistory.recordReview(context, entry.term, entry.language, known)
+                            }
                         }
-                    }
-                },
-                onClose = {
-                    showReview = false
-                    revision += 1
-                },
-            )
-        }
+                    },
+                    onClose = {
+                        showReview = false
+                        revision += 1
+                    },
+                )
+            }
         } // outer Box
     }
 
@@ -760,7 +778,6 @@ private fun NovelDictionaryHistoryScreenContent(onBack: () -> Unit) {
             onPronounce = { pronounce(entry.term, entry.language) },
         )
     }
-
 }
 
 @Composable

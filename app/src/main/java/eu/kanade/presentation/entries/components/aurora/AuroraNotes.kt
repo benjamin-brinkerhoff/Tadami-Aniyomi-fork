@@ -1,6 +1,5 @@
 package eu.kanade.presentation.entries.components.aurora
 
-import android.graphics.Color as AndroidColor
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.view.WindowManager
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -59,6 +57,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.LocalAppHaptics
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import android.graphics.Color as AndroidColor
 
 @Composable
 fun AuroraNotePreviewCard(

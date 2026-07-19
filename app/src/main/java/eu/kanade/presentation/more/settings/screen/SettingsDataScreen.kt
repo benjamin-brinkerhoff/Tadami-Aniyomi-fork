@@ -70,12 +70,12 @@ import eu.kanade.presentation.more.settings.LocalSettingsUiStyle
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.SettingsUiStyle
 import eu.kanade.presentation.more.settings.rememberResolvedSettingsUiStyle
+import eu.kanade.presentation.more.settings.screen.anilist.AnilistImportScreen
 import eu.kanade.presentation.more.settings.screen.anixart.AnixartImportScreen
 import eu.kanade.presentation.more.settings.screen.data.CloudSyncOptionsScreen
 import eu.kanade.presentation.more.settings.screen.data.CreateBackupScreen
 import eu.kanade.presentation.more.settings.screen.data.RestoreBackupScreen
 import eu.kanade.presentation.more.settings.screen.data.StorageInfo
-import eu.kanade.presentation.more.settings.screen.anilist.AnilistImportScreen
 import eu.kanade.presentation.more.settings.screen.shikimori.ShikimoriImportScreen
 import eu.kanade.presentation.more.settings.widget.BasePreferenceWidget
 import eu.kanade.presentation.more.settings.widget.PrefsHorizontalPadding

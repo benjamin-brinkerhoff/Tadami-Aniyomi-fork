@@ -111,7 +111,7 @@ import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.model.EInkProfile
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.category.visualName
-import eu.kanade.presentation.components.AuroraTabLeadingStiffness
+import eu.kanade.presentation.components.AURORA_TAB_LEADING_STIFFNESS
 import eu.kanade.presentation.components.AuroraTabRow
 import eu.kanade.presentation.components.TabContent
 import eu.kanade.presentation.components.TabbedScreenAurora
@@ -1937,7 +1937,7 @@ private fun AuroraLibraryCategoryTabs(
     // Asymmetric spring stretch (variant A): sticky leading/trailing for whole travel.
     val (leftSpring, rightSpring) = rememberAsymmetricTabEdgeSprings(coercedSelected)
     val bodySpring = remember {
-        auroraTabEdgeSpring(AuroraTabLeadingStiffness)
+        auroraTabEdgeSpring(AURORA_TAB_LEADING_STIFFNESS)
     }
 
     val animatedLeft by animateFloatAsState(

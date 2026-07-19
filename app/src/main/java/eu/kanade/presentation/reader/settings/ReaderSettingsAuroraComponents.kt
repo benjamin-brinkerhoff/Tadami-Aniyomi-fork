@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -45,12 +44,10 @@ import tachiyomi.core.common.preference.toggle
 import tachiyomi.presentation.core.util.collectAsState
 import kotlin.math.roundToInt
 
-/**
- * Aurora building blocks for the manga reader quick settings sheet:
- * glass section cards, flat toggle rows, segmented controls, visual mode
- * cards and an Aurora tab row. Same glass language as import/nickname
- * surfaces; used only by the manga ReaderSettingsDialog pages.
- */
+// Aurora building blocks for the manga reader quick settings sheet:
+// glass section cards, flat toggle rows, segmented controls, visual mode
+// cards and an Aurora tab row. Same glass language as import/nickname
+// surfaces; used only by the manga ReaderSettingsDialog pages.
 
 /** Glass section card: translucent frost (lets window blur show through), 1dp rim. */
 @Composable

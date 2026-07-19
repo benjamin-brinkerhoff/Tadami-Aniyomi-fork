@@ -303,9 +303,15 @@ class NovelJsRuntimeFactory(
         override fun domChildren(handle: Int, selector: String?): String =
             json.encodeToString(domStore.children(handle, normalizeCssSelectorOrNull(selector)).toList())
 
-        override fun domNext(handle: Int, selector: String?): Int = domStore.next(handle, normalizeCssSelectorOrNull(selector))
+        override fun domNext(handle: Int, selector: String?): Int = domStore.next(
+            handle,
+            normalizeCssSelectorOrNull(selector),
+        )
 
-        override fun domPrev(handle: Int, selector: String?): Int = domStore.prev(handle, normalizeCssSelectorOrNull(selector))
+        override fun domPrev(handle: Int, selector: String?): Int = domStore.prev(
+            handle,
+            normalizeCssSelectorOrNull(selector),
+        )
 
         override fun domNextAll(handle: Int, selector: String?): String =
             json.encodeToString(domStore.nextAll(handle, normalizeCssSelectorOrNull(selector)).toList())
@@ -316,14 +322,23 @@ class NovelJsRuntimeFactory(
         override fun domSiblings(handle: Int, selector: String?): String =
             json.encodeToString(domStore.siblings(handle, normalizeCssSelectorOrNull(selector)).toList())
 
-        override fun domClosest(handle: Int, selector: String): Int = domStore.closest(handle, normalizeCssSelector(selector))
+        override fun domClosest(handle: Int, selector: String): Int = domStore.closest(
+            handle,
+            normalizeCssSelector(selector),
+        )
 
         override fun domContents(handle: Int): String =
             json.encodeToString(domStore.contents(handle).toList())
 
-        override fun domIs(handle: Int, selector: String): Boolean = domStore.matches(handle, normalizeCssSelector(selector))
+        override fun domIs(handle: Int, selector: String): Boolean = domStore.matches(
+            handle,
+            normalizeCssSelector(selector),
+        )
 
-        override fun domHas(handle: Int, selector: String): Boolean = domStore.has(handle, normalizeCssSelector(selector))
+        override fun domHas(handle: Int, selector: String): Boolean = domStore.has(
+            handle,
+            normalizeCssSelector(selector),
+        )
 
         override fun domNot(handle: Int, selector: String): String =
             json.encodeToString(domStore.not(handle, normalizeCssSelector(selector)).toList())

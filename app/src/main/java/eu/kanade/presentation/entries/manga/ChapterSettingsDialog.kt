@@ -27,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import eu.kanade.domain.entries.manga.model.effectiveDownloadedFilter
-import eu.kanade.presentation.components.AuroraCheckboxItem
 import eu.kanade.presentation.components.AuroraRadioItem
 import eu.kanade.presentation.components.AuroraSortItem
 import eu.kanade.presentation.components.AuroraTriStateItem

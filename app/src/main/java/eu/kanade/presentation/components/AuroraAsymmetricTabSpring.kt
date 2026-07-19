@@ -6,22 +6,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlin.math.pow
 
-/**
- * Variant A — asymmetric spring stretch for Aurora capsule / section tabs.
- *
- * Leading edge of the selection pill uses a stiffer spring than the trailing
- * edge, so the indicator elongates while moving and snaps into place with a
- * soft bounce (same language as Browse [TabbedScreenAurora] tab chrome).
- */
+// Variant A — asymmetric spring stretch for Aurora capsule / section tabs.
+// Leading edge of the selection pill uses a stiffer spring than the trailing
+// edge, so the indicator elongates while moving and snaps into place with a
+// soft bounce (same language as Browse TabbedScreenAurora tab chrome).
 
 /** Stiffer spring on the edge that reaches the target first. */
-internal const val AuroraTabLeadingStiffness = 500f
+internal const val AURORA_TAB_LEADING_STIFFNESS = 500f
 
 /** Softer spring on the lagging edge → stretch during travel. */
-internal const val AuroraTabTrailingStiffness = 250f
+internal const val AURORA_TAB_TRAILING_STIFFNESS = 250f
 
 /** Slightly underdamped for a short settle bounce. */
-internal const val AuroraTabSpringDamping = 0.78f
+internal const val AURORA_TAB_SPRING_DAMPING = 0.78f
 
 /**
  * Left/right edge stiffness for a move.
@@ -29,15 +26,15 @@ internal const val AuroraTabSpringDamping = 0.78f
  */
 internal fun resolveAsymmetricTabEdgeStiffness(isMovingRight: Boolean): Pair<Float, Float> {
     return if (isMovingRight) {
-        AuroraTabTrailingStiffness to AuroraTabLeadingStiffness
+        AURORA_TAB_TRAILING_STIFFNESS to AURORA_TAB_LEADING_STIFFNESS
     } else {
-        AuroraTabLeadingStiffness to AuroraTabTrailingStiffness
+        AURORA_TAB_LEADING_STIFFNESS to AURORA_TAB_TRAILING_STIFFNESS
     }
 }
 
 internal fun auroraTabEdgeSpring(stiffness: Float): SpringSpec<Float> {
     return spring(
-        dampingRatio = AuroraTabSpringDamping,
+        dampingRatio = AURORA_TAB_SPRING_DAMPING,
         stiffness = stiffness,
     )
 }

@@ -17,8 +17,6 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
 import eu.kanade.domain.base.BasePreferences
-import eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker
-import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
 import eu.kanade.domain.entries.anime.interactor.AnimeRatingFetcher
 import eu.kanade.domain.entries.anime.interactor.SetAnimeViewerFlags
 import eu.kanade.domain.entries.anime.interactor.SyncSeasonsWithSource
@@ -26,6 +24,8 @@ import eu.kanade.domain.entries.anime.interactor.UpdateAnime
 import eu.kanade.domain.entries.anime.model.effectiveDownloadedFilter
 import eu.kanade.domain.entries.anime.model.effectiveSeasonDownloadedFilter
 import eu.kanade.domain.entries.anime.model.toSAnime
+import eu.kanade.domain.entries.metadata.FetchEntryMetadataFromTracker
+import eu.kanade.domain.entries.metadata.TrackerMetadataFetchOutcome
 import eu.kanade.domain.items.episode.interactor.FetchEpisodePreviews
 import eu.kanade.domain.items.episode.interactor.SetSeenStatus
 import eu.kanade.domain.items.episode.interactor.SyncEpisodesWithSource

@@ -1177,9 +1177,7 @@ class ReaderActivity : BaseActivity() {
 
         private val grayBackgroundColor = Color.rgb(0x20, 0x21, 0x25)
 
-        /**
-         * Initializes the reader subscriptions.
-         */
+        // Initializes the reader subscriptions.
         init {
             readerPreferences.readerTheme().changes()
                 .onEach { theme ->

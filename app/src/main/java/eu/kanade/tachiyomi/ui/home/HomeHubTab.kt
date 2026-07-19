@@ -14,12 +14,12 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -37,7 +37,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -47,7 +46,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -79,18 +77,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import eu.kanade.presentation.entries.components.aurora.AuroraGlassCtaSurface
-import eu.kanade.presentation.entries.components.aurora.AuroraHeroCtaMode
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import com.tadami.aurora.R
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.domain.ui.UserProfilePreferences
 import eu.kanade.domain.ui.model.HomeHeaderLayoutElement
@@ -100,6 +96,8 @@ import eu.kanade.domain.ui.model.HomeHubRecentCardMode
 import eu.kanade.domain.ui.model.HomeStreakCounterStyle
 import eu.kanade.presentation.components.TabContent
 import eu.kanade.presentation.components.TabbedScreenAurora
+import eu.kanade.presentation.entries.components.aurora.AuroraGlassCtaSurface
+import eu.kanade.presentation.entries.components.aurora.AuroraHeroCtaMode
 import eu.kanade.presentation.theme.AuroraColors
 import eu.kanade.presentation.theme.AuroraTheme
 import eu.kanade.presentation.theme.aurora.adaptive.AuroraDeviceClass
@@ -110,11 +108,11 @@ import eu.kanade.tachiyomi.ui.home.components.isTreasury
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import tachiyomi.data.achievement.UnlockableManager
 import tachiyomi.domain.achievement.model.DayActivity
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.aniyomi.AYMR
 import tachiyomi.presentation.core.i18n.stringResource
-import tachiyomi.data.achievement.UnlockableManager
 import tachiyomi.presentation.core.util.LocalAppHaptics
 import tachiyomi.presentation.core.util.collectAsStateWithLifecycle
 import uy.kohesive.injekt.Injekt
@@ -1651,47 +1649,185 @@ private fun NameDialog(
                 )
                 .padding(horizontal = 18.dp, vertical = 18.dp),
         ) {
-                Column(
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(AYMR.strings.aurora_change_nickname),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = stringResource(AYMR.strings.aurora_nickname_preview),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+                )
+
+                // Neutral preview stage — no tinted blue panel so nickname color stays true.
+                StudioPreviewStage(
+                    shape = previewShape,
                     modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .fillMaxWidth()
+                        .heightIn(min = 108.dp),
+                ) {
+                    StyledNicknameText(
+                        text = text.trim().ifEmpty { currentName },
+                        nicknameStyle = previewStyle,
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(AYMR.strings.aurora_nickname_field_label)) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent.copy(alpha = 0.45f),
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedLabelColor = colors.accent,
+                        unfocusedLabelColor = colors.textSecondary,
+                        cursorColor = colors.accent,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary,
+                        focusedContainerColor = fieldFill,
+                        unfocusedContainerColor = fieldFill,
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                // Font dropdown + size steppers
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
-                        text = stringResource(AYMR.strings.aurora_change_nickname),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary,
-                        textAlign = TextAlign.Center,
-                    )
-                    Text(
-                        text = stringResource(AYMR.strings.aurora_nickname_preview),
-                        style = MaterialTheme.typography.labelMedium,
+                        text = stringResource(AYMR.strings.aurora_nickname_font),
+                        style = MaterialTheme.typography.labelLarge,
                         color = colors.textSecondary,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
                     )
+                    Box(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(
+                                    if (colors.isDark) {
+                                        Color.White.copy(alpha = 0.10f)
+                                    } else {
+                                        Color.Black.copy(alpha = 0.05f)
+                                    },
+                                )
+                                .clickable {
+                                    appHaptics.tap()
+                                    isFontDropdownOpen = true
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = selectedFont.label(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textPrimary,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = isFontDropdownOpen,
+                            onDismissRequest = { isFontDropdownOpen = false },
+                        ) {
+                            NicknameFontPreset.entries.forEach { preset ->
+                                DropdownMenuItem(
+                                    text = { Text(preset.label()) },
+                                    onClick = {
+                                        appHaptics.tap()
+                                        selectedFont = preset
+                                        isFontDropdownOpen = false
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    NicknameSizeStepper(
+                        value = fontSize,
+                        onDecrement = {
+                            appHaptics.tap()
+                            fontSize = (fontSize - 1).coerceIn(14, 36)
+                        },
+                        onIncrement = {
+                            appHaptics.tap()
+                            fontSize = (fontSize + 1).coerceIn(14, 36)
+                        },
+                    )
+                }
 
-                    // Neutral preview stage — no tinted blue panel so nickname color stays true.
-                    StudioPreviewStage(
-                        shape = previewShape,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 108.dp),
-                    ) {
-                        StyledNicknameText(
-                            text = text.trim().ifEmpty { currentName },
-                            nicknameStyle = previewStyle,
+                Spacer(Modifier.height(16.dp))
+
+                // Color swatches (no text-chip overflow)
+                Text(
+                    text = stringResource(AYMR.strings.aurora_nickname_color),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colors.textSecondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    NicknameColorPreset.entries.forEach { preset ->
+                        NicknameColorSwatch(
+                            preset = preset,
+                            selected = selectedColor == preset,
+                            customHex = customColorHex,
+                            onClick = {
+                                appHaptics.tap()
+                                selectedColor = preset
+                            },
                         )
                     }
+                }
 
-                    Spacer(Modifier.height(14.dp))
-
+                if (selectedColor == NicknameColorPreset.Custom) {
+                    val customColorValid = parseNicknameHexColor(customColorHex) != null
+                    Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
-                        value = text,
-                        onValueChange = { text = it },
+                        value = customColorHex,
+                        onValueChange = { value ->
+                            val compact = value.replace(" ", "")
+                            customColorHex = when {
+                                compact.isEmpty() -> "#"
+                                compact.startsWith("#") -> compact
+                                else -> "#$compact"
+                            }
+                        },
                         singleLine = true,
+                        label = { Text(stringResource(AYMR.strings.aurora_nickname_custom_color)) },
+                        supportingText = {
+                            Text(stringResource(AYMR.strings.aurora_nickname_custom_color_hint))
+                        },
+                        isError = !customColorValid,
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(AYMR.strings.aurora_nickname_field_label)) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = colors.accent.copy(alpha = 0.45f),
                             unfocusedBorderColor = Color.Transparent,
@@ -1702,295 +1838,157 @@ private fun NameDialog(
                             unfocusedTextColor = colors.textPrimary,
                             focusedContainerColor = fieldFill,
                             unfocusedContainerColor = fieldFill,
+                            errorContainerColor = fieldFill,
+                            errorBorderColor = colors.error,
                         ),
                         shape = RoundedCornerShape(14.dp),
                     )
-
-                    Spacer(Modifier.height(14.dp))
-
-                    // Font dropdown + size steppers
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Text(
-                            text = stringResource(AYMR.strings.aurora_nickname_font),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = colors.textSecondary,
-                        )
-                        Box(modifier = Modifier.weight(1f)) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(
-                                        if (colors.isDark) {
-                                            Color.White.copy(alpha = 0.10f)
-                                        } else {
-                                            Color.Black.copy(alpha = 0.05f)
-                                        },
-                                    )
-                                    .clickable {
-                                        appHaptics.tap()
-                                        isFontDropdownOpen = true
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = selectedFont.label(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.textPrimary,
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Icon(
-                                    imageVector = Icons.Filled.KeyboardArrowDown,
-                                    contentDescription = null,
-                                    tint = colors.textSecondary,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = isFontDropdownOpen,
-                                onDismissRequest = { isFontDropdownOpen = false },
-                            ) {
-                                NicknameFontPreset.entries.forEach { preset ->
-                                    DropdownMenuItem(
-                                        text = { Text(preset.label()) },
-                                        onClick = {
-                                            appHaptics.tap()
-                                            selectedFont = preset
-                                            isFontDropdownOpen = false
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                        NicknameSizeStepper(
-                            value = fontSize,
-                            onDecrement = {
-                                appHaptics.tap()
-                                fontSize = (fontSize - 1).coerceIn(14, 36)
-                            },
-                            onIncrement = {
-                                appHaptics.tap()
-                                fontSize = (fontSize + 1).coerceIn(14, 36)
-                            },
-                        )
-                    }
-
-                    Spacer(Modifier.height(16.dp))
-
-                    // Color swatches (no text-chip overflow)
-                    Text(
-                        text = stringResource(AYMR.strings.aurora_nickname_color),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = colors.textSecondary,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 10.dp),
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        NicknameColorPreset.entries.forEach { preset ->
-                            NicknameColorSwatch(
-                                preset = preset,
-                                selected = selectedColor == preset,
-                                customHex = customColorHex,
-                                onClick = {
-                                    appHaptics.tap()
-                                    selectedColor = preset
-                                },
-                            )
-                        }
-                    }
-
-                    if (selectedColor == NicknameColorPreset.Custom) {
-                        val customColorValid = parseNicknameHexColor(customColorHex) != null
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = customColorHex,
-                            onValueChange = { value ->
-                                val compact = value.replace(" ", "")
-                                customColorHex = when {
-                                    compact.isEmpty() -> "#"
-                                    compact.startsWith("#") -> compact
-                                    else -> "#$compact"
-                                }
-                            },
-                            singleLine = true,
-                            label = { Text(stringResource(AYMR.strings.aurora_nickname_custom_color)) },
-                            supportingText = {
-                                Text(stringResource(AYMR.strings.aurora_nickname_custom_color_hint))
-                            },
-                            isError = !customColorValid,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = colors.accent.copy(alpha = 0.45f),
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedLabelColor = colors.accent,
-                                unfocusedLabelColor = colors.textSecondary,
-                                cursorColor = colors.accent,
-                                focusedTextColor = colors.textPrimary,
-                                unfocusedTextColor = colors.textPrimary,
-                                focusedContainerColor = fieldFill,
-                                unfocusedContainerColor = fieldFill,
-                                errorContainerColor = fieldFill,
-                                errorBorderColor = colors.error,
-                            ),
-                            shape = RoundedCornerShape(14.dp),
-                        )
-                    }
-
-                    Spacer(Modifier.height(14.dp))
-
-                    // Flat toggle rows — no solid dark container.
-                    NicknameToggleRow(
-                        label = stringResource(AYMR.strings.aurora_nickname_outline),
-                        checked = outlineEnabled,
-                        onCheckedChange = {
-                            appHaptics.tap()
-                            outlineEnabled = it
-                        },
-                    )
-                    if (outlineEnabled) {
-                        Text(
-                            text = stringResource(
-                                AYMR.strings.aurora_nickname_outline_thickness,
-                                outlineWidth.toString(),
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textSecondary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 2.dp),
-                        )
-                        Slider(
-                            value = outlineWidth.toFloat(),
-                            onValueChange = { outlineWidth = it.roundToInt().coerceIn(1, 8) },
-                            valueRange = 1f..8f,
-                            steps = 6,
-                        )
-                    }
-                    NicknameToggleRow(
-                        label = stringResource(AYMR.strings.aurora_nickname_glow),
-                        checked = glowEnabled,
-                        onCheckedChange = {
-                            appHaptics.tap()
-                            glowEnabled = it
-                        },
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    // Effect picker: inline chips instead of a popup menu (the popup
-                    // could open clipped / overflow the card). Treasury effects show up
-                    // only after they are actually unlocked.
-                    Text(
-                        text = stringResource(AYMR.strings.aurora_nickname_effect),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = colors.textSecondary,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    val availableEffects = remember(unlockedUnlockables, selectedEffect) {
-                        nicknameEffectPickerPresets().filter { preset ->
-                            !preset.isTreasury() ||
-                                preset == selectedEffect ||
-                                "profile_nickname_effect_${preset.key}" in unlockedUnlockables
-                        }
-                    }
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        availableEffects.forEach { preset ->
-                            val chipSelected = selectedEffect == preset
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(
-                                        when {
-                                            chipSelected -> colors.accent.copy(alpha = 0.22f)
-                                            colors.isDark -> Color.White.copy(alpha = 0.08f)
-                                            else -> Color.Black.copy(alpha = 0.05f)
-                                        },
-                                    )
-                                    .clickable {
-                                        appHaptics.tap()
-                                        selectedEffect = preset
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                            ) {
-                                Text(
-                                    text = preset.label(),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (chipSelected) colors.accent else colors.textPrimary,
-                                    maxLines = 1,
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(16.dp))
                 }
 
-                // Sticky actions
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
+                Spacer(Modifier.height(14.dp))
+
+                // Flat toggle rows — no solid dark container.
+                NicknameToggleRow(
+                    label = stringResource(AYMR.strings.aurora_nickname_outline),
+                    checked = outlineEnabled,
+                    onCheckedChange = {
+                        appHaptics.tap()
+                        outlineEnabled = it
+                    },
+                )
+                if (outlineEnabled) {
+                    Text(
+                        text = stringResource(
+                            AYMR.strings.aurora_nickname_outline_thickness,
+                            outlineWidth.toString(),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(
-                                if (colors.isDark) {
-                                    Color.White.copy(alpha = 0.08f)
-                                } else {
-                                    Color.Black.copy(alpha = 0.05f)
-                                },
+                            .padding(top = 2.dp),
+                    )
+                    Slider(
+                        value = outlineWidth.toFloat(),
+                        onValueChange = { outlineWidth = it.roundToInt().coerceIn(1, 8) },
+                        valueRange = 1f..8f,
+                        steps = 6,
+                    )
+                }
+                NicknameToggleRow(
+                    label = stringResource(AYMR.strings.aurora_nickname_glow),
+                    checked = glowEnabled,
+                    onCheckedChange = {
+                        appHaptics.tap()
+                        glowEnabled = it
+                    },
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                // Effect picker: inline chips instead of a popup menu (the popup
+                // could open clipped / overflow the card). Treasury effects show up
+                // only after they are actually unlocked.
+                Text(
+                    text = stringResource(AYMR.strings.aurora_nickname_effect),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.textSecondary,
+                )
+                Spacer(Modifier.height(8.dp))
+                val availableEffects = remember(unlockedUnlockables, selectedEffect) {
+                    nicknameEffectPickerPresets().filter { preset ->
+                        !preset.isTreasury() ||
+                            preset == selectedEffect ||
+                            "profile_nickname_effect_${preset.key}" in unlockedUnlockables
+                    }
+                }
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    availableEffects.forEach { preset ->
+                        val chipSelected = selectedEffect == preset
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(
+                                    when {
+                                        chipSelected -> colors.accent.copy(alpha = 0.22f)
+                                        colors.isDark -> Color.White.copy(alpha = 0.08f)
+                                        else -> Color.Black.copy(alpha = 0.05f)
+                                    },
+                                )
+                                .clickable {
+                                    appHaptics.tap()
+                                    selectedEffect = preset
+                                }
+                                .padding(horizontal = 12.dp, vertical = 7.dp),
+                        ) {
+                            Text(
+                                text = preset.label(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (chipSelected) colors.accent else colors.textPrimary,
+                                maxLines = 1,
                             )
-                            .clickable {
-                                appHaptics.tap()
-                                onDismiss()
-                            }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = stringResource(AYMR.strings.aurora_nickname_cancel),
-                            color = colors.textSecondary,
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
+                        }
                     }
-                    val applyInteraction = remember { MutableInteractionSource() }
-                    AuroraGlassCtaSurface(
-                        mode = AuroraHeroCtaMode.Aurora,
-                        onClick = ::confirm,
-                        shape = RoundedCornerShape(999.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
-                        interactionSource = applyInteraction,
+                }
+
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // Sticky actions
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(
+                            if (colors.isDark) {
+                                Color.White.copy(alpha = 0.08f)
+                            } else {
+                                Color.Black.copy(alpha = 0.05f)
+                            },
+                        )
+                        .clickable {
+                            appHaptics.tap()
+                            onDismiss()
+                        }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = stringResource(AYMR.strings.aurora_nickname_cancel),
+                        color = colors.textSecondary,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+                val applyInteraction = remember { MutableInteractionSource() }
+                AuroraGlassCtaSurface(
+                    mode = AuroraHeroCtaMode.Aurora,
+                    onClick = ::confirm,
+                    shape = RoundedCornerShape(999.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp),
+                    interactionSource = applyInteraction,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { contentColor ->
+                    Text(
+                        text = stringResource(AYMR.strings.aurora_nickname_apply),
+                        color = contentColor,
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth(),
-                    ) { contentColor ->
-                        Text(
-                            text = stringResource(AYMR.strings.aurora_nickname_apply),
-                            color = contentColor,
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.labelLarge,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                    )
                 }
             }
         }
+    }
 }
 
 @Composable
@@ -2525,4 +2523,3 @@ private fun GreetingStyleDialog(
         }
     }
 }
-

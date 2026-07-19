@@ -49,7 +49,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -4180,13 +4179,17 @@ fun NovelReaderScreen(
                             Icon(imageVector = Icons.Outlined.Settings, contentDescription = null)
                         }
                         if (onOpenDictionaryHistory != null) {
-                            val dictionaryQuickAccess by remember { Injekt.get<NovelReaderPreferences>().novelDictionaryQuickAccess() }
+                            val dictionaryQuickAccess by remember {
+                                Injekt.get<NovelReaderPreferences>().novelDictionaryQuickAccess()
+                            }
                                 .collectAsState()
                             if (dictionaryQuickAccess) {
                                 IconButton(onClick = { onOpenDictionaryHistory() }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Outlined.MenuBook,
-                                        contentDescription = stringResource(AYMR.strings.novel_reader_dictionary_history),
+                                        contentDescription = stringResource(
+                                            AYMR.strings.novel_reader_dictionary_history,
+                                        ),
                                     )
                                 }
                             }

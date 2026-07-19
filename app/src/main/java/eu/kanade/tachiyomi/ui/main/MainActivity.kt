@@ -552,7 +552,8 @@ class MainActivity : BaseActivity() {
         val startTime = System.currentTimeMillis()
         splashScreen?.setKeepOnScreenCondition {
             val elapsed = System.currentTimeMillis() - startTime
-            elapsed <= SPLASH_MIN_DURATION || (!ready || !migrationReady.value) && elapsed <= SPLASH_MAX_DURATION
+            elapsed <= SPLASH_MIN_DURATION ||
+                ((!ready || !migrationReady.value) && elapsed <= SPLASH_MAX_DURATION)
         }
         setSplashScreenExitAnimation(splashScreen)
 

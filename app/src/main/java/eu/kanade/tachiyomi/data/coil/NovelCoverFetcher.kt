@@ -116,7 +116,10 @@ class NovelCoverFetcher(
 
     private suspend fun pluginImageLoader(url: String): FetchResult {
         readPluginImageFromDiskCache(imageLoader, options, url)?.let {
-            debugTitleCoverFlow(scope = "novel-fetcher", message = "plugin-image-disk-cache-hit url=${previewTitleCoverUrl(url)}")
+            debugTitleCoverFlow(
+                scope = "novel-fetcher",
+                message = "plugin-image-disk-cache-hit url=${previewTitleCoverUrl(url)}",
+            )
             return it
         }
         debugTitleCoverFlow(scope = "novel-fetcher", message = "plugin-image-fetch url=${previewTitleCoverUrl(url)}")

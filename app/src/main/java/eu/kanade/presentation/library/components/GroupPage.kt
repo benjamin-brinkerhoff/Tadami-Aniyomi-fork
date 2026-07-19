@@ -3,11 +3,11 @@ package eu.kanade.presentation.library.components
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import eu.kanade.presentation.components.AuroraRadioItem
+import eu.kanade.presentation.components.AuroraSwitchItem
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.domain.library.model.LibraryGroup
 import tachiyomi.i18n.MR
-import eu.kanade.presentation.components.AuroraRadioItem
-import eu.kanade.presentation.components.AuroraSwitchItem
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 

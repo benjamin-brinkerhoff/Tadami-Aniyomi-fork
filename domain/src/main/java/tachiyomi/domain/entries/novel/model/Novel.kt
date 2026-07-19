@@ -3,9 +3,9 @@ package tachiyomi.domain.entries.novel.model
 import androidx.compose.runtime.Immutable
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
-import tachiyomi.core.common.preference.TriState
 import kotlinx.serialization.json.JsonObject
 import mihon.core.common.extensions.EMPTY
+import tachiyomi.core.common.preference.TriState
 import java.io.Serializable
 import java.time.Instant
 

@@ -1,6 +1,5 @@
 package eu.kanade.presentation.entries.components
 
-import android.graphics.Color as AndroidColor
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.view.WindowManager
@@ -72,6 +71,7 @@ import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.LocalAppHaptics
 import kotlin.math.roundToInt
+import android.graphics.Color as AndroidColor
 
 /**
  * Edit Info — variant E3: flat compact AdaptiveSheet form.

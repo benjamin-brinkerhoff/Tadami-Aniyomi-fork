@@ -63,8 +63,8 @@ import coil3.compose.AsyncImage
 import com.tadami.aurora.R
 import eu.kanade.domain.ui.model.HomeHeroCtaMode
 import eu.kanade.presentation.components.AuroraCard
-import eu.kanade.presentation.components.CoverReloadSignal
 import eu.kanade.presentation.components.AuroraCoverPlaceholderVariant
+import eu.kanade.presentation.components.CoverReloadSignal
 import eu.kanade.presentation.components.auroraMenuRimLightBrush
 import eu.kanade.presentation.components.buildAuroraCoverImageRequest
 import eu.kanade.presentation.components.rememberThemeAwareCoverErrorPainter

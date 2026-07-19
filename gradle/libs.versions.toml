@@ -12,8 +12,8 @@ dhizuku_version = "2.6.0"
 sqldelight = "2.3.2"
 sqlite = "2.4.0"
 voyager = "1.1.0-beta03"
-spotless = "7.0.2"
-ktlint-core = "1.5.0"
+spotless = "8.8.0"
+ktlint-core = "1.8.0"
 lottie = "6.4.0"
 epubcheck = "5.3.0"
 
@@ -128,6 +128,7 @@ aboutLibraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "abo
 aboutLibrariesAndroid = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutlib_plugin_version" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 moko = { id = "dev.icerock.mobile.multiplatform-resources", version.ref = "moko" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 
 [bundles]
 okhttp = ["okhttp-core", "okhttp-logging", "okhttp-brotli", "okhttp-dnsoverhttps", "okhttp-zstd"]

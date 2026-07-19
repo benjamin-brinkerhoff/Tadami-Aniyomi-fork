@@ -2,7 +2,6 @@
 
 package eu.kanade.presentation.reader.novel
 
-import android.graphics.Color as AndroidColor
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.view.Window
@@ -64,6 +63,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.math.roundToInt
+import android.graphics.Color as AndroidColor
 
 /**
  * Aurora glass sheet for novel reader quick settings — same chrome language as manga

@@ -2,8 +2,8 @@ package tachiyomi.data.entries.anime
 
 import aniyomi.domain.anime.SeasonAnime
 import eu.kanade.tachiyomi.animesource.model.AnimeUpdateStrategy
-import kotlinx.serialization.json.JsonObject
 import eu.kanade.tachiyomi.animesource.model.FetchType
+import kotlinx.serialization.json.JsonObject
 import tachiyomi.domain.entries.anime.model.Anime
 import tachiyomi.domain.library.anime.LibraryAnime
 import tachiyomi.domain.source.anime.model.DeletableAnime

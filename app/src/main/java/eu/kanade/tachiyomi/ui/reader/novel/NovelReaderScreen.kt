@@ -31,7 +31,6 @@ import eu.kanade.presentation.reader.novel.NovelReaderBackdropSession
 import eu.kanade.presentation.reader.novel.NovelReaderChapterHandoffPolicy
 import eu.kanade.presentation.reader.novel.NovelReaderPageReaderHandoffTarget
 import eu.kanade.presentation.reader.novel.NovelReaderScreen
-import eu.kanade.tachiyomi.ui.reader.novel.dictionary.NovelDictionaryHistoryScreen
 import eu.kanade.presentation.reader.novel.NovelReaderSystemUiSession
 import eu.kanade.presentation.reader.novel.SeriesInterstitialOverlay
 import eu.kanade.presentation.reader.novel.SystemUIController
@@ -42,6 +41,7 @@ import eu.kanade.presentation.reader.novel.resolveReaderBackgroundImageModel
 import eu.kanade.presentation.reader.novel.resolveReaderBackgroundSelection
 import eu.kanade.presentation.reader.novel.resolveReaderSystemUiFlag
 import eu.kanade.presentation.reader.novel.safeEnum
+import eu.kanade.tachiyomi.ui.reader.novel.dictionary.NovelDictionaryHistoryScreen
 import eu.kanade.tachiyomi.ui.reader.novel.setting.GeminiPromptMode
 import eu.kanade.tachiyomi.ui.reader.novel.setting.NovelBookFlipAnimationSpeed
 import eu.kanade.tachiyomi.ui.reader.novel.setting.NovelPageTransitionStyle

@@ -696,7 +696,7 @@ internal fun AuroraTabRow(
     // Asymmetric spring stretch (variant A): sticky leading/trailing for whole travel.
     val (leftSpring, rightSpring) = rememberAsymmetricTabEdgeSprings(selectedIndex)
     val bodySpring = remember {
-        auroraTabEdgeSpring(AuroraTabLeadingStiffness)
+        auroraTabEdgeSpring(AURORA_TAB_LEADING_STIFFNESS)
     }
 
     val animatedLeft by animateFloatAsState(

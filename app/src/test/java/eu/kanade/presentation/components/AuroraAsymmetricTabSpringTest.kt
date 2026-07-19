@@ -10,16 +10,16 @@ class AuroraAsymmetricTabSpringTest {
     @Test
     fun `moving right uses trailing left and leading right stiffness`() {
         val (left, right) = resolveAsymmetricTabEdgeStiffness(isMovingRight = true)
-        left shouldBe AuroraTabTrailingStiffness
-        right shouldBe AuroraTabLeadingStiffness
+        left shouldBe AURORA_TAB_TRAILING_STIFFNESS
+        right shouldBe AURORA_TAB_LEADING_STIFFNESS
         left shouldBeLessThan right
     }
 
     @Test
     fun `moving left uses leading left and trailing right stiffness`() {
         val (left, right) = resolveAsymmetricTabEdgeStiffness(isMovingRight = false)
-        left shouldBe AuroraTabLeadingStiffness
-        right shouldBe AuroraTabTrailingStiffness
+        left shouldBe AURORA_TAB_LEADING_STIFFNESS
+        right shouldBe AURORA_TAB_TRAILING_STIFFNESS
         left shouldBeGreaterThan right
     }
 
