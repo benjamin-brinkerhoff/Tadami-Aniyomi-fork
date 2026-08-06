@@ -1,14 +1,25 @@
+import mihon.buildlogic.AndroidConfig
+
 plugins {
-    id("mihon.library")
+    id("mihon.kmp.library")
+    kotlin("multiplatform")
     kotlin("plugin.serialization")
 }
 
-android {
-    namespace = "tachiyomi.core.metadata"
+kotlin {
+    android {
+        namespace = "tachiyomi.core.metadata"
+        compileSdk = AndroidConfig.COMPILE_SDK
+        minSdk = AndroidConfig.MIN_SDK
+        withJava()
+        withHostTestBuilder { }
 
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
+        optimization {
+            consumerKeepRules.apply {
+                publish = true
+                file("consumer-rules.pro")
+            }
+        }
     }
 }
 

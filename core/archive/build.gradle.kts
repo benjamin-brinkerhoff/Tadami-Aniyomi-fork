@@ -1,10 +1,19 @@
+import mihon.buildlogic.AndroidConfig
+
 plugins {
-    id("mihon.library")
+    id("mihon.kmp.library")
+    kotlin("multiplatform")
     kotlin("plugin.serialization")
 }
 
-android {
-    namespace = "mihon.core.archive"
+kotlin {
+    android {
+        namespace = "mihon.core.archive"
+        compileSdk = AndroidConfig.COMPILE_SDK
+        minSdk = AndroidConfig.MIN_SDK
+        withJava()
+        withHostTestBuilder { }
+    }
 }
 
 dependencies {
