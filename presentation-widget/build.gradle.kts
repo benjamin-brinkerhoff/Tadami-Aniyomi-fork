@@ -1,31 +1,54 @@
+import mihon.buildlogic.AndroidConfig
+
 plugins {
-    id("mihon.library")
-    id("mihon.library.compose")
+    id("mihon.kmp.library")
+    kotlin("multiplatform")
+    alias(kotlinx.plugins.compose.compiler)
 }
 
-android {
-    namespace = "tachiyomi.presentation.widget"
+kotlin {
+    android {
+        namespace = "tachiyomi.presentation.widget"
+        compileSdk = AndroidConfig.COMPILE_SDK
+        minSdk = AndroidConfig.MIN_SDK
+        withJava()
+        withHostTestBuilder { }
 
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
+        optimization {
+            consumerKeepRules.apply {
+                publish = true
+                file("consumer-rules.pro")
+            }
+        }
     }
-}
 
-dependencies {
-    implementation(projects.core.common)
-    implementation(projects.domain)
-    implementation(projects.presentationCore)
-    api(projects.i18n)
-    api(projects.i18nAniyomi)
+    sourceSets {
+        getByName("androidMain") {
+            dependencies {
+                implementation(projects.core.common)
+                implementation(projects.domain)
+                implementation(projects.presentationCore)
+                api(projects.i18n)
+                api(projects.i18nAniyomi)
 
-    implementation(compose.glance)
-    implementation(libs.material)
+                implementation(platform(compose.bom))
 
-    implementation(kotlinx.immutables)
+                implementation(compose.glance)
+                implementation(libs.material)
 
-    implementation(platform(libs.coil.bom))
-    implementation(libs.coil.core)
+                implementation(kotlinx.immutables)
 
-    api(libs.injekt)
+                implementation(platform(libs.coil.bom))
+                implementation(libs.coil.core)
+
+                api(libs.injekt)
+            }
+        }
+        getByName("androidHostTest") {
+            dependencies {
+                implementation(libs.bundles.test)
+                runtimeOnly(libs.junitPlatformLauncher)
+            }
+        }
+    }
 }
