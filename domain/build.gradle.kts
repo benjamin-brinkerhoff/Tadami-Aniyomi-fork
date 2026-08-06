@@ -1,39 +1,60 @@
+import mihon.buildlogic.AndroidConfig
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 plugins {
-    id("mihon.library")
+    id("mihon.kmp.library")
+    kotlin("multiplatform")
     kotlin("plugin.serialization")
 }
 
-android {
-    namespace = "com.tadami.aurora.domain"
-
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
-    }
-}
-
 kotlin {
-    compilerOptions {
-        freeCompilerArgs.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
+    android {
+        namespace = "com.tadami.aurora.domain"
+        compileSdk = AndroidConfig.COMPILE_SDK
+        minSdk = AndroidConfig.MIN_SDK
+        withJava()
+        withHostTestBuilder { }
+
+        optimization {
+            consumerKeepRules.apply {
+                publish = true
+                file("consumer-rules.pro")
+            }
+        }
     }
-}
 
-dependencies {
-    implementation(projects.sourceApi)
-    implementation(projects.core.common)
+    sourceSets {
+        getByName("androidMain") {
+            dependencies {
+                implementation(projects.sourceApi)
+                implementation(projects.core.common)
 
-    implementation(libs.jsoup)
-    compileOnly(libs.jspecify)
-    implementation(kotlinx.bundles.coroutines)
-    implementation(kotlinx.bundles.serialization)
+                implementation(libs.jsoup)
+                compileOnly(libs.jspecify)
+                implementation(kotlinx.bundles.coroutines)
+                implementation(kotlinx.bundles.serialization)
 
-    implementation(libs.unifile)
+                implementation(libs.unifile)
 
-    // AndroidX Paging for PagingSource
-    api(libs.paging.common)
+                // AndroidX Paging for PagingSource
+                api(libs.paging.common)
 
-    compileOnly(libs.compose.stablemarker)
+                compileOnly(libs.compose.stablemarker)
+            }
+        }
+        getByName("androidHostTest") {
+            dependencies {
+                implementation(libs.bundles.test)
+                implementation(kotlinx.coroutines.test)
+            }
+        }
+    }
 
-    testImplementation(libs.bundles.test)
-    testImplementation(kotlinx.coroutines.test)
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-Xexpect-actual-classes",
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+        )
+    }
 }
